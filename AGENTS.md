@@ -140,7 +140,9 @@ Kanıt yoksa görev bitmemiştir.
 
 &#x20; 5. ogrenme-gunlugu.md dosyasına bugün öğrendiklerimi 3-5 maddeyle ekle.
 
-&#x20; 6. git add . ve git commit ile kısa bir not yazarak kaydet.
+&#x20; 6. Commit ve push **yalnızca ben açıkça istersem** yapılır. İstemediysem sadece dosyaları güncelle ve "değişiklikler hazır" de.
+
+\- Ayrıntılı kontrol listesi, commit/push kuralları ve GitHub adımları: `oturum-sonu.md`.
 
 \- Sohbet çok uzadıysa bana şunu söyle: "Yeni sohbete geçelim, önce oturum sonu adımlarını yapayım." Her aşama için ayrı sohbet açılması tercih edilir.
 
