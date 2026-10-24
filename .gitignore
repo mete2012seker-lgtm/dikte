@@ -1,0 +1,27 @@
+# Gizli bilgiler
+.env
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Obsidian kişisel ayarları
+.obsidian/
+
+# İndirilen modeller (büyük dosyalar)
+models/
+*.bin
+*.gguf
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Çalışma zamanı dosyaları
+logs/
+artifacts/
+.pytest_cache/
+
