@@ -19,6 +19,7 @@ v1 (Aşama 0–4: çekirdek + Dikte ekranı) tamamlandı ve kullanıcı tarafın
 - **Arayüz:** Playwright DOM testi + `artifacts/ui-dikte.png` ekran görüntüsü.
 - **Modeller:** `models/` içine `large-v3` ve CPU yedeği `small` indirildi (git dışı).
 - **Kullanıcı onayı (2026-10-24):** Uygulama açıldı ve çalıştığı onaylandı.
+- **Doküman/protokol temizliği (2026-10-25):** Oturum sonu akışı `asama-bitir` skill'ine taşındı; AGENTS.md sadeleştirildi (kararlar ve varsayımlar ayrıldı), STIL.md oluşturuldu, eski yardımcı dosyalar silindi. Testler: 34/34.
 
 ## Yarım kalan
 - Python 3.12 kurulumu. Şu an `.venv` **Python 3.10.11** ile çalışıyor; 3.12 kurulunca yeniden oluşturulacak.

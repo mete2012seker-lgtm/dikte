@@ -33,6 +33,8 @@ Akış:
 | `tests/test_controller.py` | Sahte bileşenlerle akış, hata ve GPU düşüşü | 34 test geçti |
 | `tests/test_engine_plan.py` | GPU/CPU seçim sırası | 34 test geçti |
 | `tests/test_ui.py` | Playwright + sahte köprü ile arayüz | 34 test geçti |
+| `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
+| `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
 | `Dikte.bat` | Çift tıklayarak uygulamayı açan Windows başlatıcı | Hazır |
 | `models/` | İndirilen Whisper modelleri (git dışı) | large-v3 + small indirildi |
@@ -83,3 +85,4 @@ Akış:
 - 2026-10-24: Arayüz pywebview + mevcut HTML/CSS/JS olarak onaylandı.
 - 2026-10-24: CUDA eksikliği pip `nvidia-cublas-cu12` + `nvidia-cudnn-cu12` ve otomatik DLL yolu ile çözüldü.
 - 2026-10-24: Model indirme `--kurulum`, Türkçe-only, normal pencere çerçevesi varsayıldı (kullanıcı teyidi bekliyor).
+- 2026-10-25: Oturum sonu protokolü `asama-bitir` skill'ine taşındı; AGENTS.md sadeleştirildi, STIL.md eklendi, eski yardımcı dosyalar silindi.
