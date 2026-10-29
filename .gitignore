@@ -6,6 +6,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv*/
 venv/
 
 # Obsidian kişisel ayarları
@@ -21,6 +22,7 @@ Thumbs.db
 desktop.ini
 
 # Çalışma zamanı dosyaları
+data/
 logs/
 artifacts/
 .pytest_cache/

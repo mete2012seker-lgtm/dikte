@@ -26,6 +26,13 @@
   <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.5L16 9.5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3 1.8"/></symbol>
   <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.6.4 1 1 1 1.7V17h4.8v-1.4c0-.7.4-1.3 1-1.7A6 6 0 0 0 12 3Z"/></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A8 8 0 0 1 12 6a8 8 0 0 1 8 8c0 .6-.1 1.2-.2 1.7"/><path d="M6.2 7.3A8 8 0 1 0 17 17.9"/></symbol>
 </svg>
 
 <div class="app">
@@ -38,113 +45,233 @@
       </div>
     </div>
     <nav class="nav">
-      <button class="nav-btn is-active" aria-current="page"><svg class="ic"><use href="#i-mic"/></svg><span>Dikte</span></button>
-      <button class="nav-btn" data-coming="Dikte Geçmişi"><svg class="ic"><use href="#i-history"/></svg><span>Dikte Geçmişi</span></button>
-      <button class="nav-btn" data-coming="Modeller"><svg class="ic"><use href="#i-models"/></svg><span>Modeller</span></button>
-      <button class="nav-btn" data-coming="Ayarlar"><svg class="ic"><use href="#i-settings"/></svg><span>Ayarlar</span></button>
+      <button class="nav-btn is-active" data-page="page-dikte" aria-current="page"><svg class="ic"><use href="#i-mic"/></svg><span>Dikte</span></button>
+      <button class="nav-btn" data-page="page-gecmis"><svg class="ic"><use href="#i-history"/></svg><span>Dikte Geçmişi</span></button>
+      <button class="nav-btn" data-page="page-modeller"><svg class="ic"><use href="#i-models"/></svg><span>Modeller</span></button>
+      <button class="nav-btn" data-page="page-ayarlar"><svg class="ic"><use href="#i-settings"/></svg><span>Ayarlar</span></button>
     </nav>
     <div class="sidebar-foot"><span class="led" id="systemLed"></span><span id="systemText">Yerel sistem hazır</span></div>
   </aside>
 
   <main class="workspace">
-    <div class="page-head">
-      <h1 class="page-title">Dikte çalışma alanı</h1>
-      <p class="page-sub">Konuşun, yapay zeka sizin için yazsın.</p>
-    </div>
 
-    <div class="dikte-layout">
-      <div>
-        <div class="card text-card">
-          <div class="panel-head">
-            <div class="panel-title"><svg class="ic"><use href="#i-doc"/></svg>Metin çıktısı</div>
-            <div class="lang-wrap">
-              <svg class="ic globe"><use href="#i-globe"/></svg>
-              <select class="select" id="topLang" aria-label="Dil" disabled>
-                <option>Türkçe</option>
-              </select>
-              <svg class="ic chev"><use href="#i-chev-down"/></svg>
-            </div>
-          </div>
-
-          <div class="transcript" id="transcript" contenteditable="true" spellcheck="false"
-               aria-label="Metin çıktısı"
-               data-empty="Konuşmaya başlamak için mikrofon düğmesine bas veya Sağ Ctrl tuşunu basılı tut."></div>
-
-          <div class="actions">
-            <button class="btn" id="copyBtn"><svg class="ic"><use href="#i-copy"/></svg><span id="copyLabel">Kopyala</span></button>
-            <button class="btn" id="undoBtn" disabled><svg class="ic"><use href="#i-undo"/></svg>Geri Al</button>
-            <button class="btn" id="refreshBtn" disabled title="v1.1'de gelecek"><svg class="ic"><use href="#i-refresh"/></svg>Transkripsiyonu Yenile<span class="soon">v1.1</span></button>
-            <button class="btn btn-ai" id="cleanBtn" disabled title="v1.1'de gelecek"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka ile Temizle<span class="soon">v1.1</span></button>
-          </div>
-        </div>
-
-        <div class="stage" id="stage">
-          <div class="stage-row">
-            <div class="wave left" id="waveLeft" aria-hidden="true"></div>
-            <div class="mic-wrap">
-              <span class="mic-halo"></span>
-              <span class="mic-ring ring-1"></span>
-              <span class="mic-ring ring-2"></span>
-              <span class="pulse"></span>
-              <span class="pulse delay"></span>
-              <button class="mic-btn" id="micBtn" aria-label="Kaydı başlat" aria-pressed="false">
-                <svg class="ic"><use href="#i-mic"/></svg>
-              </button>
-            </div>
-            <div class="wave right" id="waveRight" aria-hidden="true"></div>
-          </div>
-          <div class="status-line">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText" title="">Model yükleniyor…</span>
-          </div>
-          <div class="kbd" id="shortcutHint">Sağ Ctrl (basılı tut)</div>
-        </div>
+    <!-- ===== 1. DİKTE ===== -->
+    <section class="page is-active" id="page-dikte">
+      <div class="page-head">
+        <h1 class="page-title">Dikte çalışma alanı</h1>
+        <p class="page-sub">Konuşun, yapay zeka sizin için yazsın.</p>
       </div>
 
-      <aside>
-        <div class="card model-card">
-          <div class="card-head"><svg class="ic"><use href="#i-chip"/></svg>Aktif model</div>
-          <div class="model-inner">
-            <div class="model-top">
-              <div class="model-ico"><svg class="ic"><use href="#i-mic"/></svg></div>
-              <div>
-                <div class="model-name" id="modelName">Model yükleniyor…</div>
-                <div class="model-sub">Yerel konuşma tanıma</div>
+      <div class="dikte-layout">
+        <div>
+          <div class="card text-card">
+            <div class="panel-head">
+              <div class="panel-title"><svg class="ic"><use href="#i-doc"/></svg>Metin çıktısı</div>
+              <div class="lang-wrap">
+                <svg class="ic globe"><use href="#i-globe"/></svg>
+                <select class="select" id="topLang" aria-label="Dil" disabled>
+                  <option>Türkçe</option>
+                </select>
+                <svg class="ic chev"><use href="#i-chev-down"/></svg>
               </div>
-              <span class="badge">Yerel</span>
             </div>
-            <div class="info-row"><svg class="ic"><use href="#i-globe"/></svg>Dil<span class="val">Türkçe</span></div>
-            <div class="info-row"><svg class="ic"><use href="#i-cpu"/></svg>İşleme cihazı<span class="val" id="device">—</span></div>
-            <div class="divider"></div>
-            <div class="status-row">
-              <svg class="ic"><use href="#i-check"/></svg>Model hazır
-              <span class="right"><span class="led" id="readyLed"></span><span id="readyText">Bekleniyor</span></span>
+
+            <div class="transcript" id="transcript" contenteditable="true" spellcheck="false"
+                 aria-label="Metin çıktısı"
+                 data-empty="Konuşmaya başlamak için mikrofon düğmesine bas veya Sağ Ctrl tuşunu basılı tut."></div>
+
+            <div class="actions">
+              <button class="btn" id="copyBtn"><svg class="ic"><use href="#i-copy"/></svg><span id="copyLabel">Kopyala</span></button>
+              <button class="btn" id="undoBtn" disabled><svg class="ic"><use href="#i-undo"/></svg>Geri Al</button>
+              <button class="btn" id="refreshBtn" disabled title="Son kaydı tekrar çevir"><svg class="ic"><use href="#i-refresh"/></svg><span id="refreshLabel">Transkripsiyonu Yenile</span></button>
+              <button class="btn btn-ai" id="cleanBtn" disabled title="Sonraki sürümde gelecek"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka ile Temizle<span class="soon">v1.3</span></button>
             </div>
-            <div class="status-row">
-              <svg class="ic" style="color:#8A97B0"><use href="#i-chip"/></svg>Bellek kullanımı
-              <span class="mem-bar" title="Kullanılan bellek"><i id="memFill"></i></span>
-              <span class="mem-text" id="memText">—</span>
+          </div>
+
+          <div class="stage" id="stage">
+            <div class="stage-row">
+              <div class="wave left" id="waveLeft" aria-hidden="true"></div>
+              <div class="mic-wrap">
+                <span class="mic-halo"></span>
+                <span class="mic-ring ring-1"></span>
+                <span class="mic-ring ring-2"></span>
+                <span class="pulse"></span>
+                <span class="pulse delay"></span>
+                <button class="mic-btn" id="micBtn" aria-label="Kaydı başlat" aria-pressed="false">
+                  <svg class="ic"><use href="#i-mic"/></svg>
+                </button>
+              </div>
+              <div class="wave right" id="waveRight" aria-hidden="true"></div>
+            </div>
+            <div class="status-line">
+              <span class="status-dot" id="statusDot"></span>
+              <span id="statusText" title="">Model yükleniyor…</span>
+            </div>
+            <div class="kbd" id="shortcutHint">Sağ Ctrl (basılı tut)</div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card model-card">
+            <div class="card-head"><svg class="ic"><use href="#i-chip"/></svg>Aktif model</div>
+            <div class="model-inner">
+              <div class="model-top">
+                <div class="model-ico"><svg class="ic"><use href="#i-mic"/></svg></div>
+                <div>
+                  <div class="model-name" id="modelName">Model yükleniyor…</div>
+                  <div class="model-sub">Yerel konuşma tanıma</div>
+                </div>
+                <span class="badge">Yerel</span>
+              </div>
+              <div class="info-row"><svg class="ic"><use href="#i-globe"/></svg>Dil<span class="val">Türkçe</span></div>
+              <div class="info-row"><svg class="ic"><use href="#i-cpu"/></svg>İşleme cihazı<span class="val" id="device">—</span></div>
+              <div class="divider"></div>
+              <div class="status-row">
+                <svg class="ic"><use href="#i-check"/></svg>Model hazır
+                <span class="right"><span class="led" id="readyLed"></span><span id="readyText">Bekleniyor</span></span>
+              </div>
+              <div class="status-row">
+                <svg class="ic" style="color:#8A97B0"><use href="#i-chip"/></svg>Bellek kullanımı
+                <span class="mem-bar" title="Kullanılan bellek"><i id="memFill"></i></span>
+                <span class="mem-text" id="memText">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card activity-card">
+            <div class="activity-head"><svg class="ic"><use href="#i-clock"/></svg>Son etkinlikler</div>
+            <div class="timeline" id="activityList">
+              <div class="activity-empty">Henüz etkinlik yok.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== 2. DİKTE GEÇMİŞİ ===== -->
+    <section class="page" id="page-gecmis">
+      <div class="page-head">
+        <h1 class="page-title">Dikte Geçmişi</h1>
+        <p class="page-sub">Kaydedilen dikte metinlerini görüntüle ve yönet.</p>
+      </div>
+
+      <div class="card history-card" id="historyCard">
+        <div class="history-toolbar">
+          <div class="search">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="historySearch" type="search" placeholder="Geçmişte ara…" aria-label="Geçmişte ara">
+          </div>
+          <button class="filter is-active" data-filter="all">Tümü</button>
+          <button class="filter" data-filter="today">Bugün</button>
+          <button class="filter" data-filter="week">Bu hafta</button>
+          <span class="history-count" id="historyCount">0 kayıt</span>
+        </div>
+        <div id="historyList"></div>
+      </div>
+
+      <div class="card history-disabled" id="historyDisabled" hidden>
+        <div class="disabled-ico"><svg class="ic"><use href="#i-off"/></svg></div>
+        <h2>Geçmiş kaydedilmiyor</h2>
+        <p>Ayarlar bölümünde "Dikte geçmişini kaydet" kapalı. Yeni dikte metinleri diske yazılmıyor. Eski kayıtlar arşivde duruyor; anahtarı açınca geri gelir.</p>
+        <button class="btn btn-primary" id="goSettingsBtn"><svg class="ic"><use href="#i-settings"/></svg>Ayarlara git</button>
+      </div>
+    </section>
+
+    <!-- ===== 3. MODELLER ===== -->
+    <section class="page" id="page-modeller">
+      <div class="page-head">
+        <h1 class="page-title">Modeller</h1>
+        <p class="page-sub">Konuşmayı yazıya çeviren yerel Whisper modellerini yönet.</p>
+      </div>
+
+      <div class="models-layout">
+        <div>
+          <div class="toolbar">
+            <div class="search">
+              <svg class="ic"><use href="#i-search"/></svg>
+              <input id="modelSearch" type="search" placeholder="Model ara…" aria-label="Model ara">
+            </div>
+          </div>
+          <div class="list-title">
+            <span>Ses Modelleri</span>
+            <span class="list-count" id="modelCount">6 model</span>
+          </div>
+          <div class="model-list" id="modelList"></div>
+        </div>
+        <aside>
+          <div class="card detail-card" id="detailPanel"></div>
+          <div class="card desc-card" id="descPanel"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== 4. AYARLAR ===== -->
+    <section class="page" id="page-ayarlar">
+      <div class="page-head">
+        <h1 class="page-title">Ayarlar</h1>
+        <p class="page-sub">Kısayolu ve geçmiş tercihini yönet.</p>
+      </div>
+
+      <div class="settings">
+        <div class="card set-card">
+          <div class="card-head"><svg class="ic"><use href="#i-mic"/></svg>Kısayol Tuşu</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Dikte kısayolu</div>
+              <div class="set-desc">Basılı tutup konuş, bırakınca metin panoya kopyalanır. Harf tuşları yanlışlıkla kayıt başlatmaması için listede yok.</div>
+            </div>
+            <div class="set-control">
+              <select class="select hotkey-select" id="hotkeySelect" aria-label="Dikte kısayolu"></select>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Etkin kısayol</div>
+              <div class="set-desc">Değişiklik "Kaydet" deyince uygulanır.</div>
+            </div>
+            <div class="set-control"><span class="keycap" id="hotkeyNow">Sağ Ctrl</span></div>
+          </div>
+        </div>
+
+        <div class="card set-card">
+          <div class="card-head"><svg class="ic"><use href="#i-history"/></svg>Geçmiş</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Dikte geçmişini kaydet</div>
+              <div class="set-desc">Kapalıyken yeni dikte metinleri diske yazılmaz; eski kayıtlar arşivde saklanır.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="historySwitch" role="switch" aria-checked="true" aria-label="Dikte geçmişini kaydet"></button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Geçmişi temizle</div>
+              <div class="set-desc">Kaydedilmiş tüm dikte metinlerini kalıcı olarak siler.</div>
+            </div>
+            <div class="set-control">
+              <button class="btn btn-danger" id="clearHistoryBtn"><svg class="ic"><use href="#i-trash"/></svg>Geçmişi temizle</button>
             </div>
           </div>
         </div>
 
-        <div class="card activity-card">
-          <div class="activity-head"><svg class="ic"><use href="#i-clock"/></svg>Son etkinlikler</div>
-          <div class="timeline" id="activityList">
-            <div class="activity-empty">Henüz etkinlik yok.</div>
-          </div>
+        <div class="save-row">
+          <span class="dirty" id="settingsDirty" hidden>Kaydedilmedi</span>
+          <button class="btn" id="resetSettingsBtn">Varsayılana dön</button>
+          <button class="btn btn-primary" id="saveSettingsBtn"><svg class="ic"><use href="#i-check"/></svg>Kaydet</button>
         </div>
-      </aside>
-    </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
 <div class="statusbar">
-  <button class="sb-item" data-coming="Mikrofon ayarları"><svg class="ic"><use href="#i-mic"/></svg>Mikrofon: <b>Varsayılan Aygıt</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
+  <button class="sb-item" data-coming="Mikrofon seçimi sonraki sürümde gelecek."><svg class="ic"><use href="#i-mic"/></svg>Mikrofon: <b>Varsayılan Aygıt</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
   <span class="sb-sep"></span>
-  <button class="sb-item" data-coming="Dil ayarları"><svg class="ic"><use href="#i-globe"/></svg>Dil: <b>Türkçe</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
+  <button class="sb-item" data-coming="Dil şimdilik yalnız Türkçe."><svg class="ic"><use href="#i-globe"/></svg>Dil: <b>Türkçe</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
   <span class="sb-sep"></span>
-  <button class="sb-item" data-coming="İşleme ayarları"><svg class="ic"><use href="#i-cpu"/></svg>İşleme modu: <b>Yerel</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
+  <button class="sb-item" data-coming="İşleme modu otomatik: GPU varsa GPU, yoksa CPU."><svg class="ic"><use href="#i-cpu"/></svg>İşleme modu: <b>Otomatik</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
 </div>
 
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>

@@ -1,18 +1,31 @@
-"""Uygulamanın beyni: durum, kayıt, çeviri, pano ve etkinlikler."""
+"""Uygulamanın beyni: durum, kayıt, çeviri, pano, geçmiş, modeller ve ayarlar."""
 
 from __future__ import annotations
 
 import logging
+import os
+import shutil
 import threading
 import time
 from collections import deque
 from datetime import datetime
+from pathlib import Path
 
 from . import config, diagnostics
 from .audio import AudioError, AudioRecorder, Recording
 from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
+from .history import HistoryError, HistoryStore
 from .hotkey import HotkeyError, HotkeyListener
+from .models import ModelError, ModelManager, get_model
+from .settings import (
+    AUTO_MODEL,
+    DEFAULT_HOTKEY,
+    HOTKEY_CHOICES,
+    SettingsError,
+    SettingsStore,
+    hotkey_label,
+)
 from .state import (
     ALLOWED,
     ERROR,
@@ -57,9 +70,16 @@ class Controller:
         beeper=None,
         memory_provider=None,
         load_in_background: bool = True,
+        settings_store=None,
+        history_store=None,
+        model_manager=None,
+        last_recording_path: Path | None = None,
     ) -> None:
         self.engine = engine if engine is not None else TranscriptionEngine()
         self.recorder = recorder if recorder is not None else AudioRecorder()
+        self.settings = settings_store if settings_store is not None else SettingsStore()
+        self.history = history_store if history_store is not None else HistoryStore()
+        self.models = model_manager if model_manager is not None else ModelManager()
         self.hotkey = (
             hotkey
             if hotkey is not None
@@ -69,6 +89,7 @@ class Controller:
         self._beeper = beeper if beeper is not None else _default_beep
         self._memory_provider = memory_provider or diagnostics.read_memory
         self._load_in_background = load_in_background
+        self._last_recording_path = Path(last_recording_path or config.LAST_RECORDING)
 
         self._machine = StateMachine(LOADING)
         self._lock = threading.RLock()
@@ -76,11 +97,75 @@ class Controller:
         self._error: str | None = None
         self._activity: deque[dict] = deque(maxlen=7)
         self._seq = 0
+        self._refresh_seq = 0
+        self._last_history_id: str | None = None
         self._latest = ""
+        self._replace_last = False
         self._worker: threading.Thread | None = None
         self._closed = False
         self._memory_cache: tuple[float, dict | None] = (0.0, None)
         self._gpu_warning_shown = False
+        self._models_cache: tuple[float, dict | None] = (0.0, None)
+        self._download: dict | None = None
+        self._download_thread: threading.Thread | None = None
+        self._last_recording: Path | None = None
+        self._startup_notes: list[tuple[str, str, str]] = []
+
+        self._save_history = bool(self.settings.get("save_history", True))
+        self._hotkey_id = str(self.settings.get("hotkey", DEFAULT_HOTKEY))
+        self._prepare_model_choice()
+        self._prepare_hotkey()
+        self._remove_last_recording()
+
+    # ---------- kurulum ----------
+
+    def _prepare_model_choice(self) -> None:
+        active = str(self.settings.get("active_model", AUTO_MODEL))
+        if active == AUTO_MODEL:
+            return
+        try:
+            exists = self.models.installed(active)
+        except Exception:
+            exists = False
+        if exists:
+            if hasattr(self.engine, "set_model"):
+                self.engine.set_model(active)
+            return
+        self._startup_notes.append(
+            (
+                "Seçili model bulunamadı",
+                f"{active} diskte yok; otomatik seçime dönüldü.",
+                "warn",
+            )
+        )
+        try:
+            self.settings.save(active_model=AUTO_MODEL)
+        except Exception:
+            logger.warning("Ayar dosyası güncellenemedi", exc_info=True)
+
+    def _prepare_hotkey(self) -> None:
+        configure = getattr(self.hotkey, "configure", None)
+        if configure is None:
+            return
+        try:
+            configure(self._hotkey_id)
+        except Exception as exc:
+            logger.warning("Kısayol ayarı uygulanamadı: %s", exc)
+            self._hotkey_id = DEFAULT_HOTKEY
+            try:
+                configure(DEFAULT_HOTKEY)
+            except Exception:
+                pass
+
+    def _remove_last_recording(self) -> None:
+        path = self._last_recording_path
+        self._last_recording = None
+        try:
+            if path.exists():
+                path.unlink()
+                logger.info("Eski geçici yenileme kaydı silindi")
+        except Exception as exc:
+            logger.warning("Eski geçici kayıt silinemedi: %s", exc)
 
     # ---------- yaşam döngüsü ----------
 
@@ -90,7 +175,7 @@ class Controller:
             threading.Thread(target=self.load_engine, name="motor-yukle", daemon=True).start()
         try:
             self.hotkey.start()
-        except HotkeyError as exc:
+        except Exception as exc:
             logger.warning("Kısayol başlatılamadı: %s", exc)
             with self._lock:
                 self._add_activity("Kısayol başlatılamadı", str(exc), "err")
@@ -119,6 +204,9 @@ class Controller:
                 f"{info.model_label} · {info.device} · {info.compute_type}",
                 "info",
             )
+            for title, sub, kind in self._startup_notes:
+                self._add_activity(title, sub, kind)
+            self._startup_notes.clear()
             warnings = list(getattr(self.engine, "warnings", []) or [])
             if warnings and not self._gpu_warning_shown:
                 self._gpu_warning_shown = True
@@ -138,6 +226,7 @@ class Controller:
             self.recorder.cancel()
         except Exception:
             pass
+        self._remove_last_recording()
         logger.info("Uygulama kapatıldı")
 
     # ---------- kısayol ve düğme ----------
@@ -224,12 +313,12 @@ class Controller:
             logger.info("Çeviri başladı (%s, %.2f sn)", trigger, recording.duration)
             return {"ok": True, "state": PROCESSING}
 
-    # ---------- çeviri işçisi ----------
+    # ---------- çeviri işçileri ----------
 
-    def _transcribe(self, recording: Recording):
+    def _transcribe_path(self, path: Path):
         """GPU çevirisi çökerse bir kez CPU yedeğini dener."""
         try:
-            return self.engine.transcribe(recording.path)
+            return self.engine.transcribe(path)
         except EngineError as exc:
             can_fallback = (
                 self._info is not None
@@ -242,12 +331,115 @@ class Controller:
             info = self.engine.use_cpu_fallback()
             with self._lock:
                 self._info = info
-                self._add_activity("GPU kullanılamadı", "CPU moduna geçildi (small, int8)", "warn")
-            return self.engine.transcribe(recording.path)
+                self._add_activity("GPU kullanılamadı", "CPU moduna geçildi", "warn")
+            return self.engine.transcribe(path)
+
+    def _keep_last_recording(self, source: Path | None) -> None:
+        if not source:
+            return
+        target = self._last_recording_path
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.replace(source, target)
+            except OSError:
+                shutil.copyfile(source, target)
+                source.unlink(missing_ok=True)
+            self._last_recording = target
+        except Exception as exc:
+            logger.warning("Yenileme kaydı saklanamadı: %s", exc)
 
     def _process(self, recording: Recording) -> None:
         try:
-            result = self._transcribe(recording)
+            result = self._transcribe_path(recording.path)
+            text = result.text.strip()
+            if not text:
+                with self._lock:
+                    self._add_activity("Ses algılanamadı", "Konuşma anlaşılamadı.", "warn")
+                return
+
+            copy_ok = True
+            try:
+                self._clipper(text)
+            except ClipboardError as exc:
+                copy_ok = False
+                logger.warning("Pano hatası: %s", exc)
+
+            self._keep_last_recording(recording.path)
+
+            with self._lock:
+                self._latest = text
+                self._seq += 1
+                self._refresh_seq = self._seq
+                self._replace_last = False
+                self._error = None
+                words = len(text.split())
+                self._add_activity(
+                    "Dikte tamamlandı",
+                    f"({format_duration(recording.duration)}) · {words} kelime",
+                    "ok",
+                )
+                if not copy_ok:
+                    self._add_activity("Panoya kopyalanamadı", "Kopyala düğmesini dene.", "err")
+                model_name = self._info.model_name if self._info else ""
+
+            record_id = self._save_history_record(text, recording.duration, model_name)
+            with self._lock:
+                self._last_history_id = record_id
+        except Exception as exc:
+            logger.exception("Çeviri başarısız: %s", exc)
+            with self._lock:
+                self._error = (
+                    str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_TRANSCRIBE_FAILED
+                )
+                self._set_state(ERROR)
+                self._add_activity("Çeviri hatası", self._error, "err")
+        finally:
+            # Kaynak dosya son kayıt olarak taşınsa bile geçici kopya silinir.
+            self.recorder.cleanup(recording.path)
+            with self._lock:
+                # Başarılı veya boş sonuçta işlem biter; hata durumunda ERROR korunur.
+                if self._machine.state == PROCESSING:
+                    self._set_state(READY)
+
+    def _save_history_record(self, text: str, duration: float, model_name: str) -> str | None:
+        if not self._save_history:
+            return None
+        try:
+            record = self.history.add(text, duration, len(text.split()), model_name)
+            return record["id"]
+        except Exception as exc:
+            logger.warning("Geçmişe kaydedilemedi: %s", exc)
+            with self._lock:
+                self._add_activity("Geçmiş kaydedilemedi", str(exc), "err")
+            return None
+
+    def refresh_last(self) -> dict:
+        """Son kaydın sesini tekrar çevirir."""
+        with self._lock:
+            if self._machine.state != READY:
+                return {
+                    "ok": False,
+                    "state": self._machine.state,
+                    "message": "Şu anda yenilenemez, lütfen bekle.",
+                }
+            path = self._last_recording
+            if not path or not Path(path).exists() or self._seq != self._refresh_seq:
+                return {"ok": False, "message": "Yenilenecek kayıt yok."}
+            self._error = None
+            self._set_state(PROCESSING)
+        self._worker = threading.Thread(
+            target=self._refresh_worker,
+            args=(path,),
+            name="yenile",
+            daemon=True,
+        )
+        self._worker.start()
+        return {"ok": True, "state": PROCESSING}
+
+    def _refresh_worker(self, path: Path) -> None:
+        try:
+            result = self._transcribe_path(path)
             text = result.text.strip()
             if not text:
                 with self._lock:
@@ -264,27 +456,29 @@ class Controller:
             with self._lock:
                 self._latest = text
                 self._seq += 1
+                self._refresh_seq = self._seq
+                self._replace_last = True
                 self._error = None
-                words = len(text.split())
-                self._add_activity(
-                    "Dikte tamamlandı",
-                    f"({format_duration(recording.duration)}) · {words} kelime",
-                    "ok",
-                )
+                record_id = self._last_history_id
+                self._add_activity("Transkripsiyon yenilendi", f"{len(text.split())} kelime", "ok")
                 if not copy_ok:
                     self._add_activity("Panoya kopyalanamadı", "Kopyala düğmesini dene.", "err")
+
+            if self._save_history and record_id:
+                try:
+                    self.history.update_text(record_id, text)
+                except Exception as exc:
+                    logger.warning("Geçmiş güncellenemedi: %s", exc)
         except Exception as exc:
-            logger.exception("Çeviri başarısız: %s", exc)
+            logger.exception("Yenileme başarısız: %s", exc)
             with self._lock:
                 self._error = (
                     str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_TRANSCRIBE_FAILED
                 )
                 self._set_state(ERROR)
-                self._add_activity("Çeviri hatası", self._error, "err")
+                self._add_activity("Yenileme hatası", self._error, "err")
         finally:
-            self.recorder.cleanup(recording.path)
             with self._lock:
-                # Başarılı veya boş sonuçta işlem biter; hata durumunda ERROR korunur.
                 if self._machine.state == PROCESSING:
                     self._set_state(READY)
 
@@ -308,6 +502,7 @@ class Controller:
                 "status": STATE_LABELS.get(state, state),
                 "seq": self._seq,
                 "latest_text": self._latest,
+                "replace_last": self._replace_last,
                 "model": info.model_label if info else None,
                 "model_name": info.model_name if info else None,
                 "device": info.device if info else None,
@@ -315,8 +510,16 @@ class Controller:
                 "memory": self._memory(info),
                 "activity": [dict(item) for item in self._activity],
                 "error": self._error,
-                "hotkey": config.HOTKEY_LABEL,
+                "hotkey": hotkey_label(self._hotkey_id),
                 "language": config.LANGUAGE_LABEL,
+                "save_history": self._save_history,
+                "can_refresh": bool(
+                    self._last_recording
+                    and self._last_recording.exists()
+                    and self._seq == self._refresh_seq
+                )
+                and state == READY,
+                "download": dict(self._download) if self._download else None,
             }
 
     def wait_until_ready(self, timeout: float = 5.0) -> bool:
@@ -327,6 +530,304 @@ class Controller:
                 return True
             time.sleep(0.02)
         return False
+
+    # ---------- geçmiş ----------
+
+    def history_list(self, query: str = "", period: str = "all") -> dict:
+        if not self._save_history:
+            return {"disabled": True, "items": [], "total": 0}
+        try:
+            items = self.history.list(query, period)
+        except Exception as exc:
+            logger.warning("Geçmiş okunamadı: %s", exc)
+            return {"disabled": False, "items": [], "total": 0, "error": str(exc)}
+        return {"disabled": False, "items": items, "total": len(items)}
+
+    def history_open(self, record_id: str) -> dict:
+        if not self._save_history:
+            return {"ok": False, "message": "Geçmiş kaydedilmiyor."}
+        record = self.history.get(record_id)
+        if record is None:
+            return {"ok": False, "message": "Kayıt bulunamadı."}
+        with self._lock:
+            self._latest = record["text"]
+            self._seq += 1
+            self._replace_last = False
+        return {"ok": True, "text": record["text"], "id": record_id}
+
+    def history_delete(self, record_id: str) -> dict:
+        try:
+            removed = self.history.delete(record_id)
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)}
+        return {"ok": removed, "message": None if removed else "Kayıt bulunamadı."}
+
+    def history_clear(self) -> dict:
+        try:
+            self.history.clear()
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)}
+        return {"ok": True}
+
+    # ---------- modeller ----------
+
+    def models_list(self) -> dict:
+        now = time.monotonic()
+        cached_at, cached = self._models_cache
+        if cached is None or now - cached_at > 1.0:
+            try:
+                cached = self.models.scan()
+            except Exception as exc:
+                logger.warning("Model listesi okunamadı: %s", exc)
+                cached = {}
+            self._models_cache = (now, cached)
+
+        with self._lock:
+            active = self._info.model_name if self._info else None
+            device = self._info.device if self._info else None
+            download = dict(self._download) if self._download else None
+
+        items = []
+        for name, data in cached.items():
+            item = dict(data)
+            item["active"] = name == active
+            item["downloading"] = bool(
+                download and download.get("name") == name and download.get("state") == "downloading"
+            )
+            items.append(item)
+        return {
+            "items": items,
+            "active_model": active or AUTO_MODEL,
+            "device": device,
+            "download": download,
+        }
+
+    def model_download(self, name: str) -> dict:
+        try:
+            spec = get_model(name)
+        except ModelError as exc:
+            return {"ok": False, "message": str(exc)}
+        try:
+            # Disk taraması kilidi uzun süre tutmasın diye kilit dışında.
+            already_installed = self.models.installed(name)
+        except Exception:
+            already_installed = False
+        with self._lock:
+            if self._download and self._download.get("state") == "downloading":
+                return {"ok": False, "message": "Başka bir model indiriliyor, lütfen bekle."}
+            if already_installed:
+                return {"ok": False, "message": "Bu model zaten indirilmiş."}
+            self._download = {
+                "name": name,
+                "label": spec.label,
+                "state": "downloading",
+                "bytes": self.models.size(name),
+                "total": spec.approx_bytes,
+                "percent": 0,
+                "error": None,
+            }
+            self._models_cache = (0.0, None)
+
+        self._download_thread = threading.Thread(
+            target=self._download_worker,
+            args=(name,),
+            name="model-indir",
+            daemon=True,
+        )
+        self._download_thread.start()
+        return {"ok": True, "message": f"{spec.label} indiriliyor."}
+
+    def _download_worker(self, name: str) -> None:
+        def on_progress(size: int) -> None:
+            with self._lock:
+                download = self._download
+                if not download or download.get("name") != name:
+                    return
+                if download.get("state") != "downloading":
+                    return
+                download["bytes"] = size
+                total = download.get("total") or 0
+                if total:
+                    download["percent"] = max(0, min(99, int(size / total * 100)))
+
+        try:
+            self.models.download(name, progress=on_progress)
+            size = self.models.size(name)
+        except Exception as exc:
+            logger.warning("Model indirilemedi: %s", exc)
+            with self._lock:
+                if self._download and self._download.get("name") == name:
+                    self._download["state"] = "error"
+                    self._download["error"] = str(exc)
+                self._add_activity("Model indirilemedi", f"{name}: {exc}", "err")
+            self._models_cache = (0.0, None)
+            return
+
+        with self._lock:
+            if self._download and self._download.get("name") == name:
+                self._download["state"] = "done"
+                self._download["percent"] = 100
+                self._download["bytes"] = size
+            self._add_activity("Model indirildi", name, "ok")
+        self._models_cache = (0.0, None)
+
+    def model_activate(self, name: str) -> dict:
+        try:
+            get_model(name)
+        except ModelError as exc:
+            return {"ok": False, "message": str(exc)}
+        with self._lock:
+            state = self._machine.state
+            if state in (RECORDING, PROCESSING):
+                return {"ok": False, "message": "Kayıt veya çeviri sürerken model değiştirilemez."}
+            if state == LOADING:
+                return {"ok": False, "message": "Model yükleniyor, lütfen bekle."}
+            try:
+                installed = self.models.installed(name)
+            except Exception:
+                installed = False
+            if not installed:
+                return {"ok": False, "message": "Bu model önce indirilmeli."}
+            old_model = getattr(self.engine, "model_name", None) or (
+                self._info.model_name if self._info else None
+            )
+            self._error = None
+            self._set_state(LOADING)
+
+        threading.Thread(
+            target=self._activate_worker,
+            args=(name, old_model),
+            name="model-yukle",
+            daemon=True,
+        ).start()
+        return {"ok": True, "state": LOADING}
+
+    def _activate_worker(self, name: str, old_model: str | None) -> None:
+        try:
+            if hasattr(self.engine, "set_model"):
+                self.engine.set_model(name)
+            if hasattr(self.engine, "unload"):
+                self.engine.unload()
+            info = self.engine.load()
+        except Exception as exc:
+            logger.error("Model değiştirilemedi: %s", exc)
+            message = str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_MODEL_MISSING
+            reverted = False
+            if old_model:
+                try:
+                    if hasattr(self.engine, "set_model"):
+                        self.engine.set_model(old_model)
+                    if hasattr(self.engine, "unload"):
+                        self.engine.unload()
+                    info = self.engine.load()
+                    reverted = True
+                except Exception:
+                    logger.exception("Eski model geri yüklenemedi")
+            with self._lock:
+                if reverted:
+                    self._info = info
+                    self._error = None
+                    self._set_state(READY)
+                    self._add_activity(
+                        "Model değiştirilemedi",
+                        f"{message} · {info.model_label} kullanılmaya devam ediyor.",
+                        "warn",
+                    )
+                else:
+                    self._error = message
+                    self._set_state(ERROR)
+                    self._add_activity("Model yüklenemedi", message, "err")
+            self._models_cache = (0.0, None)
+            return
+
+        try:
+            self.settings.save(active_model=info.model_name or name)
+        except Exception:
+            logger.warning("Aktif model ayarı kaydedilemedi", exc_info=True)
+        with self._lock:
+            self._info = info
+            self._error = None
+            self._set_state(READY)
+            self._add_activity(
+                "Model değiştirildi",
+                f"{info.model_label} · {info.device} · {info.compute_type}",
+                "ok",
+            )
+        self._models_cache = (0.0, None)
+
+    def model_delete(self, name: str) -> dict:
+        with self._lock:
+            if self._info and self._info.model_name == name:
+                return {"ok": False, "message": "Aktif model silinemez. Önce başka bir model seç."}
+            if self._download and self._download.get("name") == name:
+                return {"ok": False, "message": "İndirme sürerken model silinemez."}
+        try:
+            self.models.delete(name)
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)}
+        self._models_cache = (0.0, None)
+        with self._lock:
+            self._add_activity("Model silindi", name, "info")
+        return {"ok": True, "message": f"{name} silindi."}
+
+    # ---------- ayarlar ----------
+
+    def settings_get(self) -> dict:
+        with self._lock:
+            state = self._machine.state
+        return {
+            "save_history": self._save_history,
+            "hotkey": self._hotkey_id,
+            "hotkey_label": hotkey_label(self._hotkey_id),
+            "active_model": str(self.settings.get("active_model", AUTO_MODEL)),
+            "state": state,
+            "choices": [
+                {"id": key, "label": label} for key, label in HOTKEY_CHOICES.items()
+            ],
+        }
+
+    def settings_save(self, payload: dict | None = None) -> dict:
+        payload = payload or {}
+        with self._lock:
+            state = self._machine.state
+            if state in (RECORDING, PROCESSING, LOADING):
+                return {"ok": False, "message": "Kayıt, çeviri veya model yüklemesi sürerken ayarlar kaydedilemez."}
+            current_hotkey = self._hotkey_id
+
+        changes: dict = {}
+        new_hotkey = payload.get("hotkey")
+        hotkey_changed = bool(new_hotkey and new_hotkey != current_hotkey)
+        if hotkey_changed:
+            set_key = getattr(self.hotkey, "set_key", None)
+            if set_key is None:
+                return {"ok": False, "message": "Kısayol değiştirilemiyor."}
+            try:
+                set_key(new_hotkey)
+            except HotkeyError as exc:
+                return {"ok": False, "message": str(exc)}
+            except Exception as exc:
+                logger.exception("Kısayol değiştirilemedi")
+                return {"ok": False, "message": f"Kısayol değiştirilemedi: {exc}"}
+            changes["hotkey"] = new_hotkey
+
+        if "save_history" in payload:
+            changes["save_history"] = bool(payload["save_history"])
+
+        try:
+            data = self.settings.save(**changes)
+        except SettingsError as exc:
+            if hotkey_changed:
+                try:
+                    self.hotkey.set_key(current_hotkey)
+                except Exception:
+                    logger.exception("Kısayol geri alınamadı")
+            return {"ok": False, "message": str(exc)}
+
+        with self._lock:
+            self._save_history = bool(data.get("save_history", True))
+            self._hotkey_id = str(data.get("hotkey", DEFAULT_HOTKEY))
+            self._add_activity("Ayarlar kaydedildi", "Kısayol ve geçmiş tercihi güncellendi.", "info")
+        return {"ok": True, "message": "Ayarlar kaydedildi.", "settings": self.settings_get()}
 
     # ---------- yardımcılar ----------
 

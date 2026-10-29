@@ -24,6 +24,45 @@ class Api:
     def copy(self, text: str) -> dict:
         return self._controller.copy(text)
 
+    def refresh_last(self) -> dict:
+        return self._controller.refresh_last()
+
+    # ---------- geçmiş ----------
+
+    def history_list(self, query: str = "", period: str = "all") -> dict:
+        return self._controller.history_list(query, period)
+
+    def history_open(self, record_id: str) -> dict:
+        return self._controller.history_open(record_id)
+
+    def history_delete(self, record_id: str) -> dict:
+        return self._controller.history_delete(record_id)
+
+    def history_clear(self) -> dict:
+        return self._controller.history_clear()
+
+    # ---------- modeller ----------
+
+    def models_list(self) -> dict:
+        return self._controller.models_list()
+
+    def model_download(self, name: str) -> dict:
+        return self._controller.model_download(name)
+
+    def model_activate(self, name: str) -> dict:
+        return self._controller.model_activate(name)
+
+    def model_delete(self, name: str) -> dict:
+        return self._controller.model_delete(name)
+
+    # ---------- ayarlar ----------
+
+    def settings_get(self) -> dict:
+        return self._controller.settings_get()
+
+    def settings_save(self, payload: dict | None = None) -> dict:
+        return self._controller.settings_save(payload)
+
 
 def run_app(controller=None, debug: bool = False) -> int:
     try:

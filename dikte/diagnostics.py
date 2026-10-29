@@ -94,7 +94,8 @@ MSG_MIC_MISSING = (
 )
 MSG_TRANSCRIBE_FAILED = "Yazıya çevirme başarısız oldu. Lütfen tekrar dene."
 MSG_CLIPBOARD_FAILED = "Metin panoya kopyalanamadı. Kopyala düğmesini dene."
-MSG_GPU_FALLBACK = "GPU kullanılamadı, CPU moduna geçildi (small, int8)."
+MSG_GPU_FALLBACK = "GPU kullanılamadı, CPU moduna geçildi (int8)."
+MSG_PLAN_FALLBACK = "Model yüklenemedi, yedek plana geçildi."
 MSG_EMPTY_AUDIO = "Ses algılanamadı. Kayıt çok kısa veya sessizdi."
 
 

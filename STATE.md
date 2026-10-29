@@ -3,67 +3,74 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-v1 (Aşama 0–4: çekirdek + Dikte ekranı) tamamlandı ve kullanıcı tarafından onaylandı (uygulama çalışıyor). Sıradaki: v1.1 (Dikte Geçmişi, Ayarlar, Modeller).
+**v1.2 tamamlandı (2026-10-27):** Dikte Geçmişi, Modeller, Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10'a geçildi. Sıradaki: kullanıcı elle testleri, sonra v1.3 (metin modelleri + "Yapay Zeka ile Temizle").
 
 ## Biten (kanıtla)
-- `design/ui-spec.md` ve `design/prototype.html` hazır; kullanıcı prototipi test etti.
-- Python paketi yazıldı: `dikte/` (config, state, engine, audio, hotkey, clipboard, controller, diagnostics, ui).
-- **34 pytest testi geçti** (`34 passed`), GPU'ya düşüş testi dahil.
-- **Gerçek uygulama açıldı:** pywebview penceresi yüklendi, model yüklendi, durum `ready`, `Whisper Large / GPU`.
-- **Gerçek GPU çevirisi:** `large-v3 / cuda / float16`, 6,4 sn yükleme; 9,82 sn test sesi çevrildi (TTS sesi, İngilizce aksan; metin bu yüzden kusurlu).
-- **Uçtan uca:** Seq 1, metin panoya yazıldı (`Panoda aynı mı: True`), etkinlikler `Dikte tamamlandı` + `Model yüklendi`.
-- **CUDA kütüphaneleri:** `nvidia-cublas-cu12` + `nvidia-cudnn-cu12` venv'e kuruldu; DLL yolları otomatik ekleniyor (`cublas64_12.dll` ve `cudnn64_9.dll` yükleme testi OK).
-- **Mikrofon:** 1,15 sn / 18.400 kare kayıt alındı (gerçek aygıt).
-- **Pano:** `Dikte pano testi: ı, ğ, ş, ç, ö, ü` doğru kopyalandı.
-- **Kısayol:** enjekte edilen Sağ Ctrl olayları `press` + `release` olarak yakalandı.
-- **Arayüz:** Playwright DOM testi + `artifacts/ui-dikte.png` ekran görüntüsü.
-- **Modeller:** `models/` içine `large-v3` ve CPU yedeği `small` indirildi (git dışı).
-- **Kullanıcı onayı (2026-10-24):** Uygulama açıldı ve çalıştığı onaylandı.
-- **Doküman/protokol temizliği (2026-10-25):** Oturum sonu akışı `asama-bitir` skill'ine taşındı; AGENTS.md sadeleştirildi (kararlar ve varsayımlar ayrıldı), STIL.md oluşturuldu, eski yardımcı dosyalar silindi. Testler: 34/34.
+- **Python 3.12.10 kuruldu** (winget, kullanıcı kapsamı); `.venv` 3.12 ile yeniden oluşturuldu. Eski 3.10 venv'i doğrulamadan sonra silindi.
+- **PyAV uyumsuzluğu bulundu ve çözüldü:** PyAV 19, `av.open(metadata_errors=...)` parametresini kaldırdığı için faster-whisper 1.2 çöküyordu. `requirements.txt` içine `av>=11,<16` eklendi (15.1.0 kurulu).
+- **83 pytest testi geçti** (`83 passed`): state, controller, engine plan, settings, history, models, UI.
+- **Gerçek GPU selftesti:** `large-v3 / cuda / float16`, model yükleme 7,3 sn; TTS test sesi çevrildi ("Herkese merhaba, bu bir lokal diktasyon testi.").
+- **Gerçek model değiştirme:** `large-v3 → tiny` aktifleştirildi; durum `ready`, cihaz `GPU / float16`, ayar `tiny` yazıldı; test sonunda `auto`'ya döndürüldü.
+- **Gerçek uygulama açıldı:** pywebview penceresi + model `ready` (`Whisper Large / GPU`); çıkışta `%TEMP%\dikte\last.wav` silindi.
+- **Gerçek model indirme:** tiny silindi ve Hugging Face'ten yeniden indirildi (78.204.524 bayt); disk durumu doğrulandı.
+- **Arayüz:** 4 sayfa Playwright ile doğrulandı; `artifacts/ui-dikte.png`, `ui-gecmis.png`, `ui-modeller.png`, `ui-ayarlar.png`.
+- **Yeni modüller:** `dikte/settings.py`, `dikte/history.py`, `dikte/models.py`.
+- Geçmiş: son 500 kayıt, Türkçe arama (i/ı duyarsız), Tümü/Bugün/Bu hafta, Aç/Kopyala/Sil, bozuk JSON yedeği.
+- Ayarlar: kısayol hazır listesi, "geçmişi kaydet" anahtarı (kapalıyken gizli arşiv), geçmişi temizle, `data/settings.json`.
+- Modeller: 6 ses modeli, gerçek disk boyutu, indirme ilerlemesi, aktifleştirme, silme koruması.
+- Yenile: son kayıt `last.wav` olarak tutuluyor, tekrar çeviriyor, son paragrafı ve geçmiş kaydını güncelliyor.
 
-## Yarım kalan
-- Python 3.12 kurulumu. Şu an `.venv` **Python 3.10.11** ile çalışıyor; 3.12 kurulunca yeniden oluşturulacak.
-- v1.1 özellikleri: Dikte Geçmişi, Ayarlar, Modeller sayfası, "Yapay Zeka ile Temizle".
+## Yarım kalan / kullanıcı testi bekleyen
+- Gerçek mikrofonla dikte ve panoya yapıştırma (v1.2 sonrası).
+- Kısayol değiştirme: F9 seçip Not Defteri'nde basılı tutma testi.
+- Geçmiş anahtarını kapatıp yeni dikte etme, sayfada "Geçmiş kaydedilmiyor" görme.
+- `tests/data/test.wav` repoda yok; selftest geçici TTS sesiyle yapıldı.
 
 ## Sıradaki ilk adım
-Yeni sohbette v1.1 planlaması: önce **Dikte Geçmişi + Ayarlar** (PLAN Aşama 5), sonra Modeller sayfası. AGENTS.md, STATE.md, PLAN.md ve architecture.md okunup plan çıkarılmalı; kullanıcı onayı olmadan kod yazılmamalı.
+Kullanıcı yukarıdaki elle testleri yapsın. Sonra v1.3 planlaması: metin modelleri ve "Yapay Zeka ile Temizle" (PLAN Aşama 7). Yeni sohbette AGENTS.md, STATE.md, PLAN.md, architecture.md okunmalı; kullanıcı onayı olmadan kod yazılmamalı.
 
-## Açık sorunlar ve denenen çözümler
-- **cublas/cuDNN eksikliği:** Model GPU'ya yükleniyor ama çeviri `cublas64_12.dll` hatası veriyordu. Pip ile CUDA 12 kütüphaneleri kuruldu; `prepare_cuda_dlls()` PATH ve `add_dll_directory` ekliyor; GPU çevirisi çalışıyor.
-- **GPU çalışmazsa:** Motor yüklemede CPU'ya düşüyor; ayrıca çeviri sırasında GPU hatası olursa controller bir kez `small/int8` CPU'ya geçip tekrar deniyor.
-- **Konsol Türkçe karakterleri:** Windows kod sayfası 65001'e alındı; CLI çıktısı düzeldi.
-- **Performans:** İlk çeviri yavaş (model yükleme ~6–8 sn). Uygulamada model bir kez yükleniyor; ilk dikte CUDA ısınması nedeniyle yavaş olabilir. v1.1'de ölçülüp iyileştirilecek.
-- **Python 3.12:** Kurulu değil; kod 3.10+ ile uyumlu yazıldı ve 3.10.11'de test edildi.
+## Açık sorunlar ve notlar
+- **Model indirme iptali yok:** indirme sırasında başka indirme reddedilir; pencere kapanırsa yarım klasör "Yarım indirme" olarak görünür.
+- **İlk çeviri yavaş:** CUDA ısınması + model yükleme (~7 sn). Sonraki dikte teklileri daha hızlı.
+- **large-v3 + tarayıcı/oyun:** 8 GB VRAM'de başka GPU programı açıkken test edilmemeli.
+- **Silme kilidi:** aktif model silinemez; Windows dosya kilidi olursa Türkçe hata gösterilir.
+- **Yenile sınırı:** geçmişten bir kayıt açıldıktan sonra Yenile pasif olur (son dikte olmadığı için).
+- **TTS sesi:** Windows'ta yalnız İngilizce Zira sesi var; Türkçe selftest için kullanıcı kaydı gerekli.
+- **Geçmiş kapalıyken dikte, sonra açıp Yenile:** o dikte geçmişe eklenmemişse Yenile sonucu kayıtlara yazılmaz (ekran değişir, pano güncellenir). Bilinen davranış.
+- **Gözden geçirme (2026-10-29):** kritik bulgu yok. İncelemeci; kilit altında disk taraması ve küçük yarış durumlarını "önemli", ölü kodu "küçük" sınıfında verdi. Kilit altındaki tarama ve ölü `beforeunload` kodu bu oturumda düzeltildi; diğerleri kabul edildi.
 
-## Bu aşamada alınan kararlar (kullanıcı onaylı)
-- v1 kapsamı: çekirdek + Dikte ekranı (Aşama 0–4).
-- Arayüz: pywebview + mevcut HTML/CSS/JS.
-- Sağ panelde "İşleme hızı" yok; Modeller sayfası v1 kapsamı dışı.
-- Windows'un normal pencere çerçevesi kullanılıyor.
+## Bu sürümde alınan kararlar (kullanıcı onaylı)
+- Python 3.12'ye özelliklerden önce geçildi.
+- Modeller sayfası tam işlevsel: indir, aktifleştir, sil; yalnız ses modelleri.
+- Model listesi 6 adet: tiny, base, small, medium, large-v3, large-v3-turbo.
+- Ayarlar: "geçmişi kaydet" anahtarı + hazır listeden kısayol. Dil ve mikrofon seçimi yok.
+- Kısayol için serbest tuş yakalama yok; güvenli hazır liste kullanılıyor.
+- Geçmiş kapalıyken eski kayıtlar gizlenir, arşivde durur; açılınca geri gelir.
+- Yenile için son ses geçici dosyada tutulur; uygulama kapanınca silinir.
+- Yenile sonucu son paragrafı değiştirir; yeni paragraf eklemez.
 
 ## Uygulanan varsayımlar (teyit bekliyor)
-- Model indirme `python -m dikte --kurulum` komutuyla yapılıyor.
-- Her dikte yeni paragraf ekliyor; Kopyala tüm metni, Geri Al son paragrafı alıyor.
-- Pencere kapatılınca uygulama çıkıyor; tepsi yok.
-- Dil yalnızca Türkçe; dil seçici pasif.
+- Pencere kapanınca uygulama çıkar; sistem tepsisi yok.
+- Her dikte yeni paragraf ekler; Kopyala tüm metni, Geri Al son paragrafı alır.
+- Geçmişte en fazla 500 kayıt tutulur; sınır aşılınca en eski düşer.
+- 0,4 sn'den kısa kayıt "Ses algılanamadı" diye atlanır.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | 34 passed |
-| `--selftest` (TTS wav) | GPU float16, metin üretildi |
-| Uçtan uca controller + pano | Başarılı, pano eşleşti |
+| `pytest -q` | 83 passed |
+| `--selftest` (geçici TTS wav) | GPU float16, metin üretildi |
+| Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
-| Playwright arayüz | Durumlar, metin, kopyala/geri al, pasif düğmeler |
-| Mikrofon kaydı | 1,15 sn, 18.400 kare |
-| Kısayol | Sağ Ctrl press/release yakalandı |
-| Kullanıcı testi | **Onaylandı:** uygulama çalışıyor (2026-10-24) |
+| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile |
+| Gerçek mikrofon / kısayol / pano | **Kullanıcı testi bekliyor** |
+| Gerçek model indirme | tiny silindi + yeniden indirildi (78,2 MB) |
 
 ## Çalıştırma komutları
 ```powershell
 .venv\Scripts\python.exe -m dikte                 # uygulamayı aç
-.venv\Scripts\python.exe -m dikte --selftest      # tests/data/test.wav ile motor testi
-.venv\Scripts\python.exe -m dikte --kurulum       # GPU testi + model indirme (tekrar çalıştırmak zarar vermez)
+.venv\Scripts\python.exe -m dikte --selftest      # motor testi (tests/data/test.wav)
+.venv\Scripts\python.exe -m dikte --kurulum       # GPU testi + varsayılan modelleri indir
 .venv\Scripts\python.exe -m dikte --dikte-testi   # arayüzsüz kısayol/kayıt/pano testi
 .venv\Scripts\python.exe -m pytest -q             # testler
 ```

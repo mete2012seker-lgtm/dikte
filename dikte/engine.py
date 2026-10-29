@@ -34,12 +34,25 @@ class TranscriptResult:
     elapsed: float
 
 
-def select_plan(force_device: str | None, cuda_ok: bool) -> list[tuple[str, str, str]]:
+def select_plan(
+    force_device: str | None,
+    cuda_ok: bool,
+    model_name: str | None = None,
+) -> list[tuple[str, str, str]]:
     """Denenecek (model, device, compute_type) sırasını döndürür.
 
-    GPU varsa önce large-v3/float16 denenir; herhangi bir hata olursa
-    small/int8 ile CPU'ya düşülür.
+    Model seçilmişse önce o model denenir; GPU hatasında aynı model CPU'da
+    int8 ile, o da olmazsa small/int8 ile denenir. Seçim yoksa eski davranış:
+    GPU varsa large-v3/float16, yoksa small/int8.
     """
+    if model_name:
+        plan: list[tuple[str, str, str]] = []
+        if force_device == "cuda" or (force_device is None and cuda_ok):
+            plan.append((model_name, "cuda", config.GPU_COMPUTE))
+        plan.append((model_name, "cpu", config.CPU_COMPUTE))
+        if model_name != config.CPU_MODEL:
+            plan.append((config.CPU_MODEL, "cpu", config.CPU_COMPUTE))
+        return plan
     if force_device == "cpu":
         return [(config.CPU_MODEL, "cpu", config.CPU_COMPUTE)]
     if force_device == "cuda" or (force_device is None and cuda_ok):
@@ -56,10 +69,12 @@ class TranscriptionEngine:
         model_dir: Path | None = None,
         force_device: str | None = None,
         allow_download: bool = False,
+        model_name: str | None = None,
     ) -> None:
         self.model_dir = Path(model_dir or config.MODELS_DIR)
         self.force_device = force_device
         self.allow_download = allow_download
+        self.model_name = model_name or None
         self._model = None
         self.info: EngineInfo | None = None
         self.warnings: list[str] = []
@@ -68,11 +83,26 @@ class TranscriptionEngine:
     def is_loaded(self) -> bool:
         return self._model is not None
 
+    def set_model(self, model_name: str | None) -> None:
+        """Sonraki yüklemede kullanılacak modeli seçer. Yüklemeyi yapmaz."""
+        self.model_name = model_name or None
+
+    def unload(self) -> None:
+        """Modeli bellekten bırakır; sonraki load() yeniden yükler."""
+        self._model = None
+        self.info = None
+        try:
+            import gc
+
+            gc.collect()
+        except Exception:
+            pass
+
     def load(self) -> EngineInfo:
         """Uygun modeli yükler; GPU olmazsa CPU'ya düşer."""
         self.model_dir.mkdir(parents=True, exist_ok=True)
         cuda_ok = diagnostics.cuda_device_count() > 0
-        plan = select_plan(self.force_device, cuda_ok)
+        plan = select_plan(self.force_device, cuda_ok, self.model_name)
         errors: list[str] = []
         started_all = time.perf_counter()
 
@@ -98,7 +128,7 @@ class TranscriptionEngine:
                     load_seconds=round(elapsed, 1),
                 )
                 if errors:
-                    message = diagnostics.MSG_GPU_FALLBACK
+                    message = diagnostics.MSG_PLAN_FALLBACK
                     self.warnings.append(message)
                     logger.warning(message)
                 logger.info(
@@ -142,33 +172,46 @@ class TranscriptionEngine:
         )
 
     def use_cpu_fallback(self) -> EngineInfo:
-        """GPU çevirisi çalışmazsa small/int8 modeline geçer."""
-        try:
-            from faster_whisper import WhisperModel
+        """GPU çevirisi çalışmazsa aynı modeli CPU/int8 ile, olmazsa small ile dener."""
+        candidates = []
+        if self.model_name:
+            candidates.append(self.model_name)
+        if config.CPU_MODEL not in candidates:
+            candidates.append(config.CPU_MODEL)
 
-            model = WhisperModel(
-                config.CPU_MODEL,
-                device="cpu",
+        last_error: Exception | None = None
+        for name in candidates:
+            try:
+                from faster_whisper import WhisperModel
+
+                model = WhisperModel(
+                    name,
+                    device="cpu",
+                    compute_type=config.CPU_COMPUTE,
+                    download_root=str(self.model_dir),
+                    local_files_only=not self.allow_download,
+                )
+            except Exception as exc:
+                last_error = exc
+                logger.warning("CPU yedeği yüklenemedi (%s): %s", name, exc)
+                continue
+
+            self._model = model
+            self.model_name = name
+            self.info = EngineInfo(
+                model_name=name,
+                model_label=config.model_label(name),
+                device="CPU",
                 compute_type=config.CPU_COMPUTE,
-                download_root=str(self.model_dir),
-                local_files_only=not self.allow_download,
+                load_seconds=0.0,
             )
-        except Exception as exc:
-            logger.exception("CPU yedeği yüklenemedi")
-            raise EngineError(diagnostics.MSG_MODEL_MISSING, kind="model_missing") from exc
+            if diagnostics.MSG_GPU_FALLBACK not in self.warnings:
+                self.warnings.append(diagnostics.MSG_GPU_FALLBACK)
+            logger.warning("GPU çalışmadı, CPU modeline geçildi: %s", name)
+            return self.info
 
-        self._model = model
-        self.info = EngineInfo(
-            model_name=config.CPU_MODEL,
-            model_label=config.model_label(config.CPU_MODEL),
-            device="CPU",
-            compute_type=config.CPU_COMPUTE,
-            load_seconds=0.0,
-        )
-        if diagnostics.MSG_GPU_FALLBACK not in self.warnings:
-            self.warnings.append(diagnostics.MSG_GPU_FALLBACK)
-        logger.warning("GPU çalışmadı, CPU modeline geçildi.")
-        return self.info
+        logger.error("CPU yedeği yüklenemedi: %s", last_error)
+        raise EngineError(diagnostics.MSG_MODEL_MISSING, kind="model_missing") from last_error
 
     def download_models(self, progress=print) -> list[str]:
         """Kurulum için model dosyalarını indirir."""

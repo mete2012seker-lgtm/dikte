@@ -12,6 +12,16 @@ from dikte.engine import EngineError, EngineInfo, TranscriptResult
 from dikte.state import ERROR, PROCESSING, READY, RECORDING
 
 
+@pytest.fixture(autouse=True)
+def isolated_runtime(tmp_path, monkeypatch):
+    """Testler gerçek data/, %TEMP% ve models/ klasörlerini kirletmesin."""
+    monkeypatch.setattr(config, "TEMP_DIR", tmp_path / "temp")
+    monkeypatch.setattr(config, "SETTINGS_FILE", tmp_path / "settings.json")
+    monkeypatch.setattr(config, "HISTORY_FILE", tmp_path / "history.json")
+    monkeypatch.setattr(config, "LAST_RECORDING", tmp_path / "last.wav")
+    (tmp_path / "temp").mkdir(exist_ok=True)
+
+
 class FakeEngine:
     def __init__(self, text="Merhaba dünya.", fail_load=False, fail_transcribe=False, gate=None):
         self.text = text
@@ -20,11 +30,24 @@ class FakeEngine:
         self.gate = gate
         self.transcribe_calls = 0
         self.warnings = []
+        self.model_name = None
+        self.loaded_models = []
+        self.fail_models = set()
+
+    def set_model(self, name):
+        self.model_name = name
+
+    def unload(self):
+        pass
 
     def load(self):
+        if self.model_name in self.fail_models:
+            raise EngineError(diagnostics.MSG_MODEL_MISSING, kind="model_missing")
         if self.fail_load:
             raise EngineError(diagnostics.MSG_MODEL_MISSING, kind="model_missing")
-        return EngineInfo("large-v3", "Whisper Large", "GPU", "float16", 0.1)
+        name = self.model_name or "large-v3"
+        self.loaded_models.append(name)
+        return EngineInfo(name, config.model_label(name), "GPU", "float16", 0.1)
 
     def transcribe(self, wav_path):
         self.transcribe_calls += 1
@@ -68,6 +91,18 @@ class FakeHotkey:
     def __init__(self):
         self.started = False
         self.stopped = False
+        self.key = "right_ctrl"
+        self.fail_set = False
+
+    def configure(self, key):
+        self.key = key
+
+    def set_key(self, key):
+        if self.fail_set:
+            from dikte.hotkey import HotkeyError
+
+            raise HotkeyError("Kısayol değiştirilemedi.")
+        self.key = key
 
     def start(self):
         self.started = True
@@ -79,11 +114,12 @@ class FakeHotkey:
 def make_controller(**kwargs):
     recorder = kwargs.pop("recorder", FakeRecorder())
     engine = kwargs.pop("engine", FakeEngine())
+    hotkey = kwargs.pop("hotkey", FakeHotkey())
     clipboard = kwargs.pop("clipper", lambda text: None)
     controller = Controller(
         engine=engine,
         recorder=recorder,
-        hotkey=FakeHotkey(),
+        hotkey=hotkey,
         clipper=clipboard,
         beeper=lambda kind: None,
         memory_provider=lambda use_gpu: {
@@ -285,3 +321,246 @@ def test_hotkey_press_and_release_use_same_flow():
 )
 def test_format_duration(seconds, expected):
     assert format_duration(seconds) == expected
+
+
+def wait_for_state(controller, state, timeout=3.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if controller.snapshot()["state"] == state:
+            return True
+        time.sleep(0.02)
+    return False
+
+
+class FakeModels:
+    def __init__(self, installed=("large-v3", "small")):
+        from dikte.models import SPEECH_MODELS
+
+        self.available = set(installed)
+        self.specs = {model.name: model for model in SPEECH_MODELS}
+        self.deleted = []
+        self.downloads = []
+
+    def installed(self, name):
+        return name in self.available
+
+    def size(self, name):
+        return 1000 if name in self.available else 0
+
+    def scan(self):
+        items = {}
+        for name, spec in self.specs.items():
+            installed = name in self.available
+            items[name] = {
+                "name": name,
+                "label": spec.label,
+                "desc": spec.desc,
+                "tags": list(spec.tags),
+                "approx_bytes": spec.approx_bytes,
+                "approx_label": "~ 1 GB",
+                "installed": installed,
+                "partial": False,
+                "size_bytes": 1000 if installed else 0,
+                "size_label": "1 KB" if installed else "—",
+                "folder": "",
+            }
+        return items
+
+    def download(self, name, progress=None):
+        if progress:
+            progress(100)
+            progress(1000)
+        self.available.add(name)
+        self.downloads.append(name)
+        return "path"
+
+    def delete(self, name):
+        self.available.discard(name)
+        self.deleted.append(name)
+
+
+def dictation(controller, text="Merhaba."):
+    controller.engine.text = text
+    controller.toggle_record()
+    controller.toggle_record()
+    assert controller.wait_until_ready(3)
+
+
+def test_history_saved_and_hidden_when_disabled():
+    controller = make_controller(model_manager=FakeModels())
+    dictation(controller, "İlk kayıt.")
+
+    listed = controller.history_list()
+    assert listed["disabled"] is False
+    assert listed["total"] == 1
+    assert listed["items"][0]["text"] == "İlk kayıt."
+
+    result = controller.settings_save({"save_history": False})
+    assert result["ok"] is True
+    assert controller.history_list() == {"disabled": True, "items": [], "total": 0}
+
+    dictation(controller, "Kaydedilmemeli.")
+    assert controller.snapshot()["latest_text"] == "Kaydedilmemeli."
+
+    controller.settings_save({"save_history": True})
+    listed = controller.history_list()
+    assert listed["total"] == 1
+    assert listed["items"][0]["text"] == "İlk kayıt."
+
+
+def test_history_open_adds_text_to_screen():
+    controller = make_controller(model_manager=FakeModels())
+    dictation(controller, "Geçmişe giden metin.")
+    record_id = controller.history_list()["items"][0]["id"]
+
+    controller.engine.text = "Yeni dikte."
+    dictation(controller, "Yeni dikte.")
+    result = controller.history_open(record_id)
+    assert result["ok"] is True
+    snapshot = controller.snapshot()
+    assert snapshot["seq"] == 3
+    assert snapshot["latest_text"] == "Geçmişe giden metin."
+    assert snapshot["replace_last"] is False
+    # Açılan kayıt son dikte olmadığı için Yenile pasif olmalı.
+    assert snapshot["can_refresh"] is False
+    assert controller.refresh_last()["ok"] is False
+
+
+def test_refresh_last_replaces_paragraph_and_updates_history():
+    controller = make_controller(model_manager=FakeModels())
+    dictation(controller, "İlk çeviri.")
+    assert controller.snapshot()["can_refresh"] is True
+
+    controller.engine.text = "Yenilenmiş çeviri."
+    result = controller.refresh_last()
+    assert result["ok"] is True
+    assert wait_for_state(controller, READY)
+
+    snapshot = controller.snapshot()
+    assert snapshot["latest_text"] == "Yenilenmiş çeviri."
+    assert snapshot["replace_last"] is True
+    assert snapshot["seq"] == 2
+    items = controller.history_list()["items"]
+    assert len(items) == 1
+    assert items[0]["text"] == "Yenilenmiş çeviri."
+
+
+def test_refresh_without_recording_is_rejected():
+    controller = make_controller(model_manager=FakeModels())
+    result = controller.refresh_last()
+    assert result["ok"] is False
+    assert "kayıt" in result["message"].lower()
+
+
+def test_model_activate_switches_engine_and_saves_setting():
+    models = FakeModels(installed=("large-v3", "small"))
+    controller = make_controller(model_manager=models)
+
+    result = controller.model_activate("small")
+    assert result["ok"] is True
+    assert wait_for_state(controller, READY)
+
+    snapshot = controller.snapshot()
+    assert snapshot["model_name"] == "small"
+    assert controller.engine.model_name == "small"
+    assert controller.settings.get("active_model") == "small"
+    titles = [item["title"] for item in snapshot["activity"]]
+    assert "Model değiştirildi" in titles
+
+
+def test_model_activate_falls_back_to_old_model_on_error():
+    models = FakeModels(installed=("large-v3", "small"))
+    controller = make_controller(model_manager=models)
+    assert controller.snapshot()["model_name"] == "large-v3"
+
+    controller.engine.fail_models.add("small")
+    result = controller.model_activate("small")
+    assert result["ok"] is True
+    assert wait_for_state(controller, READY)
+
+    snapshot = controller.snapshot()
+    assert snapshot["model_name"] == "large-v3"
+    assert controller.settings.get("active_model") == "auto"
+    titles = [item["title"] for item in snapshot["activity"]]
+    assert "Model değiştirilemedi" in titles
+
+
+def test_model_activate_rejects_missing_model_and_busy_state():
+    controller = make_controller(model_manager=FakeModels(installed=("large-v3",)))
+    assert controller.model_activate("medium")["ok"] is False
+
+    gate = threading.Event()
+    controller.engine.gate = gate
+    controller.toggle_record()
+    controller.toggle_record()
+    assert controller.snapshot()["state"] == PROCESSING
+    assert controller.model_activate("large-v3")["ok"] is False
+    gate.set()
+    assert controller.wait_until_ready(3)
+
+
+def test_model_delete_guards_active_and_downloading():
+    models = FakeModels()
+    controller = make_controller(model_manager=models)
+    assert controller.model_delete("large-v3")["ok"] is False
+    assert models.deleted == []
+
+    controller.model_activate("small")
+    assert wait_for_state(controller, READY)
+    result = controller.model_delete("large-v3")
+    assert result["ok"] is True
+    assert models.deleted == ["large-v3"]
+
+
+def test_model_download_updates_state_and_installs():
+    models = FakeModels(installed=("large-v3",))
+    controller = make_controller(model_manager=models)
+    result = controller.model_download("tiny")
+    assert result["ok"] is True
+
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        download = controller.snapshot()["download"]
+        if download and download["state"] == "done":
+            break
+        time.sleep(0.02)
+    download = controller.snapshot()["download"]
+    assert download["state"] == "done"
+    assert download["percent"] == 100
+    assert "tiny" in models.available
+
+
+def test_hotkey_change_is_applied_and_persisted():
+    controller = make_controller(engine=FakeEngine(), model_manager=FakeModels())
+    result = controller.settings_save({"hotkey": "f9"})
+    assert result["ok"] is True
+    assert controller.snapshot()["hotkey"] == "F9"
+    assert controller.settings.get("hotkey") == "f9"
+
+
+def test_hotkey_change_failure_keeps_old_setting():
+    hotkey = FakeHotkey()
+    controller = make_controller(hotkey=hotkey, model_manager=FakeModels())
+    hotkey.fail_set = True
+    result = controller.settings_save({"hotkey": "f9"})
+    assert result["ok"] is False
+    assert controller.settings.get("hotkey") == "right_ctrl"
+    assert controller.snapshot()["hotkey"] == "Sağ Ctrl"
+
+
+def test_settings_rejected_while_recording():
+    controller = make_controller(model_manager=FakeModels())
+    controller.toggle_record()
+    result = controller.settings_save({"save_history": False})
+    assert result["ok"] is False
+    controller.toggle_record()
+    assert controller.wait_until_ready(3)
+
+
+def test_last_recording_is_removed_on_shutdown():
+    controller = make_controller(model_manager=FakeModels())
+    dictation(controller, "Kapanış testi.")
+    last_path = Path(config.LAST_RECORDING)
+    assert last_path.exists()
+    controller.shutdown()
+    assert not last_path.exists()

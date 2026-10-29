@@ -17,6 +17,13 @@ UI_DIR = PACKAGE_DIR / "ui"
 MODELS_DIR = Path(os.environ.get("DIKTE_MODELS_DIR", ROOT_DIR / "models"))
 LOG_DIR = Path(os.environ.get("DIKTE_LOG_DIR", ROOT_DIR / "logs"))
 TEMP_DIR = Path(os.environ.get("DIKTE_TEMP_DIR", Path(tempfile.gettempdir()) / "dikte"))
+DATA_DIR = Path(os.environ.get("DIKTE_DATA_DIR", ROOT_DIR / "data"))
+
+SETTINGS_FILE = DATA_DIR / "settings.json"
+HISTORY_FILE = DATA_DIR / "history.json"
+LAST_RECORDING = TEMP_DIR / "last.wav"
+
+HISTORY_LIMIT = 500
 
 SELFTEST_WAV = ROOT_DIR / "tests" / "data" / "test.wav"
 SELFTEST_TEXT = ROOT_DIR / "tests" / "data" / "test.txt"
@@ -57,6 +64,6 @@ def model_label(name: str) -> str:
 
 
 def ensure_runtime_dirs() -> None:
-    """Model, log ve geçici kayıt klasörlerini hazırlar."""
-    for folder in (MODELS_DIR, LOG_DIR, TEMP_DIR):
+    """Model, log, veri ve geçici kayıt klasörlerini hazırlar."""
+    for folder in (MODELS_DIR, LOG_DIR, TEMP_DIR, DATA_DIR):
         folder.mkdir(parents=True, exist_ok=True)

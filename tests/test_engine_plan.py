@@ -19,3 +19,20 @@ def test_forced_cuda_keeps_fallback():
     plan = select_plan("cuda", False)
     assert plan[0][1] == "cuda"
     assert plan[-1][1] == "cpu"
+
+
+def test_selected_model_is_tried_first_then_cpu_then_small():
+    plan = select_plan(None, True, "medium")
+    assert plan[0] == ("medium", "cuda", "float16")
+    assert ("medium", "cpu", "int8") in plan
+    assert plan[-1] == ("small", "cpu", "int8")
+
+
+def test_selected_small_model_has_no_duplicate():
+    plan = select_plan(None, False, "small")
+    assert plan == [("small", "cpu", "int8")]
+
+
+def test_selected_model_forced_cpu():
+    plan = select_plan("cpu", True, "tiny")
+    assert plan == [("tiny", "cpu", "int8"), ("small", "cpu", "int8")]

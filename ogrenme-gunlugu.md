@@ -18,3 +18,11 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **STIL.md:** Ajanın nasıl konuşacağını (ton, yapı, hata anlatımı) yazılı hale getirmek, yeni sohbette tarzın değişmemesini sağlıyor.
 5. **Güvenli commit:** Commit öncesi `git status`, sahne (staged) listesi ve gizli bilgi taraması yapmak; model/venv/log gibi büyük veya özel dosyaların yanlışlıkla git'e girmesini engelliyor.
 
+## 2026-10-27 — v1.2: Geçmiş, Modeller, Ayarlar, Yenile
+
+1. **Python sürümü ve paket uyumu:** Python 3.12'ye geçmek tek başına yetmiyor; kütüphanelerin birbirine uyan sürümlerini seçmek gerekiyor. PyAV 19 ile faster-whisper 1.2 çakıştı; `av<16` sabitleyince çeviri düzeldi.
+2. **Kalıcı veri:** Ayar ve geçmiş gibi veriler `data/` klasöründe JSON olarak tutuluyor. Bozuk dosya uygulamayı çökertmiyor; `.bozuk-*` adıyla kenara alınıp boş listeyle devam ediliyor.
+3. **Model yönetimi:** Bir modeli değiştirmek "eski modeli bellekten boşalt + yenisini yükle" demek. Aktif model silinemiyor; aksi halde uygulama açılışta modelsiz kalırdı.
+4. **Gizlilik ve Yenile:** Ses, çeviriden sonra silinse de "Yenile" için son kayıt geçici olarak tutuluyor. Bu bilinçli bir ödünleşim: dosya uygulama kapanınca siliniyor, yeni diktede üzerine yazılıyor.
+5. **Test katmanları:** Saf mantık pytest ile, arayüz Playwright ile, gerçek motor `--selftest` ile test ediliyor. Ağ, mikrofon ve kısayol gibi ajanın doğrulayamadığı şeyler kullanıcı testine bırakılıyor.
+
