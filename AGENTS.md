@@ -89,3 +89,9 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - 0,4 sn'den kısa kayıt "Ses algılanamadı" diye atlanır.
 - Geçmişte en fazla 500 kayıt tutulur; sınır aşılınca en eski kayıt düşer.
 - Model indirme iptal/duraklat desteklemez; indirme sırasında başka indirme başlatılamaz.
+
+## Kod yazma ilkeleri (Karpathy)
+- Kodlamadan önce varsayımlarını açıkça söyle. Emin değilsen sor, sessizce seçme.
+- İstenmeyen özellik, gereksiz soyutlama, "belki lazım olur" kodu yazma.
+- Sadece istenen yeri değiştir. Yakındaki kodu/yorumları "düzelteyim" deme.
+- Hedefi doğrulanabilir yap: "hatayı düzelt" → "hatayı üreten testi yaz, geçene kadar çalış".
