@@ -3,8 +3,8 @@
 Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat` skill'ini çalıştır (olmazsa bu dosyayı, STIL.md, STATE.md ve PLAN.md'yi oku).
 
 ## Proje
-Dikte: Türkçe çalışan Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilip panoya kopyalanır. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı; sıradaki v1.3 (metin modelleri / yapay zeka ile temizle).
+Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3 kapsamı 2026-11-01'de onaylandı (yapay zeka ile temizle/çevir); kod henüz yazılmadı. Sırada v1.4 (Magic UI + karanlık mod) ve v1.5 (kurucu + kaldırma) var.
 
 ## Dosyalar
 | Dosya | Ne için |
@@ -19,6 +19,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | reports/ | Araştırma raporları (README.md dizin) |
 | .kilo/skills/ | `asama-baslat` ve `asama-bitir` skill'leri |
 | promptlar.md | Kullanıcının istem notları (ajan okumaz) |
+| web/ | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
 
 ## Kullanıcı
 - Kodlamaya yeni başlıyor. Sade Türkçe ile konuş, terimi bir cümleyle açıkla.
@@ -27,17 +28,21 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 ## Ortam ve bütçe
 - Windows, proje Masaüstü\dikte projesi klasöründe (OneDrive dışı). Laptop: RTX 5060, 8 GB VRAM.
 - `.venv` Python 3.12.10 ile çalışıyor (2026-10-27'de geçildi).
-- Bütçe yaklaşık 10 dolar (OpenRouter). Yazıya çevirme kendi bilgisayarında yapılır, ücretli API yok.
+- Bütçe yaklaşık 10 dolar (OpenRouter). Yazıya çevirme kendi bilgisayarında yapılır; metin temizleme/çeviri için OpenRouter isteğe bağlı ve ücretlidir.
 
 ## Çalışma kuralları
 - Kod yazmadan önce kısa plan çıkar ve planı sorgula: hangi varsayım yanlışsa plan çöker? Kullanıcı onaylamadan kod yazma.
 - Küçük adımlarla ilerle. Bir seferde tek şey yap.
 - Araştırmayı Exa ile yalnızca gerektiğinde yap. Ham sonucu reports/ altına kaydet, sohbete kısa özet ver, reports/README.md'ye tek satır ekle.
-- API anahtarı koda, nota ya da rapora yazılmaz. Anahtarlar .env dosyasında durur.
+- API anahtarı koda, nota ya da rapora yazılmaz. OpenRouter anahtarı Ayarlar'da girilir ve Windows DPAPI ile şifrelenmiş saklanır; `.env` yalnız geliştirme sırları içindir.
 - Model dosyaları models\ klasörüne iner (git dışı).
 - Karar ile öneriyi ayır. Kararlar'a yalnızca kullanıcının onayladığı şeyler girer.
 - Hata olursa aynı komutu tekrarlama. Eksik bilgiyi bul, ekle, öyle yeniden dene.
 - Commit ve push yalnızca `/asama-bitir` çağrıldığında ya da kullanıcı açıkça isterse yapılır.
+
+## Soru sorma
+- Soru sormak için `question` aracını kullan.
+- Süreci kolaylaştırmak için bana her türlü soruyu sormaktan çekinme. İHTİYACIN OLAN HER ŞEYİ SOR! Netliğe ulaşmak için gerektiği kadar takip sorusu sor.
 
 ## Test ve bitti tanımı
 - Kod yazınca çalıştır, çıktıyı oku, düzelt. En fazla 3 deneme. Çözülmezse dur, STATE.md'ye yaz, kullanıcıya sor.
@@ -70,25 +75,39 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 ## Kararlar (kullanıcı onaylı)
 - Dil: Python 3.12.10. Yazıya çevirme: faster-whisper, yerel.
 - Model: GPU çalışırsa seçili model + float16, çökerse aynı model CPU/int8, olmazsa small + int8.
-- Model listesi (yalnız ses, 6 adet): tiny, base, small, medium, large-v3, large-v3-turbo. İndirme, aktifleştirme ve silme uygulama içinden yapılır; aktif model `settings.json`'da saklanır.
-- Kısayol: varsayılan Sağ Ctrl; ayarlardan hazır listeden seçilir (Sağ/Sol Ctrl, Sağ/Sol Alt, F8/F9/F10). Çıktı: yalnızca panoya kopyalama.
+- Ses modeli listesi (6 adet): tiny, base, small, medium, large-v3, large-v3-turbo. İndirme, aktifleştirme ve silme uygulama içinden yapılır; aktif model `settings.json`'da saklanır. v1.3'te Metin Modelleri ayrı sekme olarak eklenir.
+- Kısayol: varsayılan Sağ Ctrl; ayarlardan hazır listeden seçilir (Sağ/Sol Ctrl, Sağ/Sol Alt, F8/F9/F10). v1.2'de çıktı yalnızca panoya; v1.3'te panoya + etkin pencereye otomatik yapıştırma.
 - Geçmiş: son 500 kayıt `data/history.json`; ayarlarda kapatılınca yeni kayıt yazılmaz, eski kayıtlar gizlenir (arşivde kalır). Arama/filtre/Aç/Kopyala/Sil vardır.
 - "Transkripsiyonu Yenile" son kaydın sesini tekrar çevirir, son paragrafı değiştirir. Ses `%TEMP%\dikte\last.wav` olarak yalnız uygulama açıkken tutulur.
 - Kod yazan model: OpenRouter üzerinden (seçim ve gerekçe STATE.md'de, değişirse orada güncelle).
 - Hafıza: Obsidian vault = proje klasörü. Yedek: özel GitHub deposu.
-- Tasarım: design/ tek kaynak. Aktif model kartında işleme hızı yok. v1.2'de yalnız Ses Modelleri var; Metin Modelleri v1.3'te ayrı bölüm olacak, görsel kategori yok.
+- Tasarım: design/ tek kaynak. Aktif model kartında işleme hızı yok. Görsel model kategorisi yok.
 - v1.2 kapsamı: Geçmiş (tam), Modeller (ses, tam), Ayarlar (kısayol + geçmiş anahtarı), Yenile. Dil ve mikrofon seçimi yok.
 - Arayüz: pywebview + prototype.html'den türetilen HTML/CSS/JS.
+- **v1.3 kapsamı (2026-11-01 onaylı):** Çıktı dili Türkçe/İngilizce/Almanca; "Otomatik çevir" kutusu dil seçicisinin yanında; "Yapay Zeka ile Temizle" ve "Çevir" butonları aynı satırda.
+- Aynı dilde yalnız temizlik yapılır, çeviri yapılmaz. 3 kelimeden kısa metinde çeviri yapılmaz, ham metin kalır.
+- Dil kararını metin modeli tek çağrıda verir; Whisper dili otomatik algılar. Türkçe doğruluğu düşerse girdi dili Türkçe'ye sabitlenebilir.
+- Metin modeli iki sağlayıcı: uygulama içi GGUF (llama.cpp) ve OpenRouter. OpenRouter anahtarı Ayarlar'da girilir, Windows DPAPI ile şifrelenir; yalnız ucuz/küçük modeller listelenir; sistem promptu düzenlenebilir.
+- Ses ve metin modeli aynı anda bellekte tutulmaz: VRAM'den boşaltıp takas edilir; gerekirse CPU/RAM kullanılır.
+- Modeller sayfası Metin/Ses sekmeleri; her modelde "⋯" menüsü; indirmede duraklat/devam/iptal.
+- **v1.4 kapsamı (onaylı):** Magic UI esintili yeni arayüz, Next.js'e geçmeden mevcut HTML/CSS/JS içinde CSS uyarlaması. Karanlık mod: Sistem/Açık/Koyu.
+- **v1.5 kapsamı (onaylı):** PyInstaller + Inno Setup kurucu; veriler `%LOCALAPPDATA%\Dikte`; kısayollar; isteğe bağlı otomatik başlatma. Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, tüm verileri siler.
 
 ## Öneriler (onaylanmadı)
-- Metin modelleri: önce LM Studio veya Ollama yerel sunucusuna bağlanarak.
+- Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.
+- Arayüz modernizasyonu (2026-10-31): iki yol değerlendirildi.
+  - **Next.js'e taşıma:** Magic UI bileşenleri birebir kullanılır; ama çalışan arayüzü baştan yazdırır, `window.pywebview.api` köprüsü + build/paketleme + Playwright testlerinin yenilenmesi gerekir. Riskli ve masraflı.
+  - **CSS/JS'e uyarlama:** Mevcut `index.html` + `style.css` + `app.js` korunur; animasyonlar CSS `@keyframes`/`transition` ve az JS ile elle yazılır. Hızlı, düşük riskli, çevrimdışı ve testler bozulmaz; ama Magic UI kodu birebir kullanılmaz, karmaşık animasyonlar zorlaşır.
+  - **Seçim (2026-11-01):** CSS/JS uyarlaması. Next.js geçişi gerekirse ayrı aşama olarak ele alınır.
 
 ## Teyit bekleyen varsayımlar
 - Pencere kapanınca uygulama çıkar, sistem tepsisi yok. Windows'un normal pencere çerçevesi kullanılır.
-- Dil yalnızca Türkçe (seçici pasif). Her dikte yeni paragraf ekler; Yenile son paragrafı değiştirir. Kopyala tüm metni, Geri Al son paragrafı alır.
+- Her dikte yeni paragraf ekler; Yenile son paragrafı değiştirir. Kopyala tüm metni, Geri Al son paragrafı alır.
 - 0,4 sn'den kısa kayıt "Ses algılanamadı" diye atlanır.
 - Geçmişte en fazla 500 kayıt tutulur; sınır aşılınca en eski kayıt düşer.
-- Model indirme iptal/duraklat desteklemez; indirme sırasında başka indirme başlatılamaz.
+- İndirme duraklatma anlık değil: açık dosya parçası bitince durur. İptal, Windows dosya kilidi yüzünden gecikebilir.
+- Girdi dili otomatik algılanır; Türkçe doğruluğu düşerse Ayarlar'a "Girdi dili: Türkçe" sabitleme eklenecek.
+- Kurulum kullanıcı bazlıdır, yönetici izni istemez; kaldırma tüm verileri (modeller dahil) siler.
 
 ## Kod yazma ilkeleri (Karpathy)
 - Kodlamadan önce varsayımlarını açıkça söyle. Emin değilsen sor, sessizce seçme.

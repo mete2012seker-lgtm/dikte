@@ -75,17 +75,34 @@ Her aşama bittiğinde: kanıt gösterilir, STATE.md güncellenir, git commit at
 - [x] Yalnız ses modelleri; metin modelleri Aşama 7'de.
 - Kanıt: `tests/test_models.py`, gerçek `large-v3 → tiny` aktifleştirme testi (`GPU / float16`), gerçek tiny silme + yeniden indirme (78.204.524 bayt), `artifacts/ui-modeller.png`.
 
-### Aşama 7 — Modeller sayfası: Metin Modelleri ve "Yapay Zeka ile Temizle"
-- [ ] Önce küçük deneme: LM Studio/Ollama sunucusuna bağlan, 10 bozuk örnek cümleyi temizlet, sonuçlara bakıp kalite karar ver.
-- [ ] VRAM ölçümü: ses modeli ve metin modeli birlikte sığıyor mu?
-- [ ] Sonra arayüz: Metin Modelleri bölümü, aktif model seçimi, "Yapay Zeka ile Temizle" düğmesi.
-- Kanıt: 10 cümlelik önce/sonra tablosu, VRAM ölçümü.
-- Senin yapacağın: LM Studio'da modeli sen yükle, temizleme sonuçlarını beğenip beğenmediğini söyle.
+### Aşama 7 — v1.3: Metin Modelleri, Temizle/Çevir ve otomatik yapıştırma (kapsam 2026-11-01 onaylı)
+- [ ] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
+- [ ] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma.
+- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü.
+- [ ] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
+- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri.
+- Kural: aynı dilde yalnız temizlik; 3 kelimeden kısa metinde çeviri yok. Dil kararını metin modeli tek çağrıda verir.
+- Kanıt: 83+ pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, 10 cümle önce/sonra tablosu, VRAM ölçümü, güncel Playwright ekran görüntüleri.
+- Senin yapacağın: OpenRouter anahtarını `.env`'e koy; mikrofon, yapıştırma ve indirme testlerini yap.
 
-### Aşama 8 — Sağlamlaştırma ve paketleme
-- [ ] Hata mesajları Türkçe ve anlaşılır (mikrofon yok, model yok, GPU yok).
+### Aşama 8 — Sağlamlaştırma
+- [ ] Hata mesajları Türkçe ve anlaşılır (mikrofon yok, model yok, GPU yok, sunucu kapalı).
 - [ ] Kapanışta geçici dosyalar silinir.
-- [ ] İsteğe bağlı: tek .exe paketi (PyInstaller). Antivirüs yanlış uyarı verebilir.
+- [ ] Metin modeli yokken/bağlantı kopukken ham metne düşüş doğrulanır.
+
+### Aşama 9 — v1.4: Magic UI arayüzü ve karanlık mod
+- [ ] Magic UI esintili görünüm, mevcut HTML/CSS/JS içinde CSS uyarlaması (MagicCard, ShineBorder, AnimatedList, DotPattern).
+- [ ] Karanlık mod: Sistem/Açık/Koyu; `<html class="dark">` + CSS değişkenleri; localStorage + settings.json.
+- [ ] `design/v2/` spec ve ekran görüntüleri; eski `design/` silinmez.
+- [ ] Erişilebilirlik: WCAG AA kontrast, `prefers-reduced-motion`.
+- Kanıt: açık/koyu 4 sayfa ekran görüntüsü, kontrast ve DOM testi.
+
+### Aşama 10 — v1.5: Kurucu ve kaldırma
+- [ ] PyInstaller `onedir` + Inno Setup; kullanıcı bazlı kurulum, `%LOCALAPPDATA%\Dikte` verisi.
+- [ ] Masaüstü/Başlat menüsü kısayolları; isteğe bağlı Windows açılışında başlatma.
+- [ ] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi.
+- [ ] Kaldırma: exe, kısayol, otomatik başlatma, modeller, geçmiş, ayarlar, loglar ve `%TEMP%\dikte` silinir.
+- Kanıt: kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi).
 
 ## Test yöntemi
 | Ne test edilir | Nasıl |

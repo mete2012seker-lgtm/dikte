@@ -26,3 +26,12 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Gizlilik ve Yenile:** Ses, çeviriden sonra silinse de "Yenile" için son kayıt geçici olarak tutuluyor. Bu bilinçli bir ödünleşim: dosya uygulama kapanınca siliniyor, yeni diktede üzerine yazılıyor.
 5. **Test katmanları:** Saf mantık pytest ile, arayüz Playwright ile, gerçek motor `--selftest` ile test ediliyor. Ağ, mikrofon ve kısayol gibi ajanın doğrulayamadığı şeyler kullanıcı testine bırakılıyor.
 
+## 2026-11-01 — v1.3 planı: yapay zeka ile temizle/çevir
+
+1. **Dil algılama iki ayrı iş:** Whisper sesi doğru yazmak için dili algılar; metin modeli ise yazılmış metne bakıp "çeviri gerekli mi" kararını verir. İkisi karıştırılırsa yanlış dilde yazılmış metin kurtarılamaz.
+2. **Aynı dil kuralı:** Hedef dil ile konuşulan dil aynıysa çeviri yapılmaz, yalnızca yazım düzeltilir. Bu, gereksiz çeviri ve maliyeti önler.
+3. **VRAM/RAM takası:** İki model aynı anda bellekte tutulmaz. Ses modeli boşaltılır, metin modeli yüklenir; iş bitince geri takas edilir.
+4. **API anahtarı güvenliği:** Anahtar düz metin dosyada durmaz; Windows DPAPI ile şifrelenir. Böylece başka kullanıcı veya kopya bilgisayar anahtarı okuyamaz.
+5. **İndirme duraklatma:** HTTP `Range` ve `.part` dosyası ile indirme kaldığı yerden devam eder. Bu yüzden "iptal" ile "duraklat" farklıdır: iptal yarım dosyayı siler.
+
+

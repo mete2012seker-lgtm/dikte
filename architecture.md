@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı.
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3 (metin modelleri, Temizle/Çevir, otomatik yapıştırma) kapsamı 2026-11-01'de onaylandı; kod henüz yazılmadı.
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -43,8 +43,21 @@ Akış:
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
+| `web/` | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid); Dikte arayüzüne bağlı değil | Deneme |
 | `Dikte.bat` | Çift tıklayarak uygulamayı açan Windows başlatıcı | Hazır |
 | `models/` | İndirilen Whisper modelleri (git dışı) | large-v3 + small + tiny indirildi |
+
+## Arayüz yönü (deneme)
+`web/`, Dikte'nin pywebview arayüzünden bağımsız bir Next.js denemesidir (`cd web; npm run dev`). Mevcut uygulama hâlâ `dikte/ui/` altındaki HTML/CSS/JS'i kullanır. 2026-11-01'de Magic UI'ın CSS/JS uyarlaması seçildi; Next.js'e geçilmeyecek. Yeni görünüm v1.4'te `design/v2/` ile belgelenecek.
+
+## Planlanan modüller (v1.3 — henüz yok)
+| Dosya | Planlanan görev |
+| :--- | :--- |
+| `dikte/text_engine.py` | OpenRouter + llama.cpp istemcisi, temizle/çevir, dil kararı, sistem promptu |
+| `dikte/text_models.py` | GGUF metin modeli kataloğu, HTTP Range indirme, duraklat/devam/iptal |
+| `dikte/paste.py` | Etkin pencereye `Ctrl+V` gönderme (SendInput) |
+| `dikte/secrets.py` | OpenRouter anahtarını Windows DPAPI ile şifreleme/çözme |
+| `dikte/ui/theme.js` (veya app.js içinde) | Karanlık mod, Magic UI CSS efektleri (v1.4) |
 
 ## Bileşenler ve bağlantıları
 | Bileşen | Neye bağlı | Değişirse neler etkilenir |
@@ -91,7 +104,8 @@ Akış:
 - Aktif model silinemez; Windows dosya kilidi silmeyi engellerse Türkçe hata gösterilir.
 - Geçmişten bir kayıt açıldıktan sonra Yenile pasif olur (son dikte olmadığı için).
 - Geçmiş kapalıyken yapılan dikteden sonra anahtar açılıp Yenile yapılırsa sonuç kayıtlara yazılmaz (ses korunur, pano güncellenir).
-- "Yapay Zeka ile Temizle" ve metin modelleri v1.3'te; dil/mikrofon seçimi yok.
+- "Yapay Zeka ile Temizle", metin modelleri ve otomatik yapıştırma v1.3'te planlandı; henüz kod yok. Dil/mikrofon seçimi hâlâ yok.
+- v1.4'te arayüz Magic UI esintili CSS uyarlamasına geçecek; v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
 
 ## Karar geçmişi
 - 2026-10-22: Proje başlatıldı. Python, faster-whisper, deepseek-v4-flash.
@@ -103,3 +117,6 @@ Akış:
 - 2026-10-27: Python 3.12.10'a geçildi; PyAV `>=11,<16` sabitlendi.
 - 2026-10-27: v1.2 kapsamı onaylandı: Geçmiş, Modeller (ses), Ayarlar (kısayol + geçmiş anahtarı), Yenile. Dil/mikrofon ve metin modelleri sonraki sürümlere bırakıldı.
 - 2026-10-27: Geçmiş kapalıyken eski kayıtlar gizlenir; son ses Yenile için geçici dosyada tutulur.
+- 2026-11-01: v1.3 kapsamı onaylandı: çıktı dili TR/EN/DE, Temizle/Çevir butonları, otomatik çevir kutusu, metin modeliyle dil kararı, uygulama içi GGUF + OpenRouter, indirme duraklat/iptal, arka planda kısayol ve otomatik yapıştırma.
+- 2026-11-01: v1.4 (Magic UI CSS uyarlaması + karanlık mod) ve v1.5 (kurucu + çift onaylı kaldırma) kapsamları onaylandı.
+- 2026-11-01: Arayüz için Next.js'e geçiş seçilmedi; mevcut HTML/CSS/JS içinde CSS uyarlaması yapılacak.
