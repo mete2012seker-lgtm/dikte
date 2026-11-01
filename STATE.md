@@ -106,4 +106,4 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Maliyet günlüğü (OpenRouter Activity'den kullanıcı dolduracak)
 | Tarih | Aşama | Toplam harcama |
 | :--- | :--- | :--- |
-| 2026-11-01 | 7a gerçek çağrı + model karşılaştırması (6 + 9 istek) | ~$0,001 |
+| 2026-11-01 | 7a gerçek çağrı + model karşılaştırması (6 + 9 istek) | tahmini ~$0,001 — **OpenRouter Activity'den doğrula** |
