@@ -26,27 +26,32 @@ Akış:
 | `dikte/text_engine.py` | Prompt kurma, tek çağrıda temizle/çevir, yanıt temizleme, çıktı dili ve halüsinasyon denetimi, Türkçe hata kodları | Hazır (OpenRouter; GGUF 7b) |
 | `dikte/history.py` | `data/history.json`: ekle/listele/ara/sil/temizle, 500 sınırı, bozuk dosya yedeği | Hazır |
 | `dikte/models.py` | 6 ses modeli kataloğu, disk taraması, indirme, silme, boyut biçimleme | Hazır |
+| `dikte/paste.py` | Etkin pencereye Ctrl+V; Dikte penceresini atlar, hata sessiz | Hazır |
+| `dikte/text_models.py` | 4 GGUF modeli kataloğu, `.part` + HTTP Range indirme (duraklat/devam/iptal), boyut doğrulama, llama.cpp sarmalayıcısı | Hazır (llama.cpp paketi isteğe bağlı) |
 | `dikte/engine.py` | Cihaz seçimi, seçili modeli yükleme/boşaltma, çeviri, GPU→CPU düşüşü | Hazır |
 | `dikte/audio.py` | sounddevice kaydı, geçici wav, temizlik | Hazır |
 | `dikte/hotkey.py` | pynput ile seçilebilir kısayol dinleyicisi (7 hazır tuş) | Hazır |
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
 | `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu, VRAM/RAM, Türkçe hata metinleri, log | Hazır |
-| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, modeller, ayarlar, yenile, temizle/çevir, anahtar) | Hazır |
-| `dikte/ui/index.html` | Dört sayfa: Dikte, Geçmiş, Modeller, Ayarlar (Yapay Zeka + Yapıştırma/Dil kartları) | Hazır |
+| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, ses/metin modelleri, ayarlar, yenile, temizle/çevir, anahtar) | Hazır |
+| `dikte/ui/index.html` | Dört sayfa + tema düğmesi; Ayarlar: Yapay Zeka, Yapıştırma/Dil, Görünüm | Hazır |
+| `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), sayfa yönlendirici, Magic UI geçiş sınıfları | Hazır |
 | `dikte/ui/style.css` | Tasarım token'ları, sayfa yönlendirici ve bileşen stilleri | Hazır |
-| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir | Hazır |
-| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 145 test geçti |
-| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 145 test geçti |
-| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 145 test geçti |
-| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 145 test geçti |
-| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 145 test geçti |
-| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 145 test geçti |
-| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 145 test geçti |
-| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ | 145 test geçti |
-| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 145 test geçti |
-| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 145 test geçti |
-| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı | 145 test geçti |
+| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, model sekmeleri | Hazır |
+| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 201 test geçti |
+| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 201 test geçti |
+| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 201 test geçti |
+| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 201 test geçti |
+| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 201 test geçti |
+| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 201 test geçti |
+| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 201 test geçti |
+| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 201 test geçti |
+| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, 404, silme | 201 test geçti |
+| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 201 test geçti |
+| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 201 test geçti |
+| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı, tema, model sekmeleri | 201 test geçti |
+| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 201 test geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (uygulanmadı) |
@@ -58,12 +63,11 @@ Akış:
 ## Arayüz yönü (deneme)
 `web/`, Dikte'nin pywebview arayüzünden bağımsız bir Next.js denemesidir (`cd web; npm run dev`). Mevcut uygulama hâlâ `dikte/ui/` altındaki HTML/CSS/JS'i kullanır. 2026-11-01'de Magic UI'ın CSS/JS uyarlaması seçildi; Next.js'e geçilmeyecek. Yeni görünüm v1.4'te `design/v2/` ile belgelenecek.
 
-## Planlanan modüller (v1.3 sonrası — henüz yok)
+## Planlanan modüller (henüz yok)
 | Dosya | Planlanan görev |
 | :--- | :--- |
-| `dikte/text_models.py` | GGUF metin modeli kataloğu, HTTP Range indirme, duraklat/devam/iptal, llama.cpp sarmalayıcı (parti 7b) |
-| `dikte/paste.py` | Etkin pencereye `Ctrl+V` gönderme (SendInput) (parti 7d) |
-| `dikte/ui/theme.js` (veya app.js içinde) | Karanlık mod, Magic UI CSS efektleri (v1.4) |
+| `design/v2/` + Magic UI efektleri | MagicCard, ShineBorder, AnimatedList, Bento, DotPattern (v1.4) |
+| `Dikte.spec`, `installer/Dikte.iss` | PyInstaller + Inno Setup kurucu, kaldırma (v1.5) |
 | `dikte/updater.py` | Sürüm denetimi (`latest.json`), kurucu indirme, SHA-256 doğrulama, sessiz kurulum ve yeniden açılış (v1.6) |
 
 ## Bileşenler ve bağlantıları
@@ -107,12 +111,14 @@ Akış:
 ## Bilinen sorunlar
 - İlk çeviri yavaş (CUDA ısınması + model yükleme ~7 sn). Sonraki dikteler daha hızlı.
 - GPU çevirisi çökerse controller aynı modeli CPU/int8 ile, o da olmazsa `small/int8` ile dener; arayüzde etkinlik olarak görünür.
-- Model indirme iptal/duraklat desteklemez; yarım indirme "Yarım indirme" olarak gösterilir.
+- Ses modeli indirmesinde iptal/duraklat yok; yarım indirme "Yarım indirme" olarak gösterilir. Metin (GGUF) indirmesinde duraklat/devam/iptal vardır.
 - Aktif model silinemez; Windows dosya kilidi silmeyi engellerse Türkçe hata gösterilir.
 - Geçmişten bir kayıt açıldıktan sonra Yenile pasif olur (son dikte olmadığı için).
 - Geçmiş kapalıyken yapılan dikteden sonra anahtar açılıp Yenile yapılırsa sonuç kayıtlara yazılmaz (ses korunur, pano güncellenir).
-- "Yapay Zeka ile Temizle", metin modelleri ve otomatik yapıştırma v1.3'te planlandı; henüz kod yok. Dil/mikrofon seçimi hâlâ yok.
-- v1.4'te arayüz Magic UI esintili CSS uyarlamasına geçecek; v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
+- Yerel metin modeli (GGUF) çalıştırmak için `llama-cpp-python` paketi gerekir; paket yokken arayüz "motor kurulu değil" bilgisini gösterir ve OpenRouter önerilir.
+- `input_language` ayarı kaydediliyor ama Whisper'a henüz bağlanmadı; motor hâlâ otomatik dil algılar.
+- Magic UI efektleri (MagicCard, ShineBorder, AnimatedList, Bento, DotPattern) henüz yok; tema düğmesi ve açık tema var.
+- v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
 - v1.6'da otomatik güncelleme eklenecek: `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → doğrulama → sessiz kurulum → yeniden açılış.
 
 ## Karar geçmişi
@@ -129,3 +135,8 @@ Akış:
 - 2026-11-01: v1.4 (Magic UI CSS uyarlaması + karanlık mod) ve v1.5 (kurucu + çift onaylı kaldırma) kapsamları onaylandı.
 - 2026-11-01: Arayüz için Next.js'e geçiş seçilmedi; mevcut HTML/CSS/JS içinde CSS uyarlaması yapılacak.
 - 2026-11-01: v1.6 (otomatik güncelleme) kapsamı onaylandı; OpenRouter API anahtarı Ayarlar sayfasında ayrı alanda tutulacak.
+- 2026-11-01: Metin sağlayıcısı varsayılanı `none`; otomatik yapıştırma varsayılan açık; kurucu tek CPU paketi.
+- 2026-11-01: OpenRouter'da "Tüm modelleri göster" + arama; öneri sırası gemma → qwen → llama → mistral, ücretli modeller ücretsizlerin önünde.
+- 2026-11-01: 4 GGUF metin modeli kataloğu, Range ile duraklat/devam/iptal indirme, Modeller sayfasında Metin/Ses sekmeleri.
+- 2026-11-01: Tema düğmesi "Aktif model" kartının üstünde; View Transitions + circle clip-path; Ayarlar → Görünüm.
+- 2026-11-01: Alt ajanlar ana ajanla aynı modeli kullanır (`.kilo/agents` dosyalarında `DeepSeek V4.1 Flash 1017`); oturum içi model önbelleği için yeni oturum gerekir.

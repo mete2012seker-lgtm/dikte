@@ -74,7 +74,20 @@ window.__models = {
       tags: ["En küçük", "Deneme"], approx_label: "~ 75 MB",
       installed: false, partial: false, size_label: "—", size_bytes: 0,
       active: false, downloading: false }
-  ]
+  ],
+  text_items: [
+    { name: "qwen3-4b", kind: "text", label: "Qwen3 4B", desc: "Denge modeli.",
+      tags: ["Dengeli", "Önerilen"], approx_label: "~ 2,3 GB", size_label: "—",
+      size_bytes: 2497280960, installed: false, partial: false,
+      active: false, loaded: false, downloading: false, paused: false, bytes: 0 },
+    { name: "gemma3-4b", kind: "text", label: "Gemma 3 4B", desc: "Akıcı çeviri.",
+      tags: ["Çeviri"], approx_label: "~ 2,3 GB", size_label: "2,3 GB",
+      size_bytes: 2489758112, installed: true, partial: false,
+      active: true, loaded: false, downloading: false, paused: false, bytes: 2489758112 }
+  ],
+  text_download: null,
+  active_text_model: "gemma3-4b",
+  local_text_available: false
 };
 
 function snapshotCopy() { const copy = JSON.parse(JSON.stringify(window.__snap)); copy.ai.state = copy.state; return copy; }
@@ -93,6 +106,8 @@ window.__ai = {
   default_system_prompt: "Varsayılan prompt",
   key_set: false,
   key_masked: null,
+  theme: "system",
+  effects: true,
   state: "ready",
   ready: true
 };
@@ -126,6 +141,13 @@ window.pywebview = {
     model_download: async (name) => { window.__calls.push("download:" + name); return { ok: true, message: name + " indiriliyor." }; },
     model_activate: async (name) => { window.__calls.push("activate:" + name); return { ok: true, state: "loading" }; },
     model_delete: async (name) => { window.__calls.push("delete:" + name); return { ok: true, message: name + " silindi." }; },
+    text_model_download: async (name) => { window.__calls.push("text_download:" + name); return { ok: true, message: name + " indiriliyor." }; },
+    text_model_pause: async (name) => { window.__calls.push("text_pause:" + name); return { ok: true, message: "Duraklatılıyor…" }; },
+    text_model_resume: async (name) => { window.__calls.push("text_resume:" + name); return { ok: true, message: "Devam ediyor." }; },
+    text_model_cancel: async (name) => { window.__calls.push("text_cancel:" + name); return { ok: true, message: "İptal edildi." }; },
+    text_model_activate: async (name) => { window.__calls.push("text_activate:" + name); return { ok: true, message: "Yüklendi." }; },
+    text_model_delete: async (name) => { window.__calls.push("text_delete:" + name); return { ok: true, message: "Silindi." }; },
+    text_model_open_folder: async (name) => ({ ok: true, message: "klasör" }),
     settings_get: async () => JSON.parse(JSON.stringify(window.__settings)),
     settings_save: async (payload) => {
       window.__calls.push("settings_save:" + JSON.stringify(payload));
@@ -318,6 +340,7 @@ def test_sayfa_yonlendirme_ve_ekran_goruntuleri(page):
 
     page.locator('.nav-btn[data-page="page-modeller"]').click()
     page.wait_for_function("() => document.querySelector('#page-modeller').classList.contains('is-active')")
+    page.locator("#tabAudio").click()
     page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
     assert "Whisper Large v3" in page.locator("#modelList").inner_text()
     assert "Aktif" in page.locator("#modelList").inner_text()
@@ -377,6 +400,7 @@ def test_modeller_indir_aktiflestir_sil(page):
     fresh(page)
     page.evaluate("() => { window.__calls = []; }")
     page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.locator("#tabAudio").click()
     page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
 
     page.locator('#modelList .m-card[data-name="tiny"] .m-btn').click()
@@ -399,6 +423,7 @@ def test_modeller_indirme_ilerlemesi(page):
         }"""
     )
     page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.locator("#tabAudio").click()
     page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
     page.wait_for_function("() => document.querySelector('#modelList .dl-bar i') !== null")
     assert "%42" in page.locator("#modelList").inner_text()
@@ -568,3 +593,77 @@ def test_tum_openrouter_modelleri_ve_arama(page):
         "() => document.querySelectorAll('#orModelSelect option').length === 1"
     )
     assert page.locator("#orModelSelect option").first.get_attribute("value") == "openai/pahali"
+
+
+def test_metin_modelleri_sekmesi(page):
+    fresh(page)
+    page.evaluate("() => { window.__calls = []; }")
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 2")
+
+    assert page.locator("#listTitle").inner_text() == "Metin Modelleri"
+    text = page.locator("#modelList").inner_text()
+    assert "Qwen3 4B" in text
+    assert "Gemma 3 4B" in text
+    assert page.locator("#localEngineNote").is_visible()
+    assert page.locator("#detailPanel").is_hidden()
+
+    page.locator('#modelList .m-card[data-name="qwen3-4b"] .m-btn').click()
+    page.wait_for_function("() => window.__calls.includes('text_download:qwen3-4b')")
+
+    page.locator("#tabAudio").click()
+    page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
+    assert page.locator("#listTitle").inner_text() == "Ses Modelleri"
+
+
+def test_metin_modeli_duraklat_ve_iptal(page):
+    fresh(page)
+    page.evaluate("() => { window.__calls = []; }")
+    page.evaluate(
+        """() => {
+          window.__models.text_download = { name: "qwen3-4b", label: "Qwen3 4B",
+            state: "downloading", percent: 37, bytes: 37, total: 100 };
+          window.__models.text_items.forEach((item) => {
+            item.downloading = item.name === "qwen3-4b";
+          });
+        }"""
+    )
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 2")
+    page.wait_for_function("() => document.querySelector('#modelList .dl-bar i') !== null")
+
+    page.locator('#modelList .m-card[data-name="qwen3-4b"] .m-btn').first.click()
+    page.wait_for_function("() => window.__calls.includes('text_pause:qwen3-4b')")
+    page.locator('#modelList .m-card[data-name="qwen3-4b"] .m-btn').nth(1).click()
+    page.wait_for_function("() => window.__calls.includes('text_cancel:qwen3-4b')")
+
+
+def test_tema_dugmesi_sinif_degistirir(page):
+    fresh(page)
+    before = page.evaluate("() => document.documentElement.classList.contains('dark')")
+    page.locator("#themeToggle").click()
+    page.wait_for_function(
+        "(before) => document.documentElement.classList.contains('dark') !== before",
+        arg=before,
+    )
+    after = page.evaluate("() => document.documentElement.classList.contains('dark')")
+    assert after != before
+    stored = page.evaluate("() => localStorage.getItem('theme')")
+    assert stored in ("light", "dark")
+
+
+def test_tema_ayarlari_segmented(page):
+    fresh(page)
+    set_snapshot(page, state="ready")
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => !document.querySelector('#textProvider').disabled")
+
+    page.locator('[data-theme-choice="light"]').click()
+    page.wait_for_function("() => document.documentElement.classList.contains('light')")
+    assert page.evaluate("() => localStorage.getItem('theme')") == "light"
+
+    page.locator('[data-theme-choice="dark"]').click()
+    page.wait_for_function("() => document.documentElement.classList.contains('dark')")
+
+    page.locator('[data-theme-choice="system"]').click()
+    page.wait_for_function("() => localStorage.getItem('theme') === 'system'")

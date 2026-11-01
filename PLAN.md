@@ -80,22 +80,22 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - Ayrıntılı yerleşim, davranış ve risk listesi: `olabilir.md`.
 - [x] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
 - [x] 7a — Ayarlar sayfasında **OpenRouter API anahtarı** alanı: gizli yazı, "Kaydet" ve "Sil" düğmeleri, anahtarın DPAPI ile şifrelenip `settings.json` yerine ayrı dosyada tutulması; "Anahtarı test et" düğmesi.
-- [ ] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma.
-- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü.
-- [ ] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
-- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri.
+- [x] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma. (İndirme + sarmalayıcı hazır; `llama-cpp-python` paketi kurulunca çalışır.)
+- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Takas + sekmeler hazır; "⋯" menüsü yok, eylemler kart üstünde.)
+- [x] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
+- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; 10 cümle kalite tablosu eksik.)
 - Kural: aynı dilde yalnız temizlik; 3 kelimeden kısa metinde çeviri yok. Dil kararını metin modeli tek çağrıda verir.
-- Kanıt: 145 pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, 10 cümle önce/sonra tablosu, VRAM ölçümü, güncel Playwright ekran görüntüleri.
-- Senin yapacağın: OpenRouter anahtarını `.env`'e koy; mikrofon, yapıştırma ve indirme testlerini yap.
+- Kanıt: 201 pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, güncel Playwright ekran görüntüleri; OpenRouter gerçek çağrı 6/6 (`reports/2026-11-01-openrouter-gercek-test.md`). 10 cümle kalite tablosu ve VRAM ölçümü bekliyor.
+- Senin yapacağın: Ayarlar → Yapay Zeka'dan anahtarı gir; mikrofon, yapıştırma ve indirme testlerini yap.
 
 ### Aşama 8 — Sağlamlaştırma
-- [ ] Hata mesajları Türkçe ve anlaşılır (mikrofon yok, model yok, GPU yok, sunucu kapalı).
-- [ ] Kapanışta geçici dosyalar silinir.
-- [ ] Metin modeli yokken/bağlantı kopukken ham metne düşüş doğrulanır.
+- [x] Hata mesajları Türkçe ve anlaşılır (mikrofon yok, model yok, GPU yok, sunucu kapalı).
+- [x] Kapanışta geçici dosyalar silinir.
+- [x] Metin modeli yokken/bağlantı kopukken ham metne düşüş doğrulanır.
 
 ### Aşama 9 — v1.4: Magic UI arayüzü ve karanlık mod
 - [ ] Magic UI esintili görünüm, mevcut HTML/CSS/JS içinde CSS uyarlaması (MagicCard, ShineBorder, AnimatedList, DotPattern).
-- [ ] Karanlık mod: Sistem/Açık/Koyu; `<html class="dark">` + CSS değişkenleri; localStorage + settings.json.
+- [x] Karanlık mod: Sistem/Açık/Koyu; `<html class="dark">` + CSS değişkenleri; localStorage + settings.json.
 - [ ] `design/v2/` spec ve ekran görüntüleri; eski `design/` silinmez.
 - [ ] Erişilebilirlik: WCAG AA kontrast, `prefers-reduced-motion`.
 - Kanıt: açık/koyu 4 sayfa ekran görüntüsü, kontrast ve DOM testi.
@@ -120,7 +120,7 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (83 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (201 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

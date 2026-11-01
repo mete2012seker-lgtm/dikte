@@ -114,7 +114,7 @@ class FakeProcessor:
         return TextResult(self.result, kwargs.get("translate", True))
 
 
-def make_controller(engine=None, processor=None, secrets=None, clipper=None, text=None, model_lister=None):
+def make_controller(engine=None, processor=None, secrets=None, clipper=None, text=None, model_lister=None, paster=None):
     settings = SettingsStore(config.SETTINGS_FILE)
     controller = Controller(
         engine=engine or FakeEngine(),
@@ -128,6 +128,7 @@ def make_controller(engine=None, processor=None, secrets=None, clipper=None, tex
         secret_store=secrets or FakeSecrets(),
         text_processor=processor or FakeProcessor(),
         model_lister=model_lister,
+        paster=paster if paster is not None else (lambda: False),
     )
     controller.load_engine()
     return controller
@@ -354,3 +355,116 @@ def test_router_model_setting_is_reset_on_startup():
     controller = make_controller()
     assert controller.settings.get("openrouter_model") is None
     assert controller.snapshot()["ai"]["openrouter_model"] is None
+
+
+# ---------- metin modeli yönetimi ----------
+
+
+def test_text_model_download_rejects_unknown_name():
+    controller = make_controller()
+    result = controller.text_model_download("yok")
+    assert result["ok"] is False
+
+
+def test_text_model_download_reports_no_disk_space(monkeypatch):
+    controller = make_controller()
+    monkeypatch.setattr(controller, "_disk_free", lambda: 0)
+    result = controller.text_model_download("qwen3-4b")
+    assert result["ok"] is False
+    assert "yer" in result["message"]
+
+
+def test_pause_and_cancel_without_download_are_rejected():
+    controller = make_controller()
+    assert controller.text_model_pause("qwen3-4b")["ok"] is False
+    assert controller.text_model_cancel("qwen3-4b")["ok"] is False
+    assert controller.text_model_resume("qwen3-4b")["ok"] is False
+
+
+def test_activate_requires_downloaded_model():
+    controller = make_controller()
+    result = controller.text_model_activate("gemma3-4b")
+    assert result["ok"] is False
+    assert "indir" in result["message"].lower()
+
+
+def test_loaded_text_model_cannot_be_deleted():
+    controller = make_controller()
+    controller._text_runtime.model_name = "gemma3-4b"
+    result = controller.text_model_delete("gemma3-4b")
+    assert result["ok"] is False
+    assert "silinemez" in result["message"]
+
+
+def test_models_list_contains_text_items():
+    controller = make_controller()
+    data = controller.models_list()
+    assert "text_items" in data
+    assert {item["name"] for item in data["text_items"]} == {
+        "qwen3-1.7b", "qwen3-4b", "gemma3-4b", "llama32-3b",
+    }
+    assert data["local_text_available"] is False
+
+
+def test_theme_is_exposed_in_ai_payload():
+    controller = make_controller()
+    controller.settings.save(theme="dark")
+    assert controller.snapshot()["ai"]["theme"] == "dark"
+    assert controller.snapshot()["ai"]["effects"] is True
+
+
+def test_openrouter_without_model_gives_clear_error():
+    from dikte import text_engine
+
+    controller = make_controller(processor=text_engine.generate)
+    controller.settings.save(text_provider="openrouter", openrouter_model=None)
+    result = controller.clean_text("Merhaba dünya bugün.")
+    assert result["ok"] is False
+    assert result["code"] == "bad_response"
+    assert "model" in result["message"].lower()
+
+
+def test_refresh_last_prepares_whisper(monkeypatch):
+    controller = make_controller()
+    called = []
+    monkeypatch.setattr(controller, "_prepare_whisper", lambda: called.append(1))
+    path = Path(config.TEMP_DIR) / "last.wav"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"RIFF-test")
+    controller._last_recording = path
+    controller._seq = 1
+    controller._refresh_seq = 1
+
+    result = controller.refresh_last()
+    assert result["ok"] is True
+    assert called == [1]
+    assert controller.wait_until_ready(5)
+
+
+# ---------- otomatik yapıştırma ----------
+
+
+def test_auto_paste_called_after_dictation():
+    pasted = []
+    controller = make_controller(paster=lambda: (pasted.append(1), True)[1])
+    dictation(controller)
+    assert pasted == [1]
+    assert any(item["title"] == "Etkin pencereye yapıştırıldı" for item in controller.snapshot()["activity"])
+
+
+def test_auto_paste_can_be_disabled():
+    pasted = []
+    controller = make_controller(paster=lambda: (pasted.append(1), True)[1])
+    controller.settings.save(auto_paste=False)
+    dictation(controller)
+    assert pasted == []
+
+
+def test_auto_paste_failure_does_not_break_dictation():
+    def boom():
+        raise RuntimeError("tuş yok")
+
+    controller = make_controller(paster=boom)
+    dictation(controller)
+    assert controller.snapshot()["latest_text"] == "Merhaba dünya bugün güzel"
+    assert controller.snapshot()["state"] == READY

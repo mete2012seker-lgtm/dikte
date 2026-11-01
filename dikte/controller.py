@@ -18,7 +18,10 @@ from .engine import EngineError, TranscriptionEngine
 from .history import HistoryError, HistoryStore
 from .hotkey import HotkeyError, HotkeyListener
 from .models import ModelError, ModelManager, get_model
+from .paste import paste_if_allowed
 from .secrets import SecretError, SecretStore, mask as mask_key
+from . import text_models
+from .text_models import LocalTextModel
 from .settings import (
     AUTO_MODEL,
     DEFAULT_HOTKEY,
@@ -81,6 +84,8 @@ class Controller:
         secret_store=None,
         text_processor=None,
         model_lister=None,
+        text_downloader=None,
+        paster=None,
     ) -> None:
         self.engine = engine if engine is not None else TranscriptionEngine()
         self.recorder = recorder if recorder is not None else AudioRecorder()
@@ -90,6 +95,8 @@ class Controller:
         self.secrets = secret_store if secret_store is not None else SecretStore()
         self._text_processor = text_processor or text_engine.generate
         self._model_lister = model_lister or openrouter.list_models
+        self._text_downloader = text_downloader or text_models.Downloader()
+        self._paster = paster or paste_if_allowed
         self.hotkey = (
             hotkey
             if hotkey is not None
@@ -118,6 +125,12 @@ class Controller:
         self._models_cache: tuple[float, dict | None] = (0.0, None)
         self._download: dict | None = None
         self._download_thread: threading.Thread | None = None
+        self._text_download: dict | None = None
+        self._text_download_thread: threading.Thread | None = None
+        self._text_pause = threading.Event()
+        self._text_cancel = threading.Event()
+        self._text_runtime = LocalTextModel()
+        self._whisper_loaded = False
         self._last_recording: Path | None = None
         self._startup_notes: list[tuple[str, str, str]] = []
         self._key_cache: tuple[bool, str | None] | None = None
@@ -204,7 +217,7 @@ class Controller:
 
     def load_engine(self) -> None:
         with self._lock:
-            if self._info is not None:
+            if self._whisper_loaded:
                 return
         try:
             info = self.engine.load()
@@ -219,6 +232,7 @@ class Controller:
 
         with self._lock:
             self._info = info
+            self._whisper_loaded = True
             self._error = None
             self._set_state(READY)
             self._add_activity(
@@ -235,6 +249,27 @@ class Controller:
                 self._add_activity("GPU kullanılamadı", "CPU modu (small, int8)", "warn")
         logger.info("Model hazır: %s (%s)", info.model_label, info.device)
 
+    def _unload_whisper(self) -> None:
+        if not self._whisper_loaded:
+            return
+        try:
+            self.engine.unload()
+        except Exception:
+            logger.warning("Ses modeli boşaltılamadı", exc_info=True)
+        self._whisper_loaded = False
+
+    def _prepare_whisper(self) -> None:
+        """Dikte başlamadan önce metin modelini boşaltıp ses modelini yükler."""
+        if self._text_runtime.model_name:
+            self._text_runtime.unload()
+            with self._lock:
+                self._add_activity("Metin modeli bellekten boşaltıldı", "Dikte için yer açıldı.", "info")
+        if not self._whisper_loaded:
+            with self._lock:
+                if self._machine.state == READY:
+                    self._set_state(LOADING)
+            self.load_engine()
+
     def shutdown(self) -> None:
         with self._lock:
             if self._closed:
@@ -246,6 +281,10 @@ class Controller:
             pass
         try:
             self.recorder.cancel()
+        except Exception:
+            pass
+        try:
+            self._text_runtime.unload()
         except Exception:
             pass
         self._remove_last_recording()
@@ -283,7 +322,17 @@ class Controller:
                     else "İşleniyor, bitince tekrar dene."
                 )
                 return {"ok": False, "state": state, "message": message}
-            return self._start_recording()
+
+        # Metin modeli yüklüyse boşaltıp ses modelini geri getir (VRAM takası).
+        self._prepare_whisper()
+        with self._lock:
+            if self._machine.state != READY:
+                return {
+                    "ok": False,
+                    "state": self._machine.state,
+                    "message": self._error or "Ses modeli hazır değil.",
+                }
+        return self._start_recording()
 
     def _start_recording(self) -> dict:
         with self._lock:
@@ -391,6 +440,13 @@ class Controller:
 
             text = self._auto_ai_text(text)
 
+            pasted = False
+            if bool(self.settings.get("auto_paste", True)):
+                try:
+                    pasted = bool(self._paster())
+                except Exception as exc:
+                    logger.warning("Otomatik yapıştırma hatası: %s", exc)
+
             with self._lock:
                 self._latest = text
                 self._seq += 1
@@ -405,6 +461,8 @@ class Controller:
                 )
                 if not copy_ok:
                     self._add_activity("Panoya kopyalanamadı", "Kopyala düğmesini dene.", "err")
+                if pasted:
+                    self._add_activity("Etkin pencereye yapıştırıldı", "Otomatik yapıştırma açık.", "info")
                 model_name = self._info.model_name if self._info else ""
 
             record_id = self._save_history_record(text, recording.duration, model_name)
@@ -451,6 +509,14 @@ class Controller:
             if not path or not Path(path).exists() or self._seq != self._refresh_seq:
                 return {"ok": False, "message": "Yenilenecek kayıt yok."}
             self._error = None
+        self._prepare_whisper()
+        with self._lock:
+            if self._machine.state != READY:
+                return {
+                    "ok": False,
+                    "state": self._machine.state,
+                    "message": self._error or "Ses modeli hazır değil.",
+                }
             self._set_state(PROCESSING)
         self._worker = threading.Thread(
             target=self._refresh_worker,
@@ -620,11 +686,35 @@ class Controller:
                 download and download.get("name") == name and download.get("state") == "downloading"
             )
             items.append(item)
+
+        text_items = text_models.scan()
+        with self._lock:
+            text_download = dict(self._text_download) if self._text_download else None
+            text_active = str(self.settings.get("text_model", ""))
+            text_loaded = self._text_runtime.model_name
+        for item in text_items:
+            item["active"] = bool(item["installed"] and item["name"] == text_active)
+            item["loaded"] = item["name"] == text_loaded
+            item["downloading"] = bool(
+                text_download
+                and text_download.get("name") == item["name"]
+                and text_download.get("state") in ("downloading", "pausing")
+            )
+            item["paused"] = bool(
+                text_download
+                and text_download.get("name") == item["name"]
+                and text_download.get("state") == "paused"
+            )
+        active_text = next((item for item in text_items if item["active"]), None)
         return {
             "items": items,
+            "text_items": text_items,
             "active_model": active or AUTO_MODEL,
+            "active_text_model": active_text["name"] if active_text else None,
             "device": device,
             "download": download,
+            "text_download": text_download,
+            "local_text_available": LocalTextModel.available(),
         }
 
     def model_download(self, name: str) -> dict:
@@ -728,11 +818,14 @@ class Controller:
         return {"ok": True, "state": LOADING}
 
     def _activate_worker(self, name: str, old_model: str | None) -> None:
+        if self._text_runtime.model_name:
+            self._text_runtime.unload()
         try:
             if hasattr(self.engine, "set_model"):
                 self.engine.set_model(name)
             if hasattr(self.engine, "unload"):
                 self.engine.unload()
+            self._whisper_loaded = False
             info = self.engine.load()
         except Exception as exc:
             logger.error("Model değiştirilemedi: %s", exc)
@@ -751,6 +844,7 @@ class Controller:
             with self._lock:
                 if reverted:
                     self._info = info
+                    self._whisper_loaded = True
                     self._error = None
                     self._set_state(READY)
                     self._add_activity(
@@ -771,6 +865,7 @@ class Controller:
             logger.warning("Aktif model ayarı kaydedilemedi", exc_info=True)
         with self._lock:
             self._info = info
+            self._whisper_loaded = True
             self._error = None
             self._set_state(READY)
             self._add_activity(
@@ -794,6 +889,203 @@ class Controller:
         with self._lock:
             self._add_activity("Model silindi", name, "info")
         return {"ok": True, "message": f"{name} silindi."}
+
+    # ---------- metin modelleri ----------
+
+    def _disk_free(self) -> int:
+        path = text_models.models_dir()
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            return shutil.disk_usage(path).free
+        except Exception:
+            return 1 << 62
+
+    def text_model_download(self, name: str) -> dict:
+        try:
+            spec = text_models.get_text_model(name)
+        except text_models.TextModelError as exc:
+            return {"ok": False, "message": str(exc)}
+        if text_models.is_installed(name):
+            return {"ok": False, "message": "Bu metin modeli zaten indirilmiş."}
+        with self._lock:
+            if self._text_download and self._text_download.get("state") in ("downloading", "pausing"):
+                return {"ok": False, "message": "Başka bir metin modeli indiriliyor, lütfen bekle."}
+        if self._disk_free() < spec.size_bytes + 200 * 1024**2:
+            return {"ok": False, "message": "Diskte yeterli yer yok."}
+
+        self._text_pause.clear()
+        self._text_cancel.clear()
+        with self._lock:
+            self._text_download = {
+                "name": name,
+                "label": spec.label,
+                "state": "downloading",
+                "bytes": text_models.partial_bytes(name),
+                "total": spec.size_bytes,
+                "percent": 0,
+                "error": None,
+            }
+        self._start_text_download(name)
+        return {"ok": True, "message": f"{spec.label} indiriliyor."}
+
+    def _start_text_download(self, name: str) -> None:
+        self._text_download_thread = threading.Thread(
+            target=self._text_download_worker, args=(name,), name="metin-indir", daemon=True
+        )
+        self._text_download_thread.start()
+
+    def _text_download_worker(self, name: str) -> None:
+        def on_progress(written: int) -> None:
+            with self._lock:
+                download = self._text_download
+                if not download or download.get("name") != name:
+                    return
+                download["bytes"] = written
+                total = download.get("total") or 0
+                if total:
+                    download["percent"] = max(0, min(99, int(written / total * 100)))
+
+        try:
+            result = self._text_downloader.download(
+                name,
+                progress=on_progress,
+                pause_event=self._text_pause,
+                cancel_event=self._text_cancel,
+            )
+        except Exception as exc:
+            logger.warning("Metin modeli indirilemedi: %s", exc)
+            with self._lock:
+                if self._text_download and self._text_download.get("name") == name:
+                    self._text_download["state"] = "error"
+                    self._text_download["error"] = str(exc)
+                self._add_activity("Metin modeli indirilemedi", f"{name}: {exc}", "err")
+            self._models_cache = (0.0, None)
+            return
+
+        with self._lock:
+            download = self._text_download
+            if download and download.get("name") == name:
+                download["bytes"] = result.get("size", download.get("bytes", 0))
+                if result.get("completed"):
+                    download["state"] = "done"
+                    download["percent"] = 100
+                    self._add_activity("Metin modeli indirildi", name, "ok")
+                elif result.get("paused"):
+                    download["state"] = "paused"
+                elif result.get("cancelled"):
+                    download["state"] = "cancelled"
+                    download["percent"] = 0
+        if result.get("cancelled"):
+            try:
+                text_models.delete_part(name)
+            except text_models.TextModelError:
+                pass
+        self._models_cache = (0.0, None)
+
+    def text_model_pause(self, name: str) -> dict:
+        with self._lock:
+            download = self._text_download
+            if not download or download.get("name") != name or download.get("state") != "downloading":
+                return {"ok": False, "message": "Bu model indirilmiyor."}
+            download["state"] = "pausing"
+        self._text_pause.set()
+        return {"ok": True, "message": "Duraklatılıyor…"}
+
+    def text_model_resume(self, name: str) -> dict:
+        with self._lock:
+            download = self._text_download
+            if not download or download.get("name") != name or download.get("state") != "paused":
+                return {"ok": False, "message": "Devam edecek bir indirme yok."}
+            download["state"] = "downloading"
+            total = download.get("total") or 0
+            if total:
+                download["percent"] = max(0, min(99, int(download.get("bytes", 0) / total * 100)))
+        self._text_pause.clear()
+        self._text_cancel.clear()
+        self._start_text_download(name)
+        return {"ok": True, "message": "İndirme devam ediyor."}
+
+    def text_model_cancel(self, name: str) -> dict:
+        with self._lock:
+            download = self._text_download
+            if not download or download.get("name") != name or download.get("state") not in (
+                "downloading", "pausing", "paused"
+            ):
+                return {"ok": False, "message": "İptal edilecek indirme yok."}
+            paused = download.get("state") == "paused"
+            download["state"] = "cancelled"
+            download["percent"] = 0
+        if paused:
+            try:
+                text_models.delete_part(name)
+            except text_models.TextModelError:
+                pass
+        else:
+            self._text_cancel.set()
+            self._text_pause.clear()
+        return {"ok": True, "message": "İndirme iptal edildi."}
+
+    def text_model_activate(self, name: str) -> dict:
+        try:
+            spec = text_models.get_text_model(name)
+        except text_models.TextModelError as exc:
+            return {"ok": False, "message": str(exc)}
+        if not text_models.is_installed(name):
+            return {"ok": False, "message": "Önce modeli indir."}
+        if not LocalTextModel.available():
+            return {
+                "ok": False,
+                "message": "Yerel metin motoru (llama.cpp) kurulu değil. OpenRouter sağlayıcısını kullanabilirsin.",
+            }
+        with self._lock:
+            if self._machine.state != READY:
+                return {"ok": False, "message": "Şu anda model değiştirilemez, lütfen bekle."}
+            self._set_state(LOADING)
+        try:
+            self._unload_whisper()
+            device = self._text_runtime.load(name, prefer_gpu=True)
+        except Exception as exc:
+            logger.warning("Metin modeli yüklenemedi: %s", exc)
+            with self._lock:
+                self._set_state(READY)
+                self._add_activity("Metin modeli yüklenemedi", str(exc), "err")
+            return {"ok": False, "message": str(exc) or "Metin modeli yüklenemedi."}
+
+        try:
+            self.settings.save(text_model=name)
+        except SettingsError:
+            logger.warning("Metin modeli ayarı kaydedilemedi", exc_info=True)
+        with self._lock:
+            self._set_state(READY)
+            self._add_activity("Metin modeli yüklendi", f"{spec.label} · {device}", "ok")
+        self._models_cache = (0.0, None)
+        return {"ok": True, "message": f"{spec.label} yüklendi ({device})."}
+
+    def text_model_delete(self, name: str) -> dict:
+        if self._text_runtime.model_name == name:
+            return {"ok": False, "message": "Yüklü metin modeli silinemez. Önce başka model seç."}
+        with self._lock:
+            if self._text_download and self._text_download.get("name") == name and self._text_download.get("state") in (
+                "downloading", "pausing"
+            ):
+                return {"ok": False, "message": "İndirme sürerken model silinemez."}
+        try:
+            text_models.delete(name)
+        except text_models.TextModelError as exc:
+            return {"ok": False, "message": str(exc)}
+        self._models_cache = (0.0, None)
+        return {"ok": True, "message": f"{name} silindi."}
+
+    def text_model_open_folder(self, name: str = "") -> dict:
+        try:
+            folder = text_models.models_dir()
+            folder.mkdir(parents=True, exist_ok=True)
+            if os.name == "nt":
+                os.startfile(str(folder))  # noqa: S606
+            return {"ok": True, "message": str(folder)}
+        except Exception as exc:
+            logger.warning("Klasör açılamadı: %s", exc)
+            return {"ok": False, "message": "Klasör açılamadı."}
 
     # ---------- ayarlar ----------
 
@@ -899,10 +1191,15 @@ class Controller:
             "input_language": str(self.settings.get("input_language", "auto")),
             "auto_paste": bool(self.settings.get("auto_paste", True)),
             "text_model": str(self.settings.get("text_model", "")),
+            "text_model_loaded": self._text_runtime.model_name,
+            "text_model_device": self._text_runtime.device,
+            "local_text_available": LocalTextModel.available(),
             "openrouter_model": self.settings.get("openrouter_model"),
             "openrouter_show_all": bool(self.settings.get("openrouter_show_all", False)),
             "system_prompt": str(self.settings.get("system_prompt", config.DEFAULT_SYSTEM_PROMPT)),
             "default_system_prompt": config.DEFAULT_SYSTEM_PROMPT,
+            "theme": str(self.settings.get("theme", "system")),
+            "effects": bool(self.settings.get("effects", True)),
             "key_set": bool(key),
             "key_masked": mask_key(key) if key else None,
         }
@@ -1072,8 +1369,10 @@ class Controller:
 
     def _process_text(self, text: str, translate: bool) -> "text_engine.TextResult":
         provider = self._provider()
+        if provider == "local":
+            return self._local_process_text(text, translate)
         key = self._openrouter_key() if provider == "openrouter" else None
-        model = self.settings.get("openrouter_model") or self.settings.get("text_model")
+        model = self.settings.get("openrouter_model") if provider == "openrouter" else None
         return self._text_processor(
             text,
             target_language=str(self.settings.get("output_language", "tr")),
@@ -1082,6 +1381,44 @@ class Controller:
             api_key=key,
             model=model,
             system_prompt=str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT),
+        )
+
+    def _local_process_text(self, text: str, translate: bool) -> "text_engine.TextResult":
+        name = str(self.settings.get("text_model", ""))
+        try:
+            spec = text_models.get_text_model(name)
+        except text_models.TextModelError as exc:
+            raise text_engine.TextEngineError("local_missing") from exc
+        if not text_models.is_installed(name):
+            raise text_engine.TextEngineError("local_missing")
+        if not LocalTextModel.available():
+            raise text_engine.TextEngineError(
+                "local_load", "Yerel metin motoru (llama.cpp) kurulu değil. OpenRouter sağlayıcısını seç."
+            )
+        if self._text_runtime.model_name != name:
+            self._unload_whisper()
+            try:
+                device = self._text_runtime.load(name, prefer_gpu=True)
+            except Exception as exc:
+                raise text_engine.TextEngineError("local_load") from exc
+            with self._lock:
+                self._add_activity("Metin modeli yüklendi", f"{spec.label} · {device}", "info")
+
+        target = str(self.settings.get("output_language", "tr"))
+        prompt = str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT)
+        messages = text_engine.build_messages(text, target, translate, prompt)
+        raw = self._text_runtime.generate(
+            messages[0]["content"], messages[1]["content"], max_tokens=512
+        )
+        candidate = text_engine.strip_response(raw)
+        text_engine.validate_output(text, candidate, translate, target)
+        same = (
+            translate
+            and text_engine.count_words(text) >= 3
+            and candidate.strip().lower() == text.strip().lower()
+        )
+        return text_engine.TextResult(
+            text=candidate, translated=bool(translate) and not same, unchanged=same
         )
 
     def _auto_ai_text(self, text: str) -> str:

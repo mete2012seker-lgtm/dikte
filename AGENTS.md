@@ -78,6 +78,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Dil: Python 3.12.10. Yazıya çevirme: faster-whisper, yerel.
 - Model: GPU çalışırsa seçili model + float16, çökerse aynı model CPU/int8, olmazsa small + int8.
 - Ses modeli listesi (6 adet): tiny, base, small, medium, large-v3, large-v3-turbo. İndirme, aktifleştirme ve silme uygulama içinden yapılır; aktif model `settings.json`'da saklanır. v1.3'te Metin Modelleri ayrı sekme olarak eklenir.
+- Metin modeli listesi (4 adet): `qwen3-1.7b`, `qwen3-4b` (varsayılan), `gemma3-4b`, `llama32-3b`; Hugging Face'ten `.part` + Range ile indirilir, duraklat/devam/iptal vardır; çalıştırmak için `llama-cpp-python` gerekir.
 - Kısayol: varsayılan Sağ Ctrl; ayarlardan hazır listeden seçilir (Sağ/Sol Ctrl, Sağ/Sol Alt, F8/F9/F10). v1.2'de çıktı yalnızca panoya; v1.3'te panoya + etkin pencereye otomatik yapıştırma.
 - Geçmiş: son 500 kayıt `data/history.json`; ayarlarda kapatılınca yeni kayıt yazılmaz, eski kayıtlar gizlenir (arşivde kalır). Arama/filtre/Aç/Kopyala/Sil vardır.
 - "Transkripsiyonu Yenile" son kaydın sesini tekrar çevirir, son paragrafı değiştirir. Ses `%TEMP%\dikte\last.wav` olarak yalnız uygulama açıkken tutulur.
@@ -96,6 +97,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **v1.5 kapsamı (onaylı):** PyInstaller + Inno Setup kurucu; veriler `%LOCALAPPDATA%\Dikte`; kısayollar; isteğe bağlı otomatik başlatma. Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, tüm verileri siler.
 - **v1.6 kapsamı (2026-11-01 onaylı):** Otomatik güncelleme. Açılışta sessiz sürüm denetimi (kapatılabilir); Ayarlar'da "Güncelleme" kartı ve "Uygulamayı Güncelle" butonu; `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → özet doğrulama → Inno Setup kurucusunu sessiz çalıştırma → yeniden açılış. Ağ/indirme hatasında Türkçe uyarı, uygulama çalışmaya devam eder. Depo özel olduğu için yayın yerinin (herkese açık Releases ya da statik sunucu) 11. aşama başında seçilmesi gerekiyor.
 - **Metin sağlayıcısı varsayılanı `none` (2026-11-01 onaylı):** İlk açılışta Temizle/Çevir kapalı; kullanıcı Ayarlar → Yapay Zeka'dan Yerel veya OpenRouter seçmeden çalışmaz. Otomatik yapıştırma varsayılan açık.
+- **Açık tema (2026-11-01 onaylı):** Zemin `#F7F9FD`, kart `#FFFFFF`, ana yazı `#101828`, vurgu `#3D5BF5`; tema düğmesi `Aktif model` kartının üstünde, View Transitions + circle clip-path (400 ms).
 - **Kurucu paketi (2026-11-01 onaylı):** Tek CPU kurucu; CUDA bileşeni paketlenmez (GPU isteğe bağlı ayrı iş).
 - **Goal bölünmesi (2026-11-01 onaylı):** İlk koşu parti 1–5, sonra 6–10, sonra 11–13; her koşu sonunda test kanıtı ve kullanıcı testi.
 

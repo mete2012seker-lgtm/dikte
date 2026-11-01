@@ -130,6 +130,7 @@ def make_controller(**kwargs):
             "percent": 40.0,
         },
         load_in_background=False,
+        paster=lambda: False,
         **kwargs,
     )
     controller.load_engine()

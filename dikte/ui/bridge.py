@@ -83,6 +83,29 @@ class Api:
     def model_delete(self, name: str) -> dict:
         return self._controller.model_delete(name)
 
+    # ---------- metin modelleri ----------
+
+    def text_model_download(self, name: str) -> dict:
+        return self._controller.text_model_download(name)
+
+    def text_model_pause(self, name: str) -> dict:
+        return self._controller.text_model_pause(name)
+
+    def text_model_resume(self, name: str) -> dict:
+        return self._controller.text_model_resume(name)
+
+    def text_model_cancel(self, name: str) -> dict:
+        return self._controller.text_model_cancel(name)
+
+    def text_model_activate(self, name: str) -> dict:
+        return self._controller.text_model_activate(name)
+
+    def text_model_delete(self, name: str) -> dict:
+        return self._controller.text_model_delete(name)
+
+    def text_model_open_folder(self, name: str = "") -> dict:
+        return self._controller.text_model_open_folder(name)
+
     # ---------- ayarlar ----------
 
     def settings_get(self) -> dict:

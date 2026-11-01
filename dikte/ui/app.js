@@ -62,6 +62,7 @@
   let selectedModel = null;
   let modelsSignature = "";
   let lastNotifiedDownload = "";
+  let modelTab = "text";
 
   let settingsState = null;
   let settingsDirty = false;
@@ -95,6 +96,99 @@
   function hasApi(name) {
     return api && typeof api[name] === "function";
   }
+
+  /* ---------- tema ---------- */
+
+  const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+  let themeMode = document.documentElement.getAttribute("data-theme-mode") || "system";
+  let themeTransitioning = false;
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function resolvedTheme(mode) {
+    if (mode === "dark") return "dark";
+    if (mode === "light") return "light";
+    return themeMedia.matches ? "dark" : "light";
+  }
+
+  function paintTheme(mode) {
+    const resolved = resolvedTheme(mode);
+    const root = document.documentElement;
+    root.classList.toggle("dark", resolved === "dark");
+    root.classList.toggle("light", resolved === "light");
+    root.setAttribute("data-theme-mode", mode);
+  }
+
+  function updateThemeControls() {
+    const dark = document.documentElement.classList.contains("dark");
+    const toggle = $("#themeToggle");
+    if (toggle) {
+      const use = toggle.querySelector("use");
+      if (use) use.setAttribute("href", dark ? "#i-sun" : "#i-moon");
+      toggle.setAttribute("aria-pressed", dark ? "true" : "false");
+      toggle.title = dark ? "Açık temaya geç" : "Koyu temaya geç";
+    }
+    $$("[data-theme-choice]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.themeChoice === themeMode);
+    });
+  }
+
+  function setTheme(mode, persist) {
+    themeMode = ["system", "light", "dark"].includes(mode) ? mode : "system";
+    paintTheme(themeMode);
+    try {
+      localStorage.setItem("theme", themeMode);
+    } catch (error) {}
+    updateThemeControls();
+    if (persist && hasApi("ai_settings_save")) saveAi({ theme: themeMode });
+  }
+
+  function toggleTheme(anchor) {
+    if (themeTransitioning) return;
+    const root = document.documentElement;
+    const next = root.classList.contains("dark") ? "light" : "dark";
+    const apply = () => setTheme(next, true);
+    if (!document.startViewTransition || prefersReducedMotion()) {
+      apply();
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const x = (cx / window.innerWidth) * 100;
+    const y = (cy / window.innerHeight) * 100;
+    const radius = Math.hypot(
+      Math.max(cx, window.innerWidth - cx),
+      Math.max(cy, window.innerHeight - cy)
+    );
+    const base = Math.hypot(window.innerWidth, window.innerHeight) / Math.SQRT2;
+    const percent = (radius / base) * 100;
+    themeTransitioning = true;
+    const transition = document.startViewTransition(apply);
+    transition.ready
+      .then(() => {
+        root.animate(
+          { clipPath: [`circle(0% at ${x}% ${y}%)`, `circle(${percent}% at ${x}% ${y}%)`] },
+          {
+            duration: 400,
+            easing: "ease-in-out",
+            fill: "forwards",
+            pseudoElement: "::view-transition-new(root)",
+          }
+        );
+      })
+      .catch(() => {});
+    transition.finished.finally(() => {
+      themeTransitioning = false;
+    });
+  }
+
+  themeMedia.addEventListener("change", () => {
+    if (themeMode === "system") paintTheme("system");
+  });
+  updateThemeControls();
 
   function formatDuration(seconds) {
     const total = Math.max(0, Math.round(Number(seconds) || 0));
@@ -513,11 +607,189 @@
     return { text: "İndirilmedi", cls: "muted" };
   }
 
+  function textStatus(item) {
+    if (item.downloading) return { text: "İndiriliyor", cls: "busy" };
+    if (item.paused) return { text: "Duraklatıldı", cls: "busy" };
+    if (item.loaded) return { text: "Yüklü", cls: "" };
+    if (item.active) return { text: "Aktif", cls: "" };
+    if (item.installed) return { text: "İndirildi", cls: "" };
+    if (item.partial) return { text: "Yarım indirme", cls: "busy" };
+    return { text: "İndirilmedi", cls: "muted" };
+  }
+
+  function renderTextModels(list, items) {
+    const panel = $("#detailPanel");
+    const descPanel = $("#descPanel");
+    if (panel) panel.style.display = "none";
+    if (descPanel) descPanel.innerHTML = "";
+    const note = $("#localEngineNote");
+    if (note) note.hidden = Boolean(modelsState && modelsState.local_text_available);
+
+    const query = ($("#modelSearch").value || "").toLocaleLowerCase("tr");
+    const visible = items.filter((item) =>
+      !query || (item.label + " " + item.desc).toLocaleLowerCase("tr").includes(query)
+    );
+
+    list.innerHTML = "";
+    if (!visible.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Aramanla eşleşen model yok.";
+      list.appendChild(empty);
+      return;
+    }
+
+    const download = modelsState && modelsState.text_download;
+
+    visible.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "m-card";
+      card.dataset.name = item.name;
+
+      const icon = document.createElement("div");
+      icon.className = "m-ico";
+      icon.innerHTML = '<svg class="ic"><use href="#i-spark"/></svg>';
+
+      const main = document.createElement("div");
+      main.className = "m-main";
+      const name = document.createElement("div");
+      name.className = "m-name";
+      name.textContent = item.label;
+      const desc = document.createElement("div");
+      desc.className = "m-desc";
+      desc.textContent = item.desc;
+      const tags = document.createElement("div");
+      tags.className = "m-tags";
+      (item.tags || []).slice(0, 3).forEach((tag) => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.textContent = tag;
+        tags.appendChild(span);
+      });
+      main.append(name, desc, tags);
+
+      const isDownloading = download && download.name === item.name;
+      if (isDownloading && (download.state === "downloading" || download.state === "pausing")) {
+        const wrap = document.createElement("div");
+        wrap.className = "dl-wrap";
+        const bar = document.createElement("div");
+        bar.className = "dl-bar";
+        const fill = document.createElement("i");
+        fill.style.width = Math.max(1, download.percent || 0) + "%";
+        bar.appendChild(fill);
+        const text = document.createElement("span");
+        text.className = "dl-text";
+        text.textContent = "%" + (download.percent || 0);
+        wrap.append(bar, text);
+        main.appendChild(wrap);
+      }
+
+      const size = document.createElement("div");
+      size.className = "m-size";
+      size.textContent = item.installed ? item.size_label : item.approx_label;
+      const quant = document.createElement("small");
+      quant.textContent = item.installed ? "diskte" : "indirme";
+      size.appendChild(quant);
+
+      const status = textStatus(item);
+      const statusBox = document.createElement("div");
+      statusBox.className = "m-status " + status.cls;
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      statusBox.append(dot, document.createTextNode(status.text));
+
+      const actions = document.createElement("div");
+      actions.className = "m-actions";
+
+      const state = isDownloading ? download.state : null;
+      if (state === "downloading" || state === "pausing") {
+        const pause = document.createElement("button");
+        pause.className = "m-btn";
+        pause.textContent = "Duraklat";
+        pause.addEventListener("click", () => textModelAction("text_model_pause", item.name));
+        const cancel = document.createElement("button");
+        cancel.className = "m-btn";
+        cancel.textContent = "İptal";
+        cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+        actions.append(pause, cancel);
+      } else if (state === "paused") {
+        const resume = document.createElement("button");
+        resume.className = "m-btn primary";
+        resume.textContent = "Devam et";
+        resume.addEventListener("click", () => textModelAction("text_model_resume", item.name));
+        const cancel = document.createElement("button");
+        cancel.className = "m-btn";
+        cancel.textContent = "İptal";
+        cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+        actions.append(resume, cancel);
+      } else if (item.installed) {
+        const activate = document.createElement("button");
+        activate.className = "m-btn";
+        if (item.active || item.loaded) {
+          activate.classList.add("is-active");
+          activate.textContent = item.loaded ? "Yüklü" : "Aktif";
+          activate.disabled = true;
+        } else {
+          activate.classList.add("primary");
+          activate.textContent = "Aktifleştir";
+          activate.addEventListener("click", () => textModelAction("text_model_activate", item.name));
+        }
+        actions.appendChild(activate);
+      } else {
+        const downloadBtn = document.createElement("button");
+        downloadBtn.className = "m-btn primary";
+        downloadBtn.textContent = item.partial ? "Devam et" : "İndir";
+        downloadBtn.addEventListener("click", () => textModelAction("text_model_download", item.name));
+        actions.appendChild(downloadBtn);
+      }
+
+      if (item.installed || item.partial) {
+        const remove = document.createElement("button");
+        remove.className = "icon-btn";
+        remove.title = "Modeli sil";
+        remove.setAttribute("aria-label", "Modeli sil");
+        remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
+        remove.disabled = item.downloading || item.loaded;
+        remove.addEventListener("click", () => {
+          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
+          textModelAction("text_model_delete", item.name);
+        });
+        actions.appendChild(remove);
+      }
+
+      card.append(icon, main, size, statusBox, actions);
+      list.appendChild(card);
+    });
+  }
+
+  async function textModelAction(method, name) {
+    if (!hasApi(method)) return;
+    try {
+      const result = await api[method](name);
+      if (result && result.message) toast(result.message, result.ok ? "info" : "warn");
+    } catch (error) {
+      toast("İşlem yapılamadı.", "error");
+    }
+    loadModels();
+  }
+
   function renderModels() {
     const list = $("#modelList");
     if (!list) return;
-    const items = (modelsState && modelsState.items) || [];
+    const isText = modelTab === "text";
+    const items = isText
+      ? ((modelsState && modelsState.text_items) || [])
+      : ((modelsState && modelsState.items) || []);
     $("#modelCount").textContent = items.length + " model";
+    const title = $("#listTitle");
+    if (title) title.textContent = isText ? "Metin Modelleri" : "Ses Modelleri";
+    if (isText) {
+      renderTextModels(list, items);
+      return;
+    }
+    const panel = $("#detailPanel");
+    const descPanel = $("#descPanel");
+    if (panel && modelsState) panel.style.display = "";
 
     const query = ($("#modelSearch").value || "").toLocaleLowerCase("tr");
     const visible = items.filter((item) =>
@@ -731,8 +1003,16 @@
       const result = await api.models_list();
       modelsState = result || null;
       const signature = JSON.stringify({
+        tab: modelTab,
         items: (result.items || []).map((item) => [item.name, item.active, item.installed, item.partial, item.size_bytes]),
+        text: (result.text_items || []).map((item) => [
+          item.name, item.installed, item.partial, item.active, item.loaded,
+          item.bytes, item.downloading, item.paused,
+        ]),
         download: result.download ? [result.download.name, result.download.state, result.download.percent] : null,
+        textDownload: result.text_download
+          ? [result.text_download.name, result.text_download.state, result.text_download.percent]
+          : null,
       });
       if (signature !== modelsSignature) {
         modelsSignature = signature;
@@ -809,6 +1089,18 @@
   }
 
   $("#modelSearch").addEventListener("input", renderModels);
+
+  $$("[data-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      modelTab = button.dataset.tab;
+      $$("[data-tab]").forEach((item) => {
+        const active = item === button;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      renderModels();
+    });
+  });
 
   /* ---------- yapay zeka ---------- */
 
@@ -1109,6 +1401,14 @@
     }
   });
 
+  const themeToggleBtn = $("#themeToggle");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => toggleTheme(themeToggleBtn));
+  }
+  $$("[data-theme-choice]").forEach((button) => {
+    button.addEventListener("click", () => setTheme(button.dataset.themeChoice, true));
+  });
+
   /* ---------- ayarlar ---------- */
 
   function markDirty() {
@@ -1179,6 +1479,7 @@
       if (data.ai) {
         applyAi(Object.assign({}, data.ai, { state: data.state }));
         syncAiControls(data.ai);
+        setTheme(data.ai.theme || "system", false);
         if (data.ai.provider === "openrouter") loadOpenRouterModels(false);
       }
       settingsDirty = false;

@@ -34,4 +34,12 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **API anahtarı güvenliği:** Anahtar düz metin dosyada durmaz; Windows DPAPI ile şifrelenir. Böylece başka kullanıcı veya kopya bilgisayar anahtarı okuyamaz.
 5. **İndirme duraklatma:** HTTP `Range` ve `.part` dosyası ile indirme kaldığı yerden devam eder. Bu yüzden "iptal" ile "duraklat" farklıdır: iptal yarım dosyayı siler.
 
+## 2026-11-01 — metin modelleri, otomatik yapıştırma ve tema
+
+1. **"Boş yanıt" hatası modelde değil ayarda olabilir:** Düşünen (reasoning) modeller muhakemeye token harcayıp metni boş bırakır. Token sınırını büyütmek ve yönlendirici (`openrouter/auto`) kimlikleri listeden çıkarmak sorunu çözdü.
+2. **Modelin çıktısına güvenilmez:** Bazı modeller metnin başına "İşte çeviri:" gibi açıklama ekler. Kod, tırnak içindeki son metni çıkarır; ikinci denemede daha sert bir talimat gönderir.
+3. **Çeviri kontrolü:** Çıktının hedef dilde olup olmadığı basit kelime ipuçlarıyla (tr/en/de) denetlenir. Yanlış dilde kalan yanıt kabul edilmez, tekrar denenir.
+4. **`.part` + `Range`:** İndirmeyi duraklatmak, dosyayı kapatıp son baytı hatırlamak demektir; devam ederken sunucuya "buradan devam et" denir. Boyut uyuşmazsa dosya baştan indirilir.
+5. **Tema geçişi:** `document.startViewTransition` + `clip-path: circle()` ile yeni tema düğmeden büyüyen daireyle açılır. Tarayıcı desteklemezse sınıf anında değişir; `prefers-reduced-motion` açıksa animasyon yapılmaz.
+
 
