@@ -2,6 +2,7 @@ import pytest
 
 from dikte.state import (
     ALLOWED,
+    CLEANING,
     ERROR,
     LOADING,
     PROCESSING,
@@ -60,4 +61,16 @@ def test_invalid_transitions(start, target):
 
 
 def test_transition_table_is_complete():
-    assert set(ALLOWED) == {LOADING, READY, RECORDING, PROCESSING, ERROR}
+    assert set(ALLOWED) == {LOADING, READY, RECORDING, PROCESSING, CLEANING, ERROR}
+
+
+def test_cleaning_roundtrip():
+    machine = StateMachine(READY)
+    machine.set(CLEANING)
+    machine.set(READY)
+    assert machine.state == READY
+
+
+def test_cleaning_rejects_recording():
+    machine = StateMachine(CLEANING)
+    assert not machine.can(RECORDING)

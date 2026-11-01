@@ -22,12 +22,18 @@
   const systemText = $("#systemText");
   const refreshBtn = $("#refreshBtn");
   const refreshLabel = $("#refreshLabel");
+  const outputLang = $("#outputLang");
+  const autoTranslate = $("#autoTranslate");
+  const cleanBtn = $("#cleanBtn");
+  const translateBtn = $("#translateBtn");
+  const textModelRow = $("#textModelRow");
 
   const STATUS = {
     loading: "Model yükleniyor…",
     ready: "Dinlemeye hazır",
     recording: "Dinleniyor…",
     processing: "İşleniyor…",
+    cleaning: "Metin düzenleniyor…",
     error: "Hata",
   };
 
@@ -59,6 +65,8 @@
 
   let settingsState = null;
   let settingsDirty = false;
+  let aiState = null;
+  let aiBusy = false;
 
   /* ---------- küçük yardımcılar ---------- */
 
@@ -162,6 +170,7 @@
   function applyState(state) {
     stage.classList.toggle("is-listening", state === "recording");
     stage.classList.toggle("is-processing", state === "processing");
+    stage.classList.toggle("is-cleaning", state === "cleaning");
     stage.classList.toggle("is-loading", state === "loading");
     stage.classList.toggle("is-error", state === "error");
 
@@ -176,6 +185,8 @@
       shortcutHint.textContent = "Model yükleniyor, lütfen bekle";
     } else if (state === "processing") {
       shortcutHint.textContent = "İşleniyor, lütfen bekle";
+    } else if (state === "cleaning") {
+      shortcutHint.textContent = "Metin düzenleniyor, lütfen bekle";
     } else if (state === "error") {
       shortcutHint.textContent = "Tekrar denemek için mikrofon düğmesine bas";
     } else {
@@ -292,6 +303,7 @@
     statusText.style.color = snapshot.state === "error" ? "var(--error)" : "var(--text)";
 
     applyModel(snapshot);
+    applyAi(snapshot.ai);
     renderActivity(snapshot.activity || []);
 
     if (Number(snapshot.seq) > lastSeq && snapshot.latest_text) {
@@ -798,6 +810,305 @@
 
   $("#modelSearch").addEventListener("input", renderModels);
 
+  /* ---------- yapay zeka ---------- */
+
+  function transcriptText() {
+    return transcript.innerText.replace(/\u00a0/g, " ").trim();
+  }
+
+  function applyAi(ai) {
+    if (!ai) return;
+    aiState = Object.assign({}, ai, { state: ai.state || (aiState && aiState.state) || "ready" });
+    if (outputLang && ai.output_language) outputLang.value = ai.output_language;
+    if (autoTranslate) autoTranslate.checked = Boolean(ai.auto_translate);
+    if (textModelRow) {
+      if (ai.provider === "none" || !ai.provider) {
+        textModelRow.textContent = "Sağlayıcı kapalı";
+      } else if (ai.provider === "openrouter") {
+        textModelRow.textContent = (ai.openrouter_model || "Model seçilmedi") + " · OpenRouter";
+      } else {
+        textModelRow.textContent = ai.text_model || "Seçilmedi";
+      }
+    }
+    updateActionButtons();
+  }
+
+  function updateActionButtons() {
+    if (!cleanBtn || !translateBtn) return;
+    const state = aiState ? aiState.state : "loading";
+    const busy = !aiState || aiBusy ||
+      state === "loading" || state === "recording" ||
+      state === "processing" || state === "cleaning";
+    const providerOn = Boolean(aiState && aiState.provider !== "none");
+    const hasText = Boolean(transcriptText());
+    const disabled = busy || !providerOn || !hasText;
+    cleanBtn.disabled = disabled;
+    translateBtn.disabled = disabled;
+    const hint = !providerOn
+      ? "Ayarlar → Yapay Zeka'dan sağlayıcı seç"
+      : "Önce bir dikte yap veya metin yaz";
+    cleanBtn.title = (busy || !providerOn || !hasText) ? hint : "Metni yapay zeka ile düzelt";
+    translateBtn.title = (busy || !providerOn || !hasText) ? hint : "Metni seçili çıktı diline çevir";
+  }
+
+  function replaceAllText(text) {
+    transcript.innerHTML = "";
+    appended.length = 0;
+    const parts = String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+    if (!parts.length) {
+      undoBtn.disabled = true;
+      return;
+    }
+    parts.forEach((line) => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = line;
+      transcript.appendChild(paragraph);
+      appended.push(paragraph);
+    });
+    undoBtn.disabled = false;
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  async function saveAi(patch) {
+    if (!hasApi("ai_settings_save")) return null;
+    try {
+      const result = await api.ai_settings_save(patch);
+      if (result && result.ok) {
+        applyAi(result.ai);
+        if (currentPage === "page-ayarlar") syncAiControls(result.ai);
+        return result.ai;
+      }
+      toast((result && result.message) || "Ayar kaydedilemedi.", "warn");
+    } catch (error) {
+      toast("Ayar kaydedilemedi.", "error");
+    }
+    return null;
+  }
+
+  async function runAi(kind) {
+    const name = kind === "translate" ? "translate_text" : "clean_text";
+    if (!hasApi(name)) {
+      toast("Uygulama bağlantısı hazır değil.", "info");
+      return;
+    }
+    const text = transcriptText();
+    if (!text) {
+      toast("Önce bir dikte yap veya metin yaz.", "info");
+      return;
+    }
+    if (aiBusy) return;
+    const button = kind === "translate" ? translateBtn : cleanBtn;
+    const label = kind === "translate" ? $("#translateLabel") : $("#cleanLabel");
+    const original = label ? label.textContent : "";
+    aiBusy = true;
+    button.disabled = true;
+    if (label) label.textContent = kind === "translate" ? "Çevriliyor…" : "Temizleniyor…";
+    try {
+      const result = await api[name](text);
+      if (result && result.ok) {
+        replaceAllText(result.text);
+        toast(result.message || "Metin güncellendi.");
+      } else {
+        toast((result && result.message) || "Metin işlenemedi.", "warn");
+      }
+    } catch (error) {
+      toast("Metin işlenemedi.", "error");
+    } finally {
+      aiBusy = false;
+      if (label) label.textContent = original;
+      updateActionButtons();
+    }
+  }
+
+  function applyProviderSections(ai) {
+    const provider = ai && ai.provider ? ai.provider : "none";
+    const openSection = $("#openRouterSection");
+    const localSection = $("#localAiSection");
+    const offNote = $("#aiOffNote");
+    if (openSection) openSection.hidden = provider !== "openrouter";
+    if (localSection) localSection.hidden = provider !== "local";
+    if (offNote) offNote.hidden = provider !== "none";
+    const localName = $("#localModelName");
+    if (localName) {
+      localName.textContent = ai && ai.text_model
+        ? ai.text_model + " (yerel)"
+        : "Metin modeli seçilmedi.";
+    }
+  }
+
+  function setKeyState(ai) {
+    const state = $("#orKeyState");
+    const remove = $("#orKeyDelete");
+    const hasKey = Boolean(ai && ai.key_set);
+    if (state) state.textContent = hasKey ? "Anahtar kayıtlı: " + (ai.key_masked || "") : "Anahtar yok";
+    if (remove) remove.disabled = !hasKey;
+  }
+
+  function syncAiControls(ai) {
+    if (!ai) return;
+    applyProviderSections(ai);
+    setKeyState(ai);
+    const provider = $("#textProvider");
+    if (provider) provider.value = ai.provider || "none";
+    const input = $("#inputLang");
+    if (input) input.value = ai.input_language || "auto";
+    const outputSettings = $("#outputLangSettings");
+    if (outputSettings) outputSettings.value = ai.output_language || "tr";
+    setSwitchEl($("#autoPasteSwitch"), ai.auto_paste !== false);
+    setSwitchEl($("#autoTranslateSettings"), Boolean(ai.auto_translate));
+    const showAll = $("#orShowAll");
+    if (showAll) showAll.checked = Boolean(ai.openrouter_show_all);
+    const prompt = $("#systemPrompt");
+    if (prompt) prompt.value = ai.system_prompt || ai.default_system_prompt || "";
+    const select = $("#orModelSelect");
+    if (select && ai.openrouter_model) {
+      const exists = Array.from(select.options).some((option) => option.value === ai.openrouter_model);
+      if (!exists) {
+        const option = document.createElement("option");
+        option.value = ai.openrouter_model;
+        option.textContent = ai.openrouter_model;
+        select.appendChild(option);
+      }
+      select.value = ai.openrouter_model;
+    }
+  }
+
+  async function loadOpenRouterModels(refresh) {
+    if (!hasApi("openrouter_models")) return;
+    const select = $("#orModelSelect");
+    if (!select) return;
+    const showAll = Boolean($("#orShowAll") && $("#orShowAll").checked);
+    const query = ($("#orModelSearch") && $("#orModelSearch").value) || "";
+    let result = null;
+    try {
+      result = await api.openrouter_models(Boolean(refresh), showAll, query);
+    } catch (error) {
+      toast("Model listesi alınamadı.", "error");
+      return;
+    }
+    const models = (result && result.models) || [];
+    const previous = select.value || (aiState && aiState.openrouter_model) || "";
+    select.innerHTML = "";
+    if (!models.length) {
+      const option = document.createElement("option");
+      option.value = previous || "";
+      option.textContent = result && result.ok
+        ? "Aramanla eşleşen model yok"
+        : "Model listesi alınamadı";
+      select.appendChild(option);
+      if (result && !result.ok) toast(result.message || "Model listesi alınamadı.", "warn");
+      return;
+    }
+    models.forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model.id;
+      option.textContent = model.name + " · " + model.price_label;
+      if (model.context_label) option.title = model.context_label;
+      select.appendChild(option);
+    });
+    const keep = previous && models.some((model) => model.id === previous);
+    if (previous && !keep && !query) {
+      const option = document.createElement("option");
+      option.value = previous;
+      option.textContent = previous;
+      select.appendChild(option);
+    }
+    if (previous && (keep || !query)) {
+      select.value = previous;
+    } else if (models[0]) {
+      select.value = models[0].id;
+      if (!previous) saveAi({ openrouter_model: models[0].id });
+    }
+  }
+
+  if (cleanBtn) cleanBtn.addEventListener("click", () => runAi("clean"));
+  if (translateBtn) translateBtn.addEventListener("click", () => runAi("translate"));
+  transcript.addEventListener("input", updateActionButtons);
+  if (outputLang) {
+    outputLang.addEventListener("change", () => saveAi({ output_language: outputLang.value }));
+  }
+  if (autoTranslate) {
+    autoTranslate.addEventListener("change", () => saveAi({ auto_translate: autoTranslate.checked }));
+  }
+
+  $("#textProvider").addEventListener("change", async () => {
+    const ai = await saveAi({ text_provider: $("#textProvider").value });
+    if (ai && ai.provider === "openrouter") loadOpenRouterModels(false);
+  });
+  $("#inputLang").addEventListener("change", () => saveAi({ input_language: $("#inputLang").value }));
+  $("#outputLangSettings").addEventListener("change", () => saveAi({ output_language: $("#outputLangSettings").value }));
+  $("#autoPasteSwitch").addEventListener("click", () => {
+    const on = !switchOnEl($("#autoPasteSwitch"));
+    setSwitchEl($("#autoPasteSwitch"), on);
+    saveAi({ auto_paste: on });
+  });
+  $("#autoTranslateSettings").addEventListener("click", () => {
+    const on = !switchOnEl($("#autoTranslateSettings"));
+    setSwitchEl($("#autoTranslateSettings"), on);
+    saveAi({ auto_translate: on });
+  });
+  $("#systemPrompt").addEventListener("change", () => saveAi({ system_prompt: $("#systemPrompt").value }));
+  $("#systemPromptReset").addEventListener("click", () => {
+    const value = (aiState && aiState.default_system_prompt) || "";
+    $("#systemPrompt").value = value;
+    saveAi({ system_prompt: value });
+  });
+  $("#goModelsBtn").addEventListener("click", () => showPage("page-modeller"));
+  $("#orModelRefresh").addEventListener("click", () => loadOpenRouterModels(true));
+  $("#orModelSelect").addEventListener("change", () => saveAi({ openrouter_model: $("#orModelSelect").value }));
+  $("#orShowAll").addEventListener("change", async () => {
+    await saveAi({ openrouter_show_all: Boolean($("#orShowAll").checked) });
+    loadOpenRouterModels(false);
+  });
+  let orModelsTimer = null;
+  $("#orModelSearch").addEventListener("input", () => {
+    window.clearTimeout(orModelsTimer);
+    orModelsTimer = window.setTimeout(() => loadOpenRouterModels(false), 300);
+  });
+
+  $("#orKeySave").addEventListener("click", async () => {
+    if (!hasApi("openrouter_key_save")) return;
+    const input = $("#orKeyInput");
+    const value = (input.value || "").trim();
+    if (!value) {
+      $("#orKeyStatus").textContent = "Önce anahtarı yaz.";
+      return;
+    }
+    const result = await api.openrouter_key_save(value);
+    $("#orKeyStatus").textContent = (result && result.message) || "";
+    if (result && result.ok) {
+      input.value = "";
+      input.placeholder = result.masked || "sk-or-…";
+      applyAi(result.ai);
+      syncAiControls(result.ai);
+    }
+  });
+
+  $("#orKeyTest").addEventListener("click", async () => {
+    if (!hasApi("openrouter_key_test")) return;
+    $("#orKeyStatus").textContent = "Deneniyor…";
+    try {
+      const result = await api.openrouter_key_test();
+      $("#orKeyStatus").textContent = (result && result.message) || "";
+    } catch (error) {
+      $("#orKeyStatus").textContent = "Bağlantı denenemedi.";
+    }
+  });
+
+  $("#orKeyDelete").addEventListener("click", async () => {
+    if (!hasApi("openrouter_key_delete")) return;
+    if (!window.confirm("OpenRouter anahtarı silinsin mi?")) return;
+    const result = await api.openrouter_key_delete();
+    $("#orKeyStatus").textContent = (result && result.message) || "";
+    if (result && result.ok) {
+      const input = $("#orKeyInput");
+      input.value = "";
+      input.placeholder = "sk-or-…";
+      applyAi(result.ai);
+      syncAiControls(result.ai);
+    }
+  });
+
   /* ---------- ayarlar ---------- */
 
   function markDirty() {
@@ -805,14 +1116,22 @@
     $("#settingsDirty").hidden = false;
   }
 
+  function setSwitchEl(element, on) {
+    if (!element) return;
+    element.classList.toggle("on", Boolean(on));
+    element.setAttribute("aria-checked", on ? "true" : "false");
+  }
+
+  function switchOnEl(element) {
+    return Boolean(element && element.classList.contains("on"));
+  }
+
   function setSwitch(on) {
-    const button = $("#historySwitch");
-    button.classList.toggle("on", Boolean(on));
-    button.setAttribute("aria-checked", on ? "true" : "false");
+    setSwitchEl($("#historySwitch"), on);
   }
 
   function switchOn() {
-    return $("#historySwitch").classList.contains("on");
+    return switchOnEl($("#historySwitch"));
   }
 
   function updateHotkeyPreview() {
@@ -822,13 +1141,23 @@
   }
 
   function applySettingsAvailability(state) {
-    const busy = state === "recording" || state === "processing" || state === "loading";
+    const busy = state === "recording" || state === "processing" || state === "loading" || state === "cleaning";
     const save = $("#saveSettingsBtn");
     const select = $("#hotkeySelect");
     const sw = $("#historySwitch");
     if (save) save.disabled = busy;
     if (select) select.disabled = busy;
     if (sw) sw.disabled = busy;
+    [
+      "#textProvider", "#inputLang", "#outputLangSettings", "#autoPasteSwitch",
+      "#autoTranslateSettings", "#systemPrompt", "#systemPromptReset", "#orKeyInput",
+      "#orKeySave", "#orKeyTest", "#orModelSelect", "#orModelRefresh",
+      "#orModelSearch", "#orShowAll",
+    ].forEach((selector) => {
+      const element = $(selector);
+      if (element) element.disabled = busy;
+    });
+    if (!busy) setKeyState(aiState);
   }
 
   async function loadSettings() {
@@ -847,6 +1176,11 @@
       select.value = data.hotkey;
       setSwitch(data.save_history);
       updateHotkeyPreview();
+      if (data.ai) {
+        applyAi(Object.assign({}, data.ai, { state: data.state }));
+        syncAiControls(data.ai);
+        if (data.ai.provider === "openrouter") loadOpenRouterModels(false);
+      }
       settingsDirty = false;
       $("#settingsDirty").hidden = true;
       applySettingsAvailability(data.state);
@@ -980,7 +1314,7 @@
     });
   });
 
-  $("#topLang").addEventListener("change", () => { $("#topLang").value = "Türkçe"; });
+  $("#topLang")?.addEventListener("change", () => {});
 
   showPage("page-dikte");
 })();

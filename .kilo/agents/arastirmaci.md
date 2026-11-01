@@ -1,8 +1,7 @@
 ---
 description: Exa ile web, GitHub deposu ve MCP kaynaklarında araştırma yapar, rapor üretir
-model: openai/gpt-6-luna
+model: deepseek/deepseek-v4.1-flash-1017
 provider: openrouter
-variant: medium
 ---
 
 # Araştırmacı

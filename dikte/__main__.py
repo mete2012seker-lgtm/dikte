@@ -15,13 +15,13 @@ import time
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from . import __version__, config, diagnostics
+from . import config, diagnostics
 from .engine import EngineError, TranscriptionEngine, select_plan
 from .state import ERROR, PROCESSING, RECORDING, READY, STATE_LABELS
 
 
 def _print_header() -> None:
-    print(f"Dikte {__version__} — Python {sys.version.split()[0]}")
+    print(f"Dikte {config.APP_VERSION} — Python {sys.version.split()[0]}")
 
 
 def cmd_install(force_device: str | None) -> int:

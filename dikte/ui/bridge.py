@@ -27,6 +27,34 @@ class Api:
     def refresh_last(self) -> dict:
         return self._controller.refresh_last()
 
+    # ---------- yapay zeka ----------
+
+    def clean_text(self, text: str) -> dict:
+        return self._controller.clean_text(text)
+
+    def translate_text(self, text: str) -> dict:
+        return self._controller.translate_text(text)
+
+    def ai_state(self) -> dict:
+        return self._controller.ai_state()
+
+    def ai_settings_save(self, payload: dict | None = None) -> dict:
+        return self._controller.ai_settings_save(payload)
+
+    def openrouter_key_save(self, key: str) -> dict:
+        return self._controller.openrouter_key_save(key)
+
+    def openrouter_key_delete(self) -> dict:
+        return self._controller.openrouter_key_delete()
+
+    def openrouter_key_test(self) -> dict:
+        return self._controller.openrouter_key_test()
+
+    def openrouter_models(
+        self, refresh: bool = False, all_models: bool = False, query: str = ""
+    ) -> dict:
+        return self._controller.openrouter_models(refresh, all_models, query)
+
     # ---------- geçmiş ----------
 
     def history_list(self, query: str = "", period: str = "all") -> dict:

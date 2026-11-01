@@ -1,8 +1,7 @@
 ---
 description: Değişen kodu gözden geçirir, hata ve uyumsuzluk tespit eder
-model: openai/gpt-6.1-terra
+model: deepseek/deepseek-v4.1-flash-1017
 provider: openrouter
-variant: medium
 ---
 
 # Gözden Geçirici

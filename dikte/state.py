@@ -6,16 +6,18 @@ LOADING = "loading"
 READY = "ready"
 RECORDING = "recording"
 PROCESSING = "processing"
+CLEANING = "cleaning"
 ERROR = "error"
 
-ALL_STATES = (LOADING, READY, RECORDING, PROCESSING, ERROR)
+ALL_STATES = (LOADING, READY, RECORDING, PROCESSING, CLEANING, ERROR)
 
 # İzin verilen geçişler: yanlış bir sırada durum değişirse hata verir.
 ALLOWED = {
     LOADING: {READY, ERROR},
-    READY: {RECORDING, ERROR, LOADING},
+    READY: {RECORDING, ERROR, LOADING, CLEANING},
     RECORDING: {PROCESSING, ERROR, READY},
     PROCESSING: {READY, ERROR},
+    CLEANING: {READY, ERROR},
     ERROR: {READY, LOADING},
 }
 
@@ -24,6 +26,7 @@ STATE_LABELS = {
     READY: "Dinlemeye hazır",
     RECORDING: "Dinleniyor…",
     PROCESSING: "İşleniyor…",
+    CLEANING: "Metin düzenleniyor…",
     ERROR: "Hata",
 }
 

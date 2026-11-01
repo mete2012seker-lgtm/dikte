@@ -67,12 +67,20 @@
           <div class="card text-card">
             <div class="panel-head">
               <div class="panel-title"><svg class="ic"><use href="#i-doc"/></svg>Metin çıktısı</div>
-              <div class="lang-wrap">
-                <svg class="ic globe"><use href="#i-globe"/></svg>
-                <select class="select" id="topLang" aria-label="Dil" disabled>
-                  <option>Türkçe</option>
-                </select>
-                <svg class="ic chev"><use href="#i-chev-down"/></svg>
+              <div class="lang-tools">
+                <span class="lang-label"><svg class="ic globe"><use href="#i-globe"/></svg>Çıktı Dili:</span>
+                <div class="lang-wrap">
+                  <select class="select select-plain" id="outputLang" aria-label="Çıktı dili">
+                    <option value="tr">Türkçe</option>
+                    <option value="en">İngilizce</option>
+                    <option value="de">Almanca</option>
+                  </select>
+                  <svg class="ic chev"><use href="#i-chev-down"/></svg>
+                </div>
+                <label class="check-inline" for="autoTranslate">
+                  <input type="checkbox" id="autoTranslate">
+                  <span>Otomatik çevir</span>
+                </label>
               </div>
             </div>
 
@@ -84,7 +92,8 @@
               <button class="btn" id="copyBtn"><svg class="ic"><use href="#i-copy"/></svg><span id="copyLabel">Kopyala</span></button>
               <button class="btn" id="undoBtn" disabled><svg class="ic"><use href="#i-undo"/></svg>Geri Al</button>
               <button class="btn" id="refreshBtn" disabled title="Son kaydı tekrar çevir"><svg class="ic"><use href="#i-refresh"/></svg><span id="refreshLabel">Transkripsiyonu Yenile</span></button>
-              <button class="btn btn-ai" id="cleanBtn" disabled title="Sonraki sürümde gelecek"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka ile Temizle<span class="soon">v1.3</span></button>
+              <button class="btn btn-ai" id="cleanBtn" disabled title="Metni yapay zeka ile düzelt"><svg class="ic"><use href="#i-spark"/></svg><span id="cleanLabel">Yapay Zeka ile Temizle</span></button>
+              <button class="btn" id="translateBtn" disabled title="Metni seçili çıktı diline çevir"><svg class="ic"><use href="#i-globe"/></svg><span id="translateLabel">Çevir</span></button>
             </div>
           </div>
 
@@ -125,6 +134,7 @@
               </div>
               <div class="info-row"><svg class="ic"><use href="#i-globe"/></svg>Dil<span class="val">Türkçe</span></div>
               <div class="info-row"><svg class="ic"><use href="#i-cpu"/></svg>İşleme cihazı<span class="val" id="device">—</span></div>
+              <div class="info-row"><svg class="ic"><use href="#i-spark"/></svg>Metin modeli<span class="val" id="textModelRow">Sağlayıcı kapalı</span></div>
               <div class="divider"></div>
               <div class="status-row">
                 <svg class="ic"><use href="#i-check"/></svg>Model hazır
@@ -209,7 +219,7 @@
     <section class="page" id="page-ayarlar">
       <div class="page-head">
         <h1 class="page-title">Ayarlar</h1>
-        <p class="page-sub">Kısayolu ve geçmiş tercihini yönet.</p>
+        <p class="page-sub">Kısayolu, dili ve yapay zeka tercihlerini yönet.</p>
       </div>
 
       <div class="settings">
@@ -251,6 +261,131 @@
             </div>
             <div class="set-control">
               <button class="btn btn-danger" id="clearHistoryBtn"><svg class="ic"><use href="#i-trash"/></svg>Geçmişi temizle</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card set-card" id="aiCard">
+          <div class="card-head"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Metin sağlayıcısı</div>
+              <div class="set-desc">Temizleme ve çeviri için kullanılacak model. Kapalıyken bu özellikler çalışmaz.</div>
+            </div>
+            <div class="set-control">
+              <select class="select select-plain" id="textProvider" aria-label="Metin sağlayıcısı">
+                <option value="none">Kapalı</option>
+                <option value="local">Yerel model</option>
+                <option value="openrouter">OpenRouter</option>
+              </select>
+            </div>
+          </div>
+          <div class="ai-note" id="aiOffNote">Metin temizleme ve çeviri kapalı. Açmak için sağlayıcı seç.</div>
+
+          <div id="openRouterSection" hidden>
+            <div class="set-row">
+              <div class="set-info">
+                <div class="set-title">OpenRouter API anahtarı</div>
+                <div class="set-desc">Windows DPAPI ile şifrelenir; yalnız bu bilgisayarda çözülür.</div>
+                <div class="key-status" id="orKeyState">Anahtar yok</div>
+              </div>
+              <div class="set-control key-control">
+                <input class="text-input" id="orKeyInput" type="password" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter API anahtarı">
+                <div class="key-buttons">
+                  <button class="btn btn-primary" id="orKeySave">Kaydet</button>
+                  <button class="btn" id="orKeyTest">Test et</button>
+                  <button class="btn btn-danger" id="orKeyDelete">Sil</button>
+                </div>
+                <div class="key-result" id="orKeyStatus"></div>
+              </div>
+            </div>
+            <div class="set-row">
+              <div class="set-info">
+                <div class="set-title">Metin modeli</div>
+                <div class="set-desc">Varsayılan liste ucuz/küçük modellerdir. "Tüm modeller" açılınca OpenRouter kataloğunun tamamı aranabilir.</div>
+              </div>
+              <div class="set-control key-control">
+                <div class="key-buttons">
+                  <input class="text-input" id="orModelSearch" type="search" placeholder="Model ara… (ör. gemini, qwen)" aria-label="OpenRouter model ara">
+                  <button class="btn" id="orModelRefresh" title="Model listesini yenile">Yenile</button>
+                </div>
+                <select class="select select-plain" id="orModelSelect" aria-label="OpenRouter metin modeli"></select>
+                <label class="check-inline" for="orShowAll">
+                  <input type="checkbox" id="orShowAll">
+                  <span>Tüm modelleri göster (fiyat sınırı yok)</span>
+                </label>
+              </div>
+            </div>
+            <div class="ai-privacy" id="orPrivacyNote">Metin, temizleme/çeviri için OpenRouter sunucularına gönderilir. Pahalı modellerde maliyet artar.</div>
+          </div>
+
+          <div id="localAiSection" hidden>
+            <div class="set-row">
+              <div class="set-info">
+                <div class="set-title">Aktif yerel model</div>
+                <div class="set-desc" id="localModelName">Metin modeli seçilmedi.</div>
+              </div>
+              <div class="set-control">
+                <button class="btn" id="goModelsBtn">Modeller sayfasına git</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Sistem promptu</div>
+              <div class="set-desc">Dil ve görev talimatı bu metnin arkasına otomatik eklenir.</div>
+            </div>
+            <div class="set-control prompt-control">
+              <textarea class="text-input prompt-input" id="systemPrompt" rows="4" aria-label="Sistem promptu"></textarea>
+              <button class="btn" id="systemPromptReset">Varsayılana dön</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card set-card" id="pasteCard">
+          <div class="card-head"><svg class="ic"><use href="#i-globe"/></svg>Yapıştırma ve Dil</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Girdi dili</div>
+              <div class="set-desc">Otomatik seçildiğinde Whisper dili kendisi algılar.</div>
+            </div>
+            <div class="set-control">
+              <select class="select select-plain" id="inputLang" aria-label="Girdi dili">
+                <option value="auto">Otomatik</option>
+                <option value="tr">Türkçe</option>
+              </select>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Otomatik yapıştırma</div>
+              <div class="set-desc">Dikte bitince metin etkin pencereye yapıştırılır. Dikte penceresine yapıştırılmaz.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="autoPasteSwitch" role="switch" aria-checked="true" aria-label="Otomatik yapıştırma"></button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Çıktı dili</div>
+              <div class="set-desc">Dikte ekranındaki seçimle aynıdır; ikisi birlikte güncellenir.</div>
+            </div>
+            <div class="set-control">
+              <select class="select select-plain" id="outputLangSettings" aria-label="Çıktı dili">
+                <option value="tr">Türkçe</option>
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+              </select>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Otomatik çevir</div>
+              <div class="set-desc">Her dikte sonrası metin çıktı diline çevrilir (3 kelimeden kısa metinler hariç).</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="autoTranslateSettings" role="switch" aria-checked="false" aria-label="Otomatik çevir"></button>
             </div>
           </div>
         </div>

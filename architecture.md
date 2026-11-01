@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3 (metin modelleri, Temizle/Çevir, otomatik yapıştırma) kapsamı 2026-11-01'de onaylandı; kod henüz yazılmadı.
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün ilk partisi (7a: metin motoru, OpenRouter, Temizle/Çevir, Ayarlar kartları) 2026-11-01'de tamamlandı; GGUF/llama.cpp, bellek takası ve otomatik yapıştırma sırada.
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -19,8 +19,11 @@ Akış:
 | :--- | :--- | :--- |
 | `dikte/__main__.py` | CLI: normal açılış, `--kurulum`, `--selftest`, `--dikte-testi`, `--cpu`, `--debug` | Hazır |
 | `dikte/config.py` | Sabitler, yollar, model adları, pencere ölçüleri | Hazır |
-| `dikte/state.py` | Durum makinesi: loading/ready/recording/processing/error | Hazır |
-| `dikte/settings.py` | `data/settings.json`: aktif model, kısayol, geçmiş tercihi; hazır kısayol listesi | Hazır |
+| `dikte/state.py` | Durum makinesi: loading/ready/recording/processing/cleaning/error | Hazır |
+| `dikte/settings.py` | `data/settings.json`: model, kısayol, geçmiş, çıktı/girdi dili, otomatik çevir/yapıştırma, sağlayıcı, tema | Hazır |
+| `dikte/secrets.py` | OpenRouter anahtarını DPAPI ile şifreli `data/secrets.json`'da saklar | Hazır |
+| `dikte/openrouter.py` | Tüm model kataloğunu 24 saat önbellekler; varsayılan ucuz filtre, "tüm modeller" seçeneği ve arama | Hazır |
+| `dikte/text_engine.py` | Prompt kurma, tek çağrıda temizle/çevir, yanıt temizleme, çıktı dili ve halüsinasyon denetimi, Türkçe hata kodları | Hazır (OpenRouter; GGUF 7b) |
 | `dikte/history.py` | `data/history.json`: ekle/listele/ara/sil/temizle, 500 sınırı, bozuk dosya yedeği | Hazır |
 | `dikte/models.py` | 6 ses modeli kataloğu, disk taraması, indirme, silme, boyut biçimleme | Hazır |
 | `dikte/engine.py` | Cihaz seçimi, seçili modeli yükleme/boşaltma, çeviri, GPU→CPU düşüşü | Hazır |
@@ -29,19 +32,24 @@ Akış:
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
 | `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu, VRAM/RAM, Türkçe hata metinleri, log | Hazır |
-| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, modeller, ayarlar, yenile) | Hazır |
-| `dikte/ui/index.html` | Dört sayfa: Dikte, Geçmiş, Modeller, Ayarlar | Hazır |
+| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, modeller, ayarlar, yenile, temizle/çevir, anahtar) | Hazır |
+| `dikte/ui/index.html` | Dört sayfa: Dikte, Geçmiş, Modeller, Ayarlar (Yapay Zeka + Yapıştırma/Dil kartları) | Hazır |
 | `dikte/ui/style.css` | Tasarım token'ları, sayfa yönlendirici ve bileşen stilleri | Hazır |
-| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile | Hazır |
-| `tests/test_state.py` | Durum geçişleri | 83 test geçti |
-| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 83 test geçti |
-| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 83 test geçti |
-| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma | 83 test geçti |
-| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 83 test geçti |
-| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 83 test geçti |
-| `tests/test_ui.py` | Playwright + sahte köprü ile dört sayfa | 83 test geçti |
+| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir | Hazır |
+| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 145 test geçti |
+| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 145 test geçti |
+| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 145 test geçti |
+| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 145 test geçti |
+| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 145 test geçti |
+| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 145 test geçti |
+| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 145 test geçti |
+| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ | 145 test geçti |
+| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 145 test geçti |
+| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 145 test geçti |
+| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı | 145 test geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
+| `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (uygulanmadı) |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
 | `web/` | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid); Dikte arayüzüne bağlı değil | Deneme |
 | `Dikte.bat` | Çift tıklayarak uygulamayı açan Windows başlatıcı | Hazır |
@@ -50,14 +58,13 @@ Akış:
 ## Arayüz yönü (deneme)
 `web/`, Dikte'nin pywebview arayüzünden bağımsız bir Next.js denemesidir (`cd web; npm run dev`). Mevcut uygulama hâlâ `dikte/ui/` altındaki HTML/CSS/JS'i kullanır. 2026-11-01'de Magic UI'ın CSS/JS uyarlaması seçildi; Next.js'e geçilmeyecek. Yeni görünüm v1.4'te `design/v2/` ile belgelenecek.
 
-## Planlanan modüller (v1.3 — henüz yok)
+## Planlanan modüller (v1.3 sonrası — henüz yok)
 | Dosya | Planlanan görev |
 | :--- | :--- |
-| `dikte/text_engine.py` | OpenRouter + llama.cpp istemcisi, temizle/çevir, dil kararı, sistem promptu |
-| `dikte/text_models.py` | GGUF metin modeli kataloğu, HTTP Range indirme, duraklat/devam/iptal |
-| `dikte/paste.py` | Etkin pencereye `Ctrl+V` gönderme (SendInput) |
-| `dikte/secrets.py` | OpenRouter anahtarını Windows DPAPI ile şifreleme/çözme |
+| `dikte/text_models.py` | GGUF metin modeli kataloğu, HTTP Range indirme, duraklat/devam/iptal, llama.cpp sarmalayıcı (parti 7b) |
+| `dikte/paste.py` | Etkin pencereye `Ctrl+V` gönderme (SendInput) (parti 7d) |
 | `dikte/ui/theme.js` (veya app.js içinde) | Karanlık mod, Magic UI CSS efektleri (v1.4) |
+| `dikte/updater.py` | Sürüm denetimi (`latest.json`), kurucu indirme, SHA-256 doğrulama, sessiz kurulum ve yeniden açılış (v1.6) |
 
 ## Bileşenler ve bağlantıları
 | Bileşen | Neye bağlı | Değişirse neler etkilenir |
@@ -106,6 +113,7 @@ Akış:
 - Geçmiş kapalıyken yapılan dikteden sonra anahtar açılıp Yenile yapılırsa sonuç kayıtlara yazılmaz (ses korunur, pano güncellenir).
 - "Yapay Zeka ile Temizle", metin modelleri ve otomatik yapıştırma v1.3'te planlandı; henüz kod yok. Dil/mikrofon seçimi hâlâ yok.
 - v1.4'te arayüz Magic UI esintili CSS uyarlamasına geçecek; v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
+- v1.6'da otomatik güncelleme eklenecek: `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → doğrulama → sessiz kurulum → yeniden açılış.
 
 ## Karar geçmişi
 - 2026-10-22: Proje başlatıldı. Python, faster-whisper, deepseek-v4-flash.
@@ -120,3 +128,4 @@ Akış:
 - 2026-11-01: v1.3 kapsamı onaylandı: çıktı dili TR/EN/DE, Temizle/Çevir butonları, otomatik çevir kutusu, metin modeliyle dil kararı, uygulama içi GGUF + OpenRouter, indirme duraklat/iptal, arka planda kısayol ve otomatik yapıştırma.
 - 2026-11-01: v1.4 (Magic UI CSS uyarlaması + karanlık mod) ve v1.5 (kurucu + çift onaylı kaldırma) kapsamları onaylandı.
 - 2026-11-01: Arayüz için Next.js'e geçiş seçilmedi; mevcut HTML/CSS/JS içinde CSS uyarlaması yapılacak.
+- 2026-11-01: v1.6 (otomatik güncelleme) kapsamı onaylandı; OpenRouter API anahtarı Ayarlar sayfasında ayrı alanda tutulacak.

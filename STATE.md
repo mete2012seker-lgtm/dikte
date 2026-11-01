@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.3 planlaması tamamlandı (2026-11-01); kod yazılmadı.** v1.2 çalışıyor; kullanıcı elle testlerini yaptığını bildirdi. Sıradaki adım v1.3 7a: metin motoru + OpenRouter + Temizle/Çevir.
+**v1.3 / 7a tamamlandı (2026-11-01):** metin motoru (OpenRouter), DPAPI anahtar saklama, Çıktı Dili + Temizle/Çevir + otomatik çevir akışı ve Ayarlar'da Yapay Zeka + Yapıştırma/Dil kartları çalışıyor. 168 test geçiyor; gerçek OpenRouter testi 6/6. Sıradaki adım 7b (GGUF + llama.cpp).
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -15,13 +15,19 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **v1.2 elle testleri:** kullanıcı 2026-10-31'de "her şey çalışıyor" dedi (mikrofon, kısayol, geçmiş anahtarı).
 - **Magic UI denemesi (2026-10-31):** `web/` altında Next.js 16 + shadcn + Magic UI (`AnimatedList`, `BentoGrid`, `AnimatedThemeToggler`); lint/build geçti, dev sunucu 200. Üretim arayüzü değil.
 - **v1.3/v1.4/v1.5 kapsamları onaylandı (2026-11-01):** ayrıntı PLAN.md Aşama 7, 9, 10.
+- **v1.3 / 7a tamamlandı (2026-11-01):** `secrets.py` (DPAPI), `openrouter.py` (ucuz filtre + önbellek), `text_engine.py` (prompt, yanıt temizleme, hata kodları), `cleaning` durumu, controller `clean_text`/`translate_text` + otomatik çevir, Dikte sayfasında çıktı dili/otomatik çevir/Temizle/Çevir, Ayarlar'da Yapay Zeka + Yapıştırma/Dil kartları.
+- **Otomatik çeviri sağlamlaştırıldı (2026-11-01):** boş yanıtta token bütçesi büyütülüp tekrar, açıklama/tırnak temizleme, çıktı dili denetimi (tr/en/de), kısa metin halüsinasyon koruması; yönlendirici/muhakeme/negatif fiyatlı modeller öneri listesinden çıkarıldı. Gerçek test: 6/6 cümle geçti, ~$0,0001.
+- **OpenRouter'da herhangi bir model (2026-11-01):** "Tüm modelleri göster" + arama; öneri sırası gemma → qwen → llama → mistral, ücretli modeller ücretsizlerin önünde. **168 test geçti**; Playwright 13 test.
 
 ## Yarım kalan
-- **v1.3 kodlanmadı:** 7a metin motoru, 7b GGUF indirme/llama.cpp, 7c bellek takası, 7d arka plan yapıştırma, 7e arayüz.
+- **v1.3:** 7b GGUF indirme/llama.cpp, 7c bellek takası + Modeller sekmeleri, 7d arka plan kısayolu + otomatik yapıştırma, 7e Modeller arayüzü ve 10 cümle kalite tablosu.
 - **v1.4 ve v1.5 kodlanmadı:** Magic UI + karanlık mod; kurucu + kaldırma.
+- **v1.6 kodlanmadı:** otomatik güncelleme (2026-11-01 kapsam onayı).
 
 ## Sıradaki ilk adım
-v1.3 7a: `text_engine.py`, OpenRouter istemcisi (DPAPI anahtar, ucuz model filtresi, sistem promptu), Dikte sayfasında Çıktı Dili + Temizle/Çevir + Otomatik çevir. Kullanıcı "başla" dedikten sonra kod yazılır.
+1. **Kullanıcı:** Ayarlar → Yapay Zeka → OpenRouter → anahtarı gir → Kaydet → Test et.
+2. **Ajan:** tek gerçek OpenRouter çağrısıyla 10 cümle önce/sonra tablosu (maliyet birkaç sent).
+3. Sonra 7b: `text_models.py` (GGUF kataloğu, Range indirme) + llama.cpp.
 
 ## Açık sorunlar
 - **llama.cpp kurulumu:** Python 3.12 + Windows + CUDA için hazır wheel bulunamayabilir; önce CPU, sonra GPU denenecek.
@@ -44,19 +50,30 @@ v1.3 7a: `text_engine.py`, OpenRouter istemcisi (DPAPI anahtar, ucuz model filtr
 - Kısayol arka planda çalışır; sonuç panoya + etkin pencereye otomatik yapıştırılır.
 - v1.4: Magic UI esintili CSS/JS uyarlaması; karanlık mod Sistem/Açık/Koyu.
 - v1.5: PyInstaller + Inno Setup kurucu; veriler `%LOCALAPPDATA%\Dikte`; çift onaylı kaldırma.
+- v1.6: Otomatik güncelleme (açılışta sessiz denetim + Ayarlar'da "Uygulamayı Güncelle"); `latest.json` → SHA-256 doğrulama → sessiz kurulum → yeniden açılış.
+- OpenRouter API anahtarı Ayarlar sayfasında ayrı alan (gizli yazı, Kaydet/Sil/Test et), DPAPI ile şifreli.
+- Metin sağlayıcısı varsayılanı `none` (kapalı); kullanıcı seçmeden Temizle/Çevir çalışmaz.
+- Otomatik yapıştırma varsayılan açık; kurucu tek CPU paketi.
+- Tema düğmesi sağ panelde "Aktif model" kartının 12 px üstünde; AnimatedThemeToggler (circle, 400 ms).
+- Üç alt ajan da ana ajanla aynı modeli kullanır: `deepseek/deepseek-v4.1-flash-1017`.
+- Goal bölünmesi: parti 1–5, sonra 6–10, sonra 11–13.
+- OpenRouter'da "Tüm modelleri göster" açılınca katalogdaki herhangi bir model aranıp seçilebilir; varsayılan liste ucuz/küçük modellerdir.
+- v1.6 yayın yeri ve açık tema paleti henüz onaylanmadı (sırasıyla parti 13 ve 11).
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | 83 passed (2026-11-01) |
-| `--selftest` (geçici TTS wav) | GPU float16, metin üretildi |
+| `pytest -q` | **168 passed** (2026-11-01, 11,8 sn) |
+| `--selftest` (geçici TTS wav) | GPU float16, metin üretildi (v1.2); **2026-11-01'de çalıştırılamadı: `tests/data/test.wav` yok** |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
 | Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile |
 | Gerçek mikrofon / kısayol / pano | Kullanıcı test etti (2026-10-31) |
 | Gerçek model indirme | tiny silindi + yeniden indirildi (78,2 MB) |
-| v1.3 metin modeli / OpenRouter | Henüz yok |
+| v1.3 metin motoru (sahte sunucu) | 168 testin içinde: secrets 7, settings +10, openrouter 17, text_engine 27, controller AI 18 |
+| v1.3 OpenRouter gerçek çağrı | 6 cümle geçti (gemma-3-4b-it, ~$0,0001); düzeltmeler `reports/2026-11-01-openrouter-gercek-test.md` |
 | Kurulum / kaldırma | Henüz yok |
+| Güncelleme (v1.6) | Henüz yok |
 
 ## Çalıştırma komutları
 ```powershell
@@ -70,4 +87,4 @@ v1.3 7a: `text_engine.py`, OpenRouter istemcisi (DPAPI anahtar, ucuz model filtr
 ## Maliyet günlüğü (OpenRouter Activity'den kullanıcı dolduracak)
 | Tarih | Aşama | Toplam harcama |
 | :--- | :--- | :--- |
-| | | |
+| 2026-11-01 | 7a gerçek çağrı + model karşılaştırması (6 + 9 istek) | ~$0,001 |

@@ -77,7 +77,27 @@ window.__models = {
   ]
 };
 
-function snapshotCopy() { return JSON.parse(JSON.stringify(window.__snap)); }
+function snapshotCopy() { const copy = JSON.parse(JSON.stringify(window.__snap)); copy.ai.state = copy.state; return copy; }
+
+window.__ai = {
+  provider: "none",
+  provider_label: "Kapalı",
+  output_language: "tr",
+  output_language_label: "Türkçe",
+  auto_translate: false,
+  input_language: "auto",
+  auto_paste: true,
+  text_model: "qwen3-4b",
+  openrouter_model: null,
+  system_prompt: "Varsayılan prompt",
+  default_system_prompt: "Varsayılan prompt",
+  key_set: false,
+  key_masked: null,
+  state: "ready",
+  ready: true
+};
+window.__snap.ai = window.__ai;
+window.__settings.ai = window.__ai;
 
 window.pywebview = {
   api: {
@@ -111,6 +131,60 @@ window.pywebview = {
       window.__calls.push("settings_save:" + JSON.stringify(payload));
       window.__settings = Object.assign(window.__settings, payload);
       return { ok: true, message: "Ayarlar kaydedildi.", settings: window.__settings };
+    },
+    ai_state: async () => JSON.parse(JSON.stringify(window.__ai)),
+    ai_settings_save: async (payload) => {
+      window.__calls.push("ai_settings_save:" + JSON.stringify(payload));
+      if ("text_provider" in payload) {
+        window.__ai.provider = payload.text_provider;
+        window.__ai.provider_label =
+          payload.text_provider === "openrouter" ? "OpenRouter"
+          : payload.text_provider === "local" ? "Yerel model" : "Kapalı";
+      }
+      Object.assign(window.__ai, payload);
+      Object.assign(window.__snap.ai, window.__ai);
+      return { ok: true, message: "Ayarlar kaydedildi.", ai: JSON.parse(JSON.stringify(window.__ai)) };
+    },
+    clean_text: async (text) => {
+      window.__calls.push("clean_text");
+      return { ok: true, text: "TEMİZ: " + text, message: "Metin düzenlendi." };
+    },
+    translate_text: async (text) => {
+      window.__calls.push("translate_text");
+      return { ok: true, text: "ÇEVİRİ: " + text, message: "Metin çevrildi." };
+    },
+    openrouter_key_save: async (key) => {
+      window.__ai.key_set = true;
+      window.__ai.key_masked = "sk-or-…" + key.slice(-4);
+      Object.assign(window.__snap.ai, window.__ai);
+      return { ok: true, message: "Anahtar kaydedildi.", masked: window.__ai.key_masked,
+               ai: JSON.parse(JSON.stringify(window.__ai)) };
+    },
+    openrouter_key_delete: async () => {
+      window.__ai.key_set = false;
+      window.__ai.key_masked = null;
+      Object.assign(window.__snap.ai, window.__ai);
+      return { ok: true, message: "Anahtar silindi.", ai: JSON.parse(JSON.stringify(window.__ai)) };
+    },
+    openrouter_key_test: async () => ({ ok: true, message: "Bağlantı çalışıyor (3 model)." }),
+    openrouter_models: async (refresh, all_models, query) => {
+      window.__modelCalls = window.__modelCalls || [];
+      window.__modelCalls.push({
+        refresh: Boolean(refresh),
+        all_models: Boolean(all_models),
+        query: query || ""
+      });
+      const catalog = [
+        { id: "deepseek/ucuz", name: "DeepSeek Ucuz", price_label: "~$0.05 / $0.10" },
+        { id: "qwen/kucuk", name: "Qwen Küçük", price_label: "~$0.08 / $0.12" },
+        { id: "openai/pahali", name: "OpenAI Pahalı", price_label: "~$5.00 / $15.00", expensive: true }
+      ];
+      let items = all_models ? catalog : catalog.filter((m) => !m.expensive);
+      const q = (query || "").toLowerCase();
+      if (q) items = items.filter((m) => (m.id + " " + m.name).toLowerCase().includes(q));
+      return { ok: true, models: items.map((m) => ({
+        id: m.id, name: m.name, price_label: m.price_label
+      })) };
     }
   }
 };
@@ -387,11 +461,110 @@ def test_yenile_son_paragrafi_degistirir(page):
     assert not page.locator("#refreshBtn").is_disabled()
 
 
-def test_pasif_ozellikler(page):
+def test_cikti_dili_ve_otomatik_cevir(page):
     fresh(page)
+    options = page.eval_on_selector_all("#outputLang option", "els => els.map((o) => o.value)")
+    assert options == ["tr", "en", "de"]
+    assert not page.locator("#autoTranslate").is_checked()
     assert page.locator("#cleanBtn").is_disabled()
-    assert page.locator("#topLang").is_disabled()
-    assert "v1.3" in page.locator("#cleanBtn").inner_text()
+    assert "v1.3" not in page.locator("#cleanBtn").inner_text()
 
-    page.locator("#cleanBtn").click(force=True)
-    assert page.locator("#cleanBtn").is_disabled()
+    page.select_option("#outputLang", "en")
+    page.wait_for_function("() => window.__ai.output_language === 'en'")
+
+    page.locator("#autoTranslate").check()
+    page.wait_for_function("() => window.__ai.auto_translate === true")
+
+
+def test_temizle_cevir_akisi(page):
+    fresh(page)
+    page.evaluate(
+        "() => { window.__ai.provider = 'openrouter';"
+        " window.__snap.ai.provider = 'openrouter'; }"
+    )
+    set_snapshot(page, state="ready", seq=1, latest_text="Merhaba dünya bugün.")
+    page.wait_for_function("() => document.querySelectorAll('#transcript p').length === 1")
+    page.wait_for_function("() => !document.querySelector('#cleanBtn').disabled")
+
+    page.locator("#cleanBtn").click()
+    page.wait_for_function(
+        "() => document.querySelector('#transcript').innerText.startsWith('TEMİZ:')"
+    )
+    assert "clean_text" in page.evaluate("() => window.__calls")
+
+    page.locator("#translateBtn").click()
+    page.wait_for_function(
+        "() => document.querySelector('#transcript').innerText.startsWith('ÇEVİRİ:')"
+    )
+    assert "translate_text" in page.evaluate("() => window.__calls")
+
+
+def test_ayarlar_yapay_zeka_karti(page):
+    fresh(page)
+    set_snapshot(page, state="ready")
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function(
+        "() => document.querySelector('#page-ayarlar').classList.contains('is-active')"
+    )
+    page.wait_for_function("() => !document.querySelector('#textProvider').disabled")
+
+    assert page.locator("#aiOffNote").is_visible()
+    assert page.locator("#openRouterSection").is_hidden()
+    assert page.locator("#localAiSection").is_hidden()
+
+    page.select_option("#textProvider", "openrouter")
+    page.wait_for_function("() => !document.querySelector('#openRouterSection').hidden")
+    assert page.locator("#aiOffNote").is_hidden()
+    assert "Anahtar yok" in page.locator("#orKeyState").inner_text()
+
+    page.fill("#orKeyInput", "sk-or-v1-abcd9999")
+    page.locator("#orKeySave").click()
+    page.wait_for_function(
+        "() => document.querySelector('#orKeyState').textContent.includes('9999')"
+    )
+    assert not page.locator("#orKeyDelete").is_disabled()
+
+    page.locator("#orKeyTest").click()
+    page.wait_for_function(
+        "() => document.querySelector('#orKeyStatus').textContent.includes('Bağlantı')"
+    )
+
+    page.select_option("#textProvider", "local")
+    page.wait_for_function("() => !document.querySelector('#localAiSection').hidden")
+    assert "qwen3-4b" in page.locator("#localModelName").inner_text()
+
+
+def test_ayarlar_cikti_dili_dikte_ile_senkron(page):
+    fresh(page)
+    set_snapshot(page, state="ready")
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelector('#outputLangSettings') !== null")
+    page.wait_for_function("() => !document.querySelector('#outputLangSettings').disabled")
+    page.select_option("#outputLangSettings", "de")
+    page.wait_for_function("() => document.querySelector('#outputLang').value === 'de'")
+
+
+def test_tum_openrouter_modelleri_ve_arama(page):
+    fresh(page)
+    set_snapshot(page, state="ready")
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => !document.querySelector('#textProvider').disabled")
+    page.select_option("#textProvider", "openrouter")
+    page.wait_for_function(
+        "() => Array.from(document.querySelectorAll('#orModelSelect option')).length >= 2"
+    )
+    ids = page.eval_on_selector_all("#orModelSelect option", "els => els.map((o) => o.value)")
+    assert "openai/pahali" not in ids
+
+    page.locator("#orShowAll").check()
+    page.wait_for_function(
+        "() => Array.from(document.querySelectorAll('#orModelSelect option'))"
+        ".some((o) => o.value === 'openai/pahali')"
+    )
+    assert page.evaluate("() => window.__ai.openrouter_show_all") is True
+
+    page.fill("#orModelSearch", "pahali")
+    page.wait_for_function(
+        "() => document.querySelectorAll('#orModelSelect option').length === 1"
+    )
+    assert page.locator("#orModelSelect option").first.get_attribute("value") == "openai/pahali"

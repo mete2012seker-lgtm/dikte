@@ -1,8 +1,7 @@
 ---
 description: Testleri koşturur, hata ve bug bulur, çıktı raporlar
-model: z-ai/glm-5.3-flash
+model: deepseek/deepseek-v4.1-flash-1017
 provider: openrouter
-variant: medium
 ---
 
 # Testçi

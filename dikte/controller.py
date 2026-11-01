@@ -11,13 +11,14 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
-from . import config, diagnostics
+from . import config, diagnostics, openrouter, text_engine
 from .audio import AudioError, AudioRecorder, Recording
 from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
 from .history import HistoryError, HistoryStore
 from .hotkey import HotkeyError, HotkeyListener
 from .models import ModelError, ModelManager, get_model
+from .secrets import SecretError, SecretStore, mask as mask_key
 from .settings import (
     AUTO_MODEL,
     DEFAULT_HOTKEY,
@@ -25,9 +26,12 @@ from .settings import (
     SettingsError,
     SettingsStore,
     hotkey_label,
+    output_language_label,
+    text_provider_label,
 )
 from .state import (
     ALLOWED,
+    CLEANING,
     ERROR,
     LOADING,
     PROCESSING,
@@ -74,12 +78,18 @@ class Controller:
         history_store=None,
         model_manager=None,
         last_recording_path: Path | None = None,
+        secret_store=None,
+        text_processor=None,
+        model_lister=None,
     ) -> None:
         self.engine = engine if engine is not None else TranscriptionEngine()
         self.recorder = recorder if recorder is not None else AudioRecorder()
         self.settings = settings_store if settings_store is not None else SettingsStore()
         self.history = history_store if history_store is not None else HistoryStore()
         self.models = model_manager if model_manager is not None else ModelManager()
+        self.secrets = secret_store if secret_store is not None else SecretStore()
+        self._text_processor = text_processor or text_engine.generate
+        self._model_lister = model_lister or openrouter.list_models
         self.hotkey = (
             hotkey
             if hotkey is not None
@@ -110,11 +120,13 @@ class Controller:
         self._download_thread: threading.Thread | None = None
         self._last_recording: Path | None = None
         self._startup_notes: list[tuple[str, str, str]] = []
+        self._key_cache: tuple[bool, str | None] | None = None
 
         self._save_history = bool(self.settings.get("save_history", True))
         self._hotkey_id = str(self.settings.get("hotkey", DEFAULT_HOTKEY))
         self._prepare_model_choice()
         self._prepare_hotkey()
+        self._prepare_ai_model()
         self._remove_last_recording()
 
     # ---------- kurulum ----------
@@ -156,6 +168,16 @@ class Controller:
                 configure(DEFAULT_HOTKEY)
             except Exception:
                 pass
+
+    def _prepare_ai_model(self) -> None:
+        """Eski sürümden kalan yönlendirici model kimliğini temizler (gerçek model değil)."""
+        model = self.settings.get("openrouter_model")
+        if isinstance(model, str) and model.startswith("openrouter/"):
+            try:
+                self.settings.save(openrouter_model=None)
+                logger.info("Yönlendirici model kimliği temizlendi: %s", model)
+            except Exception:
+                logger.warning("Model ayarı temizlenemedi", exc_info=True)
 
     def _remove_last_recording(self) -> None:
         path = self._last_recording_path
@@ -367,6 +389,8 @@ class Controller:
 
             self._keep_last_recording(recording.path)
 
+            text = self._auto_ai_text(text)
+
             with self._lock:
                 self._latest = text
                 self._seq += 1
@@ -520,6 +544,7 @@ class Controller:
                 )
                 and state == READY,
                 "download": dict(self._download) if self._download else None,
+                "ai": self._ai_payload(),
             }
 
     def wait_until_ready(self, timeout: float = 5.0) -> bool:
@@ -781,6 +806,7 @@ class Controller:
             "hotkey_label": hotkey_label(self._hotkey_id),
             "active_model": str(self.settings.get("active_model", AUTO_MODEL)),
             "state": state,
+            "ai": self._ai_payload(),
             "choices": [
                 {"id": key, "label": label} for key, label in HOTKEY_CHOICES.items()
             ],
@@ -790,7 +816,7 @@ class Controller:
         payload = payload or {}
         with self._lock:
             state = self._machine.state
-            if state in (RECORDING, PROCESSING, LOADING):
+            if state in (RECORDING, PROCESSING, LOADING, CLEANING):
                 return {"ok": False, "message": "Kayıt, çeviri veya model yüklemesi sürerken ayarlar kaydedilemez."}
             current_hotkey = self._hotkey_id
 
@@ -828,6 +854,278 @@ class Controller:
             self._hotkey_id = str(data.get("hotkey", DEFAULT_HOTKEY))
             self._add_activity("Ayarlar kaydedildi", "Kısayol ve geçmiş tercihi güncellendi.", "info")
         return {"ok": True, "message": "Ayarlar kaydedildi.", "settings": self.settings_get()}
+
+    # ---------- yapay zeka (temizle / çevir) ----------
+
+    AI_SETTING_KEYS = {
+        "output_language",
+        "auto_translate",
+        "input_language",
+        "auto_paste",
+        "text_provider",
+        "text_model",
+        "openrouter_model",
+        "openrouter_show_all",
+        "system_prompt",
+        "theme",
+        "effects",
+        "update_check_on_start",
+        "autostart",
+    }
+
+    def _provider(self) -> str:
+        return str(self.settings.get("text_provider", "none"))
+
+    def _openrouter_key(self, refresh: bool = False) -> str | None:
+        if refresh or self._key_cache is None:
+            try:
+                key = self.secrets.load_key()
+            except Exception:
+                logger.warning("Anahtar okunamadı", exc_info=True)
+                key = None
+            self._key_cache = (True, key)
+        return self._key_cache[1]
+
+    def _ai_payload(self) -> dict:
+        provider = self._provider()
+        key = self._openrouter_key()
+        output_language = str(self.settings.get("output_language", "tr"))
+        return {
+            "provider": provider,
+            "provider_label": text_provider_label(provider),
+            "output_language": output_language,
+            "output_language_label": output_language_label(output_language),
+            "auto_translate": bool(self.settings.get("auto_translate", False)),
+            "input_language": str(self.settings.get("input_language", "auto")),
+            "auto_paste": bool(self.settings.get("auto_paste", True)),
+            "text_model": str(self.settings.get("text_model", "")),
+            "openrouter_model": self.settings.get("openrouter_model"),
+            "openrouter_show_all": bool(self.settings.get("openrouter_show_all", False)),
+            "system_prompt": str(self.settings.get("system_prompt", config.DEFAULT_SYSTEM_PROMPT)),
+            "default_system_prompt": config.DEFAULT_SYSTEM_PROMPT,
+            "key_set": bool(key),
+            "key_masked": mask_key(key) if key else None,
+        }
+
+    def ai_state(self) -> dict:
+        with self._lock:
+            state = self._machine.state
+        payload = self._ai_payload()
+        payload["state"] = state
+        payload["ready"] = state == READY
+        return payload
+
+    def ai_settings_save(self, payload: dict | None = None) -> dict:
+        payload = payload or {}
+        with self._lock:
+            if self._machine.state in (RECORDING, PROCESSING, LOADING, CLEANING):
+                return {"ok": False, "message": "İşlem sürerken ayarlar kaydedilemez."}
+        changes = {key: value for key, value in payload.items() if key in self.AI_SETTING_KEYS}
+        try:
+            self.settings.save(**changes)
+        except SettingsError as exc:
+            return {"ok": False, "message": str(exc)}
+        return {"ok": True, "message": "Ayarlar kaydedildi.", "ai": self.ai_state()}
+
+    def openrouter_key_save(self, key: str) -> dict:
+        try:
+            masked = self.secrets.save_key(key)
+        except SecretError as exc:
+            return {"ok": False, "message": str(exc)}
+        except Exception as exc:
+            logger.exception("Anahtar kaydedilemedi")
+            return {"ok": False, "message": f"Anahtar kaydedilemedi: {exc}"}
+        self._key_cache = (True, (key or "").strip())
+        return {"ok": True, "message": "Anahtar kaydedildi.", "masked": masked, "ai": self.ai_state()}
+
+    def openrouter_key_delete(self) -> dict:
+        try:
+            self.secrets.delete_key()
+        except SecretError as exc:
+            return {"ok": False, "message": str(exc)}
+        self._key_cache = (True, None)
+        return {"ok": True, "message": "Anahtar silindi.", "ai": self.ai_state()}
+
+    def openrouter_key_test(self) -> dict:
+        key = self._openrouter_key(refresh=True)
+        if not key:
+            return {"ok": False, "code": "no_key", "message": text_engine.CODE_MESSAGES["no_key"]}
+        try:
+            models = openrouter.fetch_models(key)
+        except openrouter.OpenRouterError as exc:
+            return {
+                "ok": False,
+                "code": exc.code,
+                "message": text_engine.CODE_MESSAGES.get(exc.code, str(exc)),
+            }
+        except Exception as exc:
+            logger.exception("Anahtar testi başarısız")
+            return {"ok": False, "code": "net", "message": text_engine.CODE_MESSAGES["net"]}
+        return {"ok": True, "message": f"Bağlantı çalışıyor ({len(models)} model)."}
+
+    def openrouter_models(
+        self,
+        refresh: bool = False,
+        all_models: bool = False,
+        query: str = "",
+    ) -> dict:
+        """Model listesi. `all_models` açıksa tüm katalog, kapalıysa ucuz öneriler."""
+        try:
+            models = self._model_lister(refresh=refresh, all_models=all_models)
+        except openrouter.OpenRouterError as exc:
+            return {
+                "ok": False,
+                "code": exc.code,
+                "message": text_engine.CODE_MESSAGES.get(exc.code, str(exc)),
+                "models": [],
+            }
+        except Exception as exc:
+            logger.warning("Model listesi alınamadı: %s", exc)
+            return {"ok": False, "code": "net", "message": "Model listesi alınamadı.", "models": []}
+        models = openrouter.search(models, query)
+        items = [
+            {
+                "id": model["id"],
+                "name": model["name"],
+                "price_label": f"~${model['input_price']:.2f} / ${model['output_price']:.2f}",
+                "context_label": f"{model['context'] // 1000}K bağlam",
+            }
+            for model in models[:400]
+        ]
+        return {"ok": True, "models": items, "total": len(items)}
+
+    def clean_text(self, text: str) -> dict:
+        """Metni konuşulan dilde düzeltir; çeviri yapmaz."""
+        return self._run_text(text, translate=False)
+
+    def translate_text(self, text: str) -> dict:
+        """Metni düzeltir ve seçili çıktı diline çevirir."""
+        return self._run_text(text, translate=True)
+
+    def _run_text(self, text: str, translate: bool) -> dict:
+        text = (text or "").strip()
+        if not text:
+            return {
+                "ok": False,
+                "code": "empty_text",
+                "message": text_engine.CODE_MESSAGES["empty_text"],
+            }
+        if self._provider() == "none":
+            return {
+                "ok": False,
+                "code": "provider_off",
+                "message": text_engine.CODE_MESSAGES["provider_off"],
+            }
+        with self._lock:
+            if self._machine.state != READY:
+                return {"ok": False, "message": "Şu anda işlenemez, lütfen bekle."}
+            self._error = None
+            self._set_state(CLEANING)
+        try:
+            result = self._process_text(text, translate)
+        except text_engine.TextEngineError as exc:
+            logger.warning("Metin işlenemedi (%s): %s", exc.code, exc)
+            with self._lock:
+                self._add_activity("Metin işlenemedi", str(exc), "err")
+            return {"ok": False, "code": exc.code, "message": str(exc)}
+        except Exception as exc:
+            logger.exception("Metin işlemi beklenmedik hata")
+            with self._lock:
+                self._add_activity("Metin işlenemedi", str(exc), "err")
+            return {
+                "ok": False,
+                "code": "bad_response",
+                "message": text_engine.CODE_MESSAGES["bad_response"],
+            }
+        finally:
+            with self._lock:
+                if self._machine.state == CLEANING:
+                    self._set_state(READY)
+
+        copy_ok = True
+        try:
+            self._clipper(result.text)
+        except ClipboardError:
+            copy_ok = False
+        self._update_history_text(result.text)
+        message = "Metin çevrildi." if translate else "Metin düzenlendi."
+        if result.unchanged and translate:
+            message = "Metin değişmedi; model çeviri yapmadı. Farklı bir model dene."
+        with self._lock:
+            self._latest = result.text
+            self._add_activity(
+                "Metin çevrildi" if translate and not result.unchanged else "Metin düzenlendi",
+                f"{text_engine.count_words(result.text)} kelime",
+                "ok",
+            )
+            if result.unchanged and translate:
+                self._add_activity("Çeviri yapılmadı", "Model metni değiştirmedi.", "warn")
+            if not copy_ok:
+                self._add_activity("Panoya kopyalanamadı", "Kopyala düğmesini dene.", "err")
+        return {
+            "ok": True,
+            "text": result.text,
+            "translated": result.translated,
+            "unchanged": result.unchanged,
+            "message": message,
+        }
+
+    def _process_text(self, text: str, translate: bool) -> "text_engine.TextResult":
+        provider = self._provider()
+        key = self._openrouter_key() if provider == "openrouter" else None
+        model = self.settings.get("openrouter_model") or self.settings.get("text_model")
+        return self._text_processor(
+            text,
+            target_language=str(self.settings.get("output_language", "tr")),
+            translate=translate,
+            provider=provider,
+            api_key=key,
+            model=model,
+            system_prompt=str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT),
+        )
+
+    def _auto_ai_text(self, text: str) -> str:
+        """Otomatik çevir açıksa dikte sonrası metni temizler/çevirir."""
+        provider = self._provider()
+        if provider == "none":
+            return text
+        if not bool(self.settings.get("auto_translate", False)):
+            return text
+        if not text_engine.should_translate_auto(text):
+            with self._lock:
+                self._add_activity("Kısa metin", "Çeviri atlandı (3 kelimeden kısa).", "warn")
+            return text
+        try:
+            result = self._process_text(text, translate=True)
+        except text_engine.TextEngineError as exc:
+            with self._lock:
+                self._add_activity("Otomatik çeviri yapılamadı", str(exc), "err")
+            return text
+        except Exception as exc:
+            logger.exception("Otomatik çeviri hatası: %s", exc)
+            return text
+        if not result.text or result.text == text:
+            if result.unchanged:
+                with self._lock:
+                    self._add_activity(
+                        "Çeviri yapılmadı", "Model metni değiştirmedi; farklı model dene.", "warn"
+                    )
+            return text
+        try:
+            self._clipper(result.text)
+        except ClipboardError:
+            pass
+        with self._lock:
+            self._add_activity("Metin düzenlendi", "Temizlik ve çeviri uygulandı.", "ok")
+        return result.text
+
+    def _update_history_text(self, text: str) -> None:
+        if not self._save_history or not self._last_history_id:
+            return
+        try:
+            self.history.update_text(self._last_history_id, text)
+        except Exception as exc:
+            logger.warning("Geçmiş güncellenemedi: %s", exc)
 
     # ---------- yardımcılar ----------
 

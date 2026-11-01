@@ -4,13 +4,14 @@ Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat
 
 ## Proje
 Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3 kapsamı 2026-11-01'de onaylandı (yapay zeka ile temizle/çevir); kod henüz yazılmadı. Sırada v1.4 (Magic UI + karanlık mod) ve v1.5 (kurucu + kaldırma) var.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3 kapsamı 2026-11-01'de onaylandı (yapay zeka ile temizle/çevir); kod henüz yazılmadı. Sırada v1.4 (Magic UI + karanlık mod), v1.5 (kurucu + kaldırma) ve v1.6 (otomatik güncelleme) var.
 
 ## Dosyalar
 | Dosya | Ne için |
 | :--- | :--- |
 | AGENTS.md | Kurallar ve onaylı kararlar (bu dosya) |
 | PLAN.md | Yol haritası |
+| UYGULAMA-PLANI.md | v1.3–v1.6 için dosya/sayfa düzeyinde uygulama sırası (olabilir.md'yi koda eşler) |
 | STATE.md | Güncel durum, sıradaki adım, çalıştırma komutları |
 | architecture.md | Kod haritası |
 | ogrenme-gunlugu.md | Kullanıcının öğrendikleri |
@@ -19,6 +20,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | reports/ | Araştırma raporları (README.md dizin) |
 | .kilo/skills/ | `asama-baslat` ve `asama-bitir` skill'leri |
 | promptlar.md | Kullanıcının istem notları (ajan okumaz) |
+| olabilir.md | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır) |
 | web/ | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
 
 ## Kullanıcı
@@ -64,7 +66,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 ## Maliyet
 - Büyük dosya ya da uzun log baştan sona okunmaz, ilgili satırlara bakılır.
 - Sorun 3 denemede çözülmezse dur ve söyle. Daha güçlü model gerekiyorsa öner.
-- Alt ajanlar (@arastirmaci, @gozden-gecirici, @testci) yalnızca .kilo/agents altında tanımlıysa kullanılır. En fazla 3 tane; aynı dosyaya dokunan işler paralel yapılmaz. Modeller (2026-10-29 kararı): araştırmacı GPT-6 Luna (medium, kritik işlerde high), gözden geçirici GPT-6.1 Terra (medium), testçi GLM 5.3 Flash. Batch (`:batch`) uçları etkileşimli ajan işlerinde kullanılmaz, yalnız tek seferlik toplu işlerde.
+- Alt ajanlar (@arastirmaci, @gozden-gecirici, @testci) yalnızca .kilo/agents altında tanımlıysa kullanılır. En fazla 3 tane; aynı dosyaya dokunan işler paralel yapılmaz. Modeller (2026-11-01 kararı): **üç alt ajan da ana ajanla aynı modeli kullanır** (`deepseek/deepseek-v4.1-flash-1017`, OpenRouter). Batch (`:batch`) uçları etkileşimli ajan işlerinde kullanılmaz, yalnız tek seferlik toplu işlerde.
 
 ## Öğretme kuralları
 - Her adımdan önce 2-3 cümleyle ne yapacağını ve nedenini söyle. Yeni terimi bir cümleyle aç, komutun ne yaptığını söyle.
@@ -87,11 +89,15 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **v1.3 kapsamı (2026-11-01 onaylı):** Çıktı dili Türkçe/İngilizce/Almanca; "Otomatik çevir" kutusu dil seçicisinin yanında; "Yapay Zeka ile Temizle" ve "Çevir" butonları aynı satırda.
 - Aynı dilde yalnız temizlik yapılır, çeviri yapılmaz. 3 kelimeden kısa metinde çeviri yapılmaz, ham metin kalır.
 - Dil kararını metin modeli tek çağrıda verir; Whisper dili otomatik algılar. Türkçe doğruluğu düşerse girdi dili Türkçe'ye sabitlenebilir.
-- Metin modeli iki sağlayıcı: uygulama içi GGUF (llama.cpp) ve OpenRouter. OpenRouter anahtarı Ayarlar'da girilir, Windows DPAPI ile şifrelenir; yalnız ucuz/küçük modeller listelenir; sistem promptu düzenlenebilir.
+- Metin modeli iki sağlayıcı: uygulama içi GGUF (llama.cpp) ve OpenRouter. OpenRouter anahtarı **Ayarlar sayfasındaki ayrı bir "OpenRouter API anahtarı" alanından** girilir (gizli yazı, Kaydet/Sil/Test et), Windows DPAPI ile şifrelenir; varsayılan liste ucuz/küçük modellerdir, "Tüm modelleri göster" açılınca katalogdaki herhangi bir model aranıp seçilebilir; sistem promptu düzenlenebilir.
 - Ses ve metin modeli aynı anda bellekte tutulmaz: VRAM'den boşaltıp takas edilir; gerekirse CPU/RAM kullanılır.
 - Modeller sayfası Metin/Ses sekmeleri; her modelde "⋯" menüsü; indirmede duraklat/devam/iptal.
-- **v1.4 kapsamı (onaylı):** Magic UI esintili yeni arayüz, Next.js'e geçmeden mevcut HTML/CSS/JS içinde CSS uyarlaması. Karanlık mod: Sistem/Açık/Koyu.
+- **v1.4 kapsamı (onaylı):** Magic UI esintili yeni arayüz, Next.js'e geçmeden mevcut HTML/CSS/JS içinde CSS uyarlaması. Karanlık mod: Sistem/Açık/Koyu. Tema düğmesi sağ panelde "Aktif model" kartının hemen üstünde; Magic UI AnimatedThemeToggler davranışı (View Transitions API + circle clip-path, 400 ms). Ayrıntı `UYGULAMA-PLANI.md` §11.
 - **v1.5 kapsamı (onaylı):** PyInstaller + Inno Setup kurucu; veriler `%LOCALAPPDATA%\Dikte`; kısayollar; isteğe bağlı otomatik başlatma. Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, tüm verileri siler.
+- **v1.6 kapsamı (2026-11-01 onaylı):** Otomatik güncelleme. Açılışta sessiz sürüm denetimi (kapatılabilir); Ayarlar'da "Güncelleme" kartı ve "Uygulamayı Güncelle" butonu; `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → özet doğrulama → Inno Setup kurucusunu sessiz çalıştırma → yeniden açılış. Ağ/indirme hatasında Türkçe uyarı, uygulama çalışmaya devam eder. Depo özel olduğu için yayın yerinin (herkese açık Releases ya da statik sunucu) 11. aşama başında seçilmesi gerekiyor.
+- **Metin sağlayıcısı varsayılanı `none` (2026-11-01 onaylı):** İlk açılışta Temizle/Çevir kapalı; kullanıcı Ayarlar → Yapay Zeka'dan Yerel veya OpenRouter seçmeden çalışmaz. Otomatik yapıştırma varsayılan açık.
+- **Kurucu paketi (2026-11-01 onaylı):** Tek CPU kurucu; CUDA bileşeni paketlenmez (GPU isteğe bağlı ayrı iş).
+- **Goal bölünmesi (2026-11-01 onaylı):** İlk koşu parti 1–5, sonra 6–10, sonra 11–13; her koşu sonunda test kanıtı ve kullanıcı testi.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.

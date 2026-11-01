@@ -76,13 +76,16 @@ Her aşama bittiğinde: kanıt gösterilir, STATE.md güncellenir, git commit at
 - Kanıt: `tests/test_models.py`, gerçek `large-v3 → tiny` aktifleştirme testi (`GPU / float16`), gerçek tiny silme + yeniden indirme (78.204.524 bayt), `artifacts/ui-modeller.png`.
 
 ### Aşama 7 — v1.3: Metin Modelleri, Temizle/Çevir ve otomatik yapıştırma (kapsam 2026-11-01 onaylı)
-- [ ] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
+Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
+- Ayrıntılı yerleşim, davranış ve risk listesi: `olabilir.md`.
+- [x] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
+- [x] 7a — Ayarlar sayfasında **OpenRouter API anahtarı** alanı: gizli yazı, "Kaydet" ve "Sil" düğmeleri, anahtarın DPAPI ile şifrelenip `settings.json` yerine ayrı dosyada tutulması; "Anahtarı test et" düğmesi.
 - [ ] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma.
 - [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü.
 - [ ] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
 - [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri.
 - Kural: aynı dilde yalnız temizlik; 3 kelimeden kısa metinde çeviri yok. Dil kararını metin modeli tek çağrıda verir.
-- Kanıt: 83+ pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, 10 cümle önce/sonra tablosu, VRAM ölçümü, güncel Playwright ekran görüntüleri.
+- Kanıt: 145 pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, 10 cümle önce/sonra tablosu, VRAM ölçümü, güncel Playwright ekran görüntüleri.
 - Senin yapacağın: OpenRouter anahtarını `.env`'e koy; mikrofon, yapıştırma ve indirme testlerini yap.
 
 ### Aşama 8 — Sağlamlaştırma
@@ -103,6 +106,16 @@ Her aşama bittiğinde: kanıt gösterilir, STATE.md güncellenir, git commit at
 - [ ] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi.
 - [ ] Kaldırma: exe, kısayol, otomatik başlatma, modeller, geçmiş, ayarlar, loglar ve `%TEMP%\dikte` silinir.
 - Kanıt: kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi).
+
+### Aşama 11 — v1.6: Otomatik güncelleme (kapsam 2026-11-01 onaylı)
+- [ ] Açılışta sessiz sürüm denetimi (Ayarlar'dan kapatılabilir); yeni sürüm varsa Dikte/Ayarlar sayfasında "Güncelleme hazır" bildirimi.
+- [ ] Ayarlar'da **Güncelleme** kartı: "Uygulamayı Güncelle" birincil butonu (yeni sürüm yoksa devre dışı), sürüm numarası, son denetim zamanı, "Şimdi denetle" düğmesi.
+- [ ] Güncelleme akışı: küçük bir `latest.json` dosyası okunur (sürüm, kurucu bağlantısı, SHA-256, sürüm notu); yeni sürüm varsa kurucu indirilir, SHA-256 doğrulanır, Inno Setup kurucusu sessiz çalıştırılır, uygulama yeniden açılır.
+- [ ] Düşüş: ağ yok / indirme yarıda kaldı / özet uyuşmadı durumlarında Türkçe uyarı; uygulama çalışmaya devam eder, yarım dosya silinir.
+- [ ] Sürüm numarası tek kaynaktan (`dikte/config.py`) okunur; kurucu ve güncelleme denetimi aynı değeri kullanır.
+- Kanıt: sahte güncelleme sunucusuyla "yeni sürüm var / yok / bozuk dosya / ağ yok" pytest testleri; gerçek sürüm yükseltme kullanıcı testi.
+- Açık karar: depo özel olduğu için `latest.json` ve kurucunun kimlik doğrulamasız erişilebilir bir yerde durması gerekir (herkese açık GitHub Releases ya da basit statik sunucu). Bu seçim 11. aşama başında sorulacak.
+- Senin yapacağın: güncelleme dosyalarının yayınlanacağı yeri seçmek; ilk Release'i yayınlamak.
 
 ## Test yöntemi
 | Ne test edilir | Nasıl |
