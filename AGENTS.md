@@ -66,7 +66,6 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 ## Maliyet
 - Büyük dosya ya da uzun log baştan sona okunmaz, ilgili satırlara bakılır.
 - Sorun 3 denemede çözülmezse dur ve söyle. Daha güçlü model gerekiyorsa öner.
-- Alt ajanlar (@arastirmaci, @gozden-gecirici, @testci) yalnızca .kilo/agents altında tanımlıysa kullanılır. En fazla 3 tane; aynı dosyaya dokunan işler paralel yapılmaz. Modeller (2026-11-01 kararı): **üç alt ajan da ana ajanla aynı modeli kullanır** (`deepseek/deepseek-v4.1-flash-1017`, OpenRouter). Batch (`:batch`) uçları etkileşimli ajan işlerinde kullanılmaz, yalnız tek seferlik toplu işlerde.
 
 ## Öğretme kuralları
 - Her adımdan önce 2-3 cümleyle ne yapacağını ve nedenini söyle. Yeni terimi bir cümleyle aç, komutun ne yaptığını söyle.
