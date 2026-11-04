@@ -41,5 +41,9 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 3. **Çeviri kontrolü:** Çıktının hedef dilde olup olmadığı basit kelime ipuçlarıyla (tr/en/de) denetlenir. Yanlış dilde kalan yanıt kabul edilmez, tekrar denenir.
 4. **`.part` + `Range`:** İndirmeyi duraklatmak, dosyayı kapatıp son baytı hatırlamak demektir; devam ederken sunucuya "buradan devam et" denir. Boyut uyuşmazsa dosya baştan indirilir.
 5. **Tema geçişi:** `document.startViewTransition` + `clip-path: circle()` ile yeni tema düğmeden büyüyen daireyle açılır. Tarayıcı desteklemezse sınıf anında değişir; `prefers-reduced-motion` açıksa animasyon yapılmaz.
-
-
+## 2026-11-04
+- **Kalite tablosu:** Modelin kalitesini ölçmek için hazır sorularla toplu test yapıp tabloya geçmek demek; bugün Gemma 3 4B ile 10 cümlede 10/10 aldık.
+- **Kurucu (installer):** Uygulamayı tek tıkla kurulan program yapan paket demek; PyInstaller kodu exe'ye topluyor, Inno Setup ise kurulum sihirbazı yapıyor.
+- **Kaldırıcı (uninstaller):** Programı ve verilerini silen ayrı küçük program demek; Inno Setup bunu otomatik üretiyor.
+- **Otomatik güncelleme:** Uygulama açılışta bir küçük dosyaya (latest.json) bakıp yeni sürüm var mı diye kontrol eder; indirilen dosyanın özeti (SHA-256) doğrulanmadan kurulmaz.
+- **Kullanıcı testi:** Ajan kodu yazıp test edebilir ama kur/kaldır ve gerçek güncelleme ancak gerçek bilgisayarda senin denemenle kanıtlanır.

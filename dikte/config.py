@@ -3,22 +3,31 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 APP_NAME = "Dikte"
 APP_TITLE = "Dikte — VoxNote AI"
 APP_VERSION = "1.3.0"
+UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Dikte_is1"
+AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+AUTOSTART_VALUE = "Dikte"
+# v1.6: yayın yeri henüz seçilmedi (K2). Karar verilince yalnızca bu değer değişir.
+UPDATE_URL = ""
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = PACKAGE_DIR.parent
 UI_DIR = PACKAGE_DIR / "ui"
 
 # Testler ve farklı kurulumlar için ortam değişkeniyle değiştirilebilir.
+# Kurulu (PyInstaller) sürümde veri kökü %LOCALAPPDATA%\Dikte'dir (UYGULAMA-PLANI parti 12).
+_APPDATA_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", ROOT_DIR)) / "Dikte"
+
 MODELS_DIR = Path(os.environ.get("DIKTE_MODELS_DIR", ROOT_DIR / "models"))
 LOG_DIR = Path(os.environ.get("DIKTE_LOG_DIR", ROOT_DIR / "logs"))
 TEMP_DIR = Path(os.environ.get("DIKTE_TEMP_DIR", Path(tempfile.gettempdir()) / "dikte"))
-DATA_DIR = Path(os.environ.get("DIKTE_DATA_DIR", ROOT_DIR / "data"))
+DATA_DIR = Path(os.environ.get("DIKTE_DATA_DIR", _APPDATA_DATA_DIR if getattr(sys, "frozen", False) else ROOT_DIR / "data"))
 
 SETTINGS_FILE = DATA_DIR / "settings.json"
 HISTORY_FILE = DATA_DIR / "history.json"
@@ -88,6 +97,18 @@ WINDOW_BACKGROUND = "#060A14"
 def model_label(name: str) -> str:
     """Teknik model adını arayüzde görünen ada çevirir."""
     return MODEL_LABELS.get(name, name)
+
+
+def is_packaged() -> bool:
+    """PyInstaller ile kurulmuş sürümde True döner."""
+    return bool(getattr(sys, "frozen", False)) and not os.environ.get("DIKTE_DEV")
+
+
+def exe_dir() -> Path:
+    """Kurulu sürümde uygulamanın bulunduğu klasör."""
+    if is_packaged():
+        return Path(sys.executable).resolve().parent
+    return ROOT_DIR
 
 
 def text_models_dir() -> Path:

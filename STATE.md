@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.3 (7a–7d) + v1.4 tamamlandı (2026-11-03):** llama-cpp-python GPU kuruldu (Gemma 3 4B GGUF, GPU 1,7 sn yükleme, ~60 token/sn); v1.4 Magic UI efektleri (MagicCard, ShineBorder, AnimatedList, BentoGrid, DotPattern), `design/v2/` ekran görüntüleri ve ui-spec hazır; Ayarlar → Görünüm'de "Arayüz efektleri" anahtarı. **206 test geçiyor, 1 skip.** Kullanıcı görsel onayı bekleniyor; sırada v1.5 kurucu.
+**v1.3 (7e dahil) + v1.4 + v1.5 + v1.6 kod tarafı tamamlandı (2026-11-04):** 7e kalite tablosu Gemma 3 4B ile 10/10 geçti (rapor: reports/2026-11-04-7e-kalite-tablosu.md); v1.5'te `dikte/uninstall.py` (kaldırma kartı, çift onay, boyut, otomatik başlatma), `Dikte.spec` ve `installer/Dikte.iss` yazıldı; v1.6'da `dikte/updater.py` (latest.json → SHA-256 → sessiz kurulum), Ayarlar'da Güncelleme kartı ve açılışta sessiz denetim eklendi. **220 pytest + 25 Playwright testi geçiyor (1 skip).** Kurulum/derleme ve gerçek güncelleme kullanıcı testi bekliyor; yayın yeri (K2) kararı açık.
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -35,9 +35,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **v1.6 kodlanmadı:** otomatik güncelleme.
 
 ## Sıradaki ilk adım
-1. **SENİN YAPACAĞIN ŞEY:** uygulamayı aç (`python -m dikte`), efektleri ve açık/koyu temayı gözle onayla; `/asama-bitir` ile v1.4'ü kapat.
-2. Sıradaki kod işi: 7e kalite tablosu (gerçek GGUF), sonra v1.5 kurucu + kaldırma.
-3. 7e: gerçek GGUF ile 10 cümle kalite tablosu.
+1. **SENİN YAPACAĞIN ŞEY:** v1.4 efektlerini uygulamada gözle onayla; `/asama-bitir` ile aşamayı kapat.
+2. v1.5 kurucu derlemesi: PyInstaller + Inno Setup kur (`Dikte.spec` → `dist\Dikte`, `ISCC installer\Dikte.iss`); kur/kaldır kullanıcı testi.
+3. v1.6 yayın yeri kararı (K2): herkese açık Releases ya da statik sunucu; seçilince `config.UPDATE_URL` tek sabit doldurulur, gerçek güncelleme testi yapılır.
 
 ## Açık sorunlar
 - **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn sürüyor; sonraki çağrılar hızlı (~60 tok/s). UI çağrılarında tek seferlik ısınma kabul edilebilir; gerekirse ön ısınma çağrısı eklenir.
@@ -81,11 +81,11 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **206 passed, 1 skipped** (2026-11-03, 31,2 sn) |
+| `pytest -q` | **220 passed, 1 skipped** (2026-11-04, 37,8 sn; +12 updater, +2 Playwright guncelleme) |
 | `--selftest` (geçici TTS wav) | GPU float16, metin üretildi (v1.2); **2026-11-01'de çalıştırılamadı: `tests/data/test.wav` yok** |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
-| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile, efektler (23 test) |
+| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile, efektler, guncelleme kartı (25 test) |
 | llama.cpp gerçek GGUF (2026-11-03) | gemma3-4b GPU yükleme 1,7 sn; üretim ~60 tok/s; ilk çağrı ~50 sn CUDA ısınması |
 | v1.4 efektler | Playwright: efekt anahtarı, `fx-on`, shine geçişi, liste gecikmeleri, bento, nokta deseni, kart ışığı — 6 test; ekran görüntüleri `design/v2/*.png` |
 | Gerçek mikrofon / kısayol / pano | Kullanıcı test etti (2026-10-31) |
@@ -96,8 +96,8 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 | Tema | Playwright: düğme sınıf değişimi + Ayarlar segmenti; `artifacts/ui-tema-*.png` |
 | Gerçek uygulama açılışı | Pencere `Dikte — VoxNote AI`, model GPU float16 hazır |
 | v1.3 OpenRouter gerçek çağrı | 6 cümle geçti (gemma-3-4b-it, ~$0,0001); düzeltmeler `reports/2026-11-01-openrouter-gercek-test.md` |
-| Kurulum / kaldırma | Henüz yok |
-| Güncelleme (v1.6) | Henüz yok |
+| Kurulum / kaldırma | Derleme + kur/kaldır kullanıcı testi bekliyor (kod + iss + spec hazır) |
+| Güncelleme (v1.6) | test_updater 12 test geçti; gerçek yükseltme kullanıcı testi bekliyor |
 
 ## Çalıştırma komutları
 ```powershell

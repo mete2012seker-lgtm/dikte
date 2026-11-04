@@ -455,6 +455,68 @@
           </div>
         </div>
 
+        <div class="card set-card" id="updateCard">
+          <div class="card-head"><svg class="ic"><use href="#i-chev-down"/></svg>Güncelleme</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Sürüm</div>
+              <div class="set-desc"><b id="updateVersion">—</b> · Son denetim: <span id="updateLastCheck">—</span></div>
+            </div>
+            <div class="set-control">
+              <button class="btn" id="updateCheckBtn" type="button">Şimdi denetle</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Uygulamayı Güncelle</div>
+              <div class="set-desc" id="updateNotes">Yeni sürüm yoksa pasif kalır. Kurulum sessiz çalışır, uygulama kapanıp yeniden açılır.</div>
+            </div>
+            <div class="set-control">
+              <button class="btn btn-primary" id="updateApplyBtn" type="button" disabled>Uygulamayı Güncelle</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Açılışta denetle</div>
+              <div class="set-desc">Uygulama her açılışta sessizce sürüm denetler; uyarı vermez.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="updateAutoSwitch" role="switch" aria-checked="true" aria-label="Açılışta denetle"></button>
+            </div>
+          </div>
+          <div class="uninstall-status" id="updateStatus" role="status"></div>
+        </div>
+
+        <div class="card set-card" id="appCard">
+          <div class="card-head"><svg class="ic"><use href="#i-cpu"/></svg>Uygulama / Kaldırma</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Windows ile başlat</div>
+              <div class="set-desc">Bilgisayar açılırken Dikte arka planda hazır olsun.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="autostartSwitch" role="switch" aria-checked="false" aria-label="Windows ile başlat"></button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Kaldırma</div>
+              <div class="set-desc" id="uninstallDesc">Silinecek veri: modeller, geçmiş, ayarlar ve günlükler. Bu işlem geri alınamaz.</div>
+            </div>
+            <div class="set-control uninstall-control">
+              <button class="btn btn-danger uninstall-btn" id="uninstallBtn" type="button">Uygulamayı Kaldır</button>
+            </div>
+          </div>
+          <div class="uninstall-confirm" id="uninstallConfirm" hidden>
+            <div class="uninstall-question" id="uninstallQuestion">Dikte ve tüm verileri kaldırılsın mı?</div>
+            <div class="uninstall-actions">
+              <button class="btn" id="uninstallNo" type="button">Vazgeç</button>
+              <button class="btn btn-danger" id="uninstallYes" type="button">Evet, kaldır</button>
+            </div>
+            <div class="uninstall-status" id="uninstallStatus" role="status"></div>
+          </div>
+        </div>
+
         <div class="save-row">
           <span class="dirty" id="settingsDirty" hidden>Kaydedilmedi</span>
           <button class="btn" id="resetSettingsBtn">Varsayılana dön</button>

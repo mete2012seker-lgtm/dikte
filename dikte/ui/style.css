@@ -594,3 +594,13 @@ html.light .bento-card::before{background:linear-gradient(140deg,rgba(61,91,245,
 }
 
 
+
+/* ---------- uygulama / kaldirma karti ---------- */
+.uninstall-btn{background:rgba(239,91,91,.12);border:1px solid rgba(239,91,91,.6);color:#FFB4B4;font-weight:600}
+.uninstall-btn:hover:not(:disabled){background:rgba(239,91,91,.22)}
+.uninstall-confirm{border:1px solid rgba(239,91,91,.45);border-radius:12px;padding:14px 16px;margin-top:4px;background:rgba(239,91,91,.06)}
+.uninstall-question{font-size:14px;color:var(--fg,#E9EEF9);margin-bottom:10px}
+.uninstall-actions{display:flex;gap:8px}
+.uninstall-status{margin-top:10px;font-size:13px;color:var(--muted,#A7B2C9)}
+html.light .uninstall-btn{background:rgba(217,58,58,.08);border-color:rgba(217,58,58,.55);color:#A32626}
+html.light .uninstall-btn:hover:not(:disabled){background:rgba(217,58,58,.16)}

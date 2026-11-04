@@ -1553,6 +1553,12 @@
       settingsDirty = false;
       $("#settingsDirty").hidden = true;
       applySettingsAvailability(data.state);
+      loadUninstallInfo();
+      initUpdateCard({
+        version: data.ai && data.ai.version,
+        last_check_text: data.ai && data.ai.update_last_check_text,
+        auto_check: data.ai && data.ai.update_check_on_start,
+      });
     } catch (error) {
       console.error("Ayarlar okunamadı:", error);
       toast("Ayarlar okunamadı.", "error");
@@ -1684,6 +1690,160 @@
   });
 
   $("#topLang")?.addEventListener("change", () => {});
+
+  /* ---------- uygulama: otomatik baslatma ve kaldirma ---------- */
+
+  let uninstallState = null;
+  let uninstallStep = 0;
+
+  async function loadUninstallInfo() {
+    if (!hasApi("uninstall_info")) return;
+    try {
+      uninstallState = await api.uninstall_info();
+    } catch (error) {
+      return;
+    }
+    if (!uninstallState) return;
+    setSwitchEl($("#autostartSwitch"), Boolean(uninstallState.autostart));
+    const btn = $("#uninstallBtn");
+    if (!uninstallState.installed) {
+      btn.disabled = true;
+      btn.title = "Bu sürüm kurulumla gelmedi";
+      $("#uninstallDesc").textContent =
+        "Bu sürüm geliştirme kopyası; kaldırıcı yok. Silinecek veri yaklaşık " +
+        uninstallState.size_text + ".";
+    } else {
+      $("#uninstallDesc").textContent =
+        "Silinecek veri yaklaşık " + uninstallState.size_text +
+        ": modeller, geçmiş, ayarlar ve günlükler. Bu işlem geri alınamaz.";
+    }
+  }
+
+  $("#autostartSwitch").addEventListener("click", async () => {
+    if (!hasApi("ai_settings_save")) return;
+    const next = !switchOnEl($("#autostartSwitch"));
+    try {
+      const result = await api.ai_settings_save({ autostart: next });
+      if (result && result.ok) {
+        setSwitchEl($("#autostartSwitch"), next);
+        if (uninstallState) uninstallState.autostart = next;
+        toast(next ? "Windows açılışında başlatılacak." : "Windows açılışında başlatılmayacak.", "info");
+      } else {
+        toast((result && result.message) || "Kaydedilemedi.", "warn");
+      }
+    } catch (error) {
+      toast("Kaydedilemedi.", "error");
+    }
+  });
+
+  $("#uninstallBtn").addEventListener("click", () => {
+    if (uninstallState && !uninstallState.installed) return;
+    uninstallStep = 1;
+    $("#uninstallYes").textContent = "Evet, kaldır";
+    $("#uninstallStatus").textContent = "";
+    $("#uninstallConfirm").hidden = false;
+  });
+
+  $("#uninstallNo").addEventListener("click", () => {
+    uninstallStep = 0;
+    $("#uninstallConfirm").hidden = true;
+  });
+
+  $("#uninstallYes").addEventListener("click", async () => {
+    if (uninstallStep === 1) {
+      uninstallStep = 2;
+      const size = uninstallState ? uninstallState.size_text : "tüm";
+      $("#uninstallQuestion").textContent =
+        "İkinci onay: yaklaşık " + size + " veri (modeller dahil) kalıcı olarak silinecek. Emin misin?";
+      $("#uninstallYes").textContent = "Evet, her şeyi sil";
+      return;
+    }
+    if (!hasApi("uninstall")) return;
+    const status = $("#uninstallStatus");
+    status.textContent = "Kaldırıcı başlatılıyor…";
+    try {
+      const result = await api.uninstall();
+      status.textContent = result && result.ok
+        ? (result.message || "Kaldırıcı başlatıldı")
+        : (result && result.message) || "Kaldırıcı başlatılamadı.";
+    } catch (error) {
+      status.textContent = "Kaldırıcı başlatılamadı.";
+    }
+  });
+
+  /* ---------- guncelleme karti ---------- */
+
+  let updateInfo = null;
+
+  function initUpdateCard(data) {
+    if (!data) return;
+    $("#updateVersion").textContent = data.version || "—";
+    $("#updateLastCheck").textContent = data.last_check_text || "—";
+    setSwitchEl($("#updateAutoSwitch"), Boolean(data.auto_check));
+  }
+
+  $("#updateCheckBtn").addEventListener("click", async () => {
+    if (!hasApi("update_check")) return;
+    const btn = $("#updateCheckBtn");
+    const status = $("#updateStatus");
+    btn.disabled = true;
+    status.textContent = "Denetleniyor…";
+    try {
+      const result = await api.update_check(true);
+      if (result && result.ok && result.update_available) {
+        updateInfo = result;
+        status.textContent = result.message || ("Yeni sürüm: " + result.version);
+        $("#updateApplyBtn").disabled = false;
+      } else if (result && result.ok) {
+        status.textContent = result.message || "Güncelsin.";
+        $("#updateApplyBtn").disabled = true;
+      } else {
+        status.textContent = (result && result.message) || "Denetlenemedi.";
+        $("#updateApplyBtn").disabled = true;
+      }
+    } catch (error) {
+      status.textContent = "Sunucuya ulaşılamadı.";
+      $("#updateApplyBtn").disabled = true;
+    }
+    btn.disabled = false;
+  });
+
+  $("#updateApplyBtn").addEventListener("click", async () => {
+    if (!hasApi("update_apply") || !updateInfo) return;
+    const btn = $("#updateApplyBtn");
+    const status = $("#updateStatus");
+    btn.disabled = true;
+    btn.textContent = "İndiriliyor…";
+    try {
+      const result = await api.update_apply();
+      if (result && result.ok) {
+        status.textContent = result.message || "Kurulum başlatıldı.";
+        toast(result.message || "Kurulum başlatıldı; uygulama kapanacak.", "info");
+      } else {
+        status.textContent = (result && result.message) || "Kurulum başlatılamadı.";
+        toast((result && result.message) || "Kurulum başlatılamadı.", "error");
+      }
+    } catch (error) {
+      status.textContent = "Kurulum başlatılamadı.";
+    }
+    btn.textContent = "Uygulamayı Güncelle";
+  });
+
+  $("#updateAutoSwitch").addEventListener("click", async () => {
+    if (!hasApi("ai_settings_save")) return;
+    const next = !switchOnEl($("#updateAutoSwitch"));
+    try {
+      const result = await api.ai_settings_save({ update_check_on_start: next });
+      if (result && result.ok) {
+        setSwitchEl($("#updateAutoSwitch"), next);
+        toast(next ? "Açılışta sürüm denetlenecek." : "Açılışta sürüm denetlenmeyecek.", "info");
+      } else {
+        toast((result && result.message) || "Kaydedilemedi.", "warn");
+      }
+    } catch (error) {
+      toast("Kaydedilemedi.", "error");
+    }
+  });
 
   showPage("page-dikte");
 })();

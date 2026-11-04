@@ -101,18 +101,18 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - Kanıt: 206 pytest (Playwright 23 test), `design/v2/*.png`. Kullanıcı görsel onayı bekleniyor.
 
 ### Aşama 10 — v1.5: Kurucu ve kaldırma
-- [ ] PyInstaller `onedir` + Inno Setup; kullanıcı bazlı kurulum, `%LOCALAPPDATA%\Dikte` verisi.
-- [ ] Masaüstü/Başlat menüsü kısayolları; isteğe bağlı Windows açılışında başlatma.
-- [ ] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi.
-- [ ] Kaldırma: exe, kısayol, otomatik başlatma, modeller, geçmiş, ayarlar, loglar ve `%TEMP%\dikte` silinir.
-- Kanıt: kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi).
+- [x] PyInstaller `onedir` + Inno Setup; kullanıcı bazlı kurulum, `%LOCALAPPDATA%\Dikte` verisi. (2026-11-04: `Dikte.spec` + `installer/Dikte.iss` yazıldı; derleme kullanıcı testinde)
+- [x] Masaüstü/Başlat menüsü kısayolları; isteğe bağlı Windows açılışında başlatma. (kısayollar iss'te; açılışta başlatma Ayarlar'daki anahtar + HKCU Run)
+- [x] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi. (`dikte/uninstall.py` + appCard)
+- [x] Kaldırma: exe, kısayol, otomatik başlatma, modeller, geçmiş, ayarlar, loglar ve `%TEMP%\dikte` silinir. (Inno kaldırıcısı sessiz başlatılır)
+- Kanıt: kod + testler hazır (220 pytest); kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi) bekliyor.
 
 ### Aşama 11 — v1.6: Otomatik güncelleme (kapsam 2026-11-01 onaylı)
-- [ ] Açılışta sessiz sürüm denetimi (Ayarlar'dan kapatılabilir); yeni sürüm varsa Dikte/Ayarlar sayfasında "Güncelleme hazır" bildirimi.
-- [ ] Ayarlar'da **Güncelleme** kartı: "Uygulamayı Güncelle" birincil butonu (yeni sürüm yoksa devre dışı), sürüm numarası, son denetim zamanı, "Şimdi denetle" düğmesi.
-- [ ] Güncelleme akışı: küçük bir `latest.json` dosyası okunur (sürüm, kurucu bağlantısı, SHA-256, sürüm notu); yeni sürüm varsa kurucu indirilir, SHA-256 doğrulanır, Inno Setup kurucusu sessiz çalıştırılır, uygulama yeniden açılır.
-- [ ] Düşüş: ağ yok / indirme yarıda kaldı / özet uyuşmadı durumlarında Türkçe uyarı; uygulama çalışmaya devam eder, yarım dosya silinir.
-- [ ] Sürüm numarası tek kaynaktan (`dikte/config.py`) okunur; kurucu ve güncelleme denetimi aynı değeri kullanır.
+- [x] Açılışta sessiz sürüm denetimi (Ayarlar'dan kapatılabilir); yeni sürüm varsa Ayarlar kartında sonuç gösterilir. (2026-11-04: yalnız kurulu sürümde, `maybe_startup_update_check`)
+- [x] Ayarlar'da **Güncelleme** kartı: "Uygulamayı Güncelle" birincil butonu (yeni sürüm yoksa devre dışı), sürüm numarası, son denetim zamanı, "Şimdi denetle" düğmesi.
+- [x] Güncelleme akışı: küçük bir `latest.json` dosyası okunur (sürüm, kurucu bağlantısı, SHA-256, sürüm notu); yeni sürüm varsa kurucu indirilir, SHA-256 doğrulanır, Inno Setup kurucusu sessiz çalıştırılır, uygulama yeniden açılır. (`dikte/updater.py`)
+- [x] Düşüş: ağ yok / indirme yarıda kaldı / özet uyuşmadı durumlarında Türkçe uyarı; uygulama çalışmaya devam eder, yarım dosya silinir.
+- [x] Sürüm numarası tek kaynaktan (`dikte/config.py`) okunur; kurucu ve güncelleme denetimi aynı değeri kullanır.
 - Kanıt: sahte güncelleme sunucusuyla "yeni sürüm var / yok / bozuk dosya / ağ yok" pytest testleri; gerçek sürüm yükseltme kullanıcı testi.
 - Açık karar: depo özel olduğu için `latest.json` ve kurucunun kimlik doğrulamasız erişilebilir bir yerde durması gerekir (herkese açık GitHub Releases ya da basit statik sunucu). Bu seçim 11. aşama başında sorulacak.
 - Senin yapacağın: güncelleme dosyalarının yayınlanacağı yeri seçmek; ilk Release'i yayınlamak.

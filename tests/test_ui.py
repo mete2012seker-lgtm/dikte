@@ -109,7 +109,10 @@ window.__ai = {
   theme: "system",
   effects: true,
   state: "ready",
-  ready: true
+  ready: true,
+  version: "1.3.0",
+  update_check_on_start: true,
+  update_last_check_text: "—"
 };
 window.__snap.ai = window.__ai;
 window.__settings.ai = window.__ai;
@@ -149,6 +152,15 @@ window.pywebview = {
     text_model_delete: async (name) => { window.__calls.push("text_delete:" + name); return { ok: true, message: "Silindi." }; },
     text_model_open_folder: async (name) => ({ ok: true, message: "klasör" }),
     settings_get: async () => JSON.parse(JSON.stringify(window.__settings)),
+    update_check: async (force) => {
+      window.__calls.push("update_check:" + String(force));
+      return window.__updateResult || { ok: false, message: "Sunucuya ulaşılamadı." };
+    },
+    update_apply: async () => {
+      window.__calls.push("update_apply");
+      return window.__updateApplyResult || { ok: true, message: "Kurulum başlatıldı." };
+    },
+    uninstall_info: async () => ({ ok: true, installed: false, version: "1.3.0", size_text: "1,0 GB", autostart: false }),
     settings_save: async (payload) => {
       window.__calls.push("settings_save:" + JSON.stringify(payload));
       window.__settings = Object.assign(window.__settings, payload);
@@ -761,3 +773,25 @@ def test_v14_tema_ekran_goruntuleri(page):
     _v14_tema_ekran_goruntuleri(page, "koyu", "dark")
     _v14_tema_ekran_goruntuleri(page, "acik", "light")
     assert len(list((ROOT / "design" / "v2").glob("v2-*.png"))) >= 10
+
+
+def test_guncelleme_karti_durumu(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
+    assert page.locator("#updateVersion").inner_text() == "1.3.0"
+    assert page.locator("#updateApplyBtn").is_disabled()
+
+
+def test_guncelleme_denetle_ve_uygula(page):
+    fresh(page)
+    page.evaluate(
+        "() => { window.__updateResult = { ok: true, update_available: true, version: '1.4.0', url: 'https://ornek/Dikte-1.4.0-kurulum.exe', sha256: '', notes: 'not', message: 'Yeni sürüm: 1.4.0' }; }"
+    )
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
+    page.locator("#updateCheckBtn").click()
+    page.wait_for_function("() => document.querySelector('#updateStatus').textContent.includes('Yeni sürüm')")
+    assert not page.locator("#updateApplyBtn").is_disabled()
+    page.locator("#updateApplyBtn").click()
+    page.wait_for_function("() => document.querySelector('#updateStatus').textContent.includes('Kurulum')")

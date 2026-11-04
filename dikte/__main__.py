@@ -164,7 +164,9 @@ def cmd_ui(force_device: str | None, debug: bool) -> int:
     _print_header()
     config.ensure_runtime_dirs()
     engine = TranscriptionEngine(force_device=force_device)
-    return run_app(Controller(engine=engine), debug=debug)
+    controller = Controller(engine=engine)
+    controller.maybe_startup_update_check()
+    return run_app(controller, debug=debug)
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -114,6 +114,23 @@ class Api:
     def settings_save(self, payload: dict | None = None) -> dict:
         return self._controller.settings_save(payload)
 
+    # ---------- uygulama (otomatik başlatma / kaldırma) ----------
+
+    def uninstall_info(self) -> dict:
+        return self._controller.uninstall_info()
+
+    def uninstall(self) -> dict:
+        return self._controller.uninstall()
+
+    def autostart_set(self, enabled: bool) -> dict:
+        return self._controller.autostart_set(bool(enabled))
+
+    def update_check(self, force: bool = False) -> dict:
+        return self._controller.update_check(force=bool(force))
+
+    def update_apply(self) -> dict:
+        return self._controller.update_apply()
+
 
 def run_app(controller=None, debug: bool = False) -> int:
     try:

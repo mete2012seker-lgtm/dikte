@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karşılama Sihirbazı — Tasarım Taslağı (açık temalı)</title>
+<style>
+  :root{
+    --background:#F7F9FD; --foreground:#101828; --card:#FFFFFF; --border:#E4E9F2;
+    --muted:#667085; --accent:#3D5BF5; --accent-soft:#EEF1FE; --success:#12B76A; --warning:#F79009;
+    --radius:16px; --font-sans:"Segoe UI",system-ui,-apple-system,sans-serif; --font-mono:"Cascadia Code",Consolas,monospace;
+  }
+  /* Karanlık tema: html etiketine .dark eklenerek denenir */
+  html.dark{
+    --background:#0E1116; --foreground:#F2F5FA; --card:#161B22; --border:#2A3140;
+    --muted:#98A2B3; --accent:#7C9BFF; --accent-soft:#1E2638; --success:#34D399; --warning:#FBBF24;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--background); color:var(--foreground); font-family:var(--font-sans); padding:40px 24px 60px}
+  h1{font-size:26px; letter-spacing:-.02em}
+  .sub{color:var(--muted); margin:6px 0 32px; font-size:14px}
+
+  /* DotPattern arka plan */
+  .dots{position:relative; border-radius:calc(var(--radius) + 8px); padding:34px; background:
+    radial-gradient(circle, rgba(61,91,245,.14) 1px, transparent 1px);
+    background-size:22px 22px;}
+  html.dark .dots{background:
+    radial-gradient(circle, rgba(124,155,255,.18) 1px, transparent 1px);
+    background-size:22px 22px;}
+  .dots::after{content:""; position:absolute; inset:0; border-radius:inherit;
+    background:radial-gradient(60% 60% at 50% 0%, rgba(61,91,245,.06), transparent 70%); pointer-events:none}
+
+  .row{display:flex; flex-wrap:wrap; gap:28px; justify-content:center; position:relative; z-index:1}
+
+  /* MagicCard */
+  .screen{width:340px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:0 8px 30px rgba(16,24,40,.06); overflow:hidden; transition:box-shadow .25s, transform .25s;
+    display:flex; flex-direction:column; position:relative}
+  html.dark .screen{box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  .screen:hover{box-shadow:0 14px 44px rgba(61,91,245,.16); transform:translateY(-3px)}
+  .screen::before{content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px; opacity:0;
+    background:conic-gradient(from var(--a,0deg), transparent 0 60%, var(--accent) 75%, transparent 90%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; transition:opacity .3s; pointer-events:none}
+  .screen:hover::before{opacity:.7; animation:spin 3.2s linear infinite}
+  @keyframes spin{to{--a:360deg}}
+  @property --a{syntax:"<angle>"; inherits:false; initial-value:0deg}
+
+  .head{padding:18px 20px 0}
+  .stepchip{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--accent);
+    background:var(--accent-soft); border-radius:999px; padding:4px 10px}
+  .screen h2{font-size:17px; margin:12px 0 4px; letter-spacing:-.01em}
+  .screen p.desc{font-size:12.5px; color:var(--muted); line-height:1.55; padding:0 20px 14px}
+  .body{padding:0 20px 18px; display:flex; flex-direction:column; gap:10px; flex:1}
+  .foot{padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:#FBFCFE}
+  html.dark .foot{background:#12161D}
+
+  /* ShineBorder örneği */
+  .shine{position:relative; border-radius:12px; border:1px solid var(--border);
+    background:linear-gradient(90deg,#FFE4D6,#FBD5F5,#C7D7FF,#FFE4D6) border-box; background-size:300% 100%;
+    animation:shineslide 3s linear infinite; padding:1px}
+  @keyframes shineslide{to{background-position:300% 0}}
+  .shine-inner{border-radius:11px; background:var(--card); padding:14px}
+
+  /* stepper */
+  .stepper{display:flex; align-items:center; gap:0; margin-bottom:6px}
+  .dot{width:22px; height:22px; border-radius:50%; font-size:10.5px; font-weight:700; display:flex; align-items:center;
+    justify-content:center; background:var(--accent-soft); color:var(--accent); flex:none}
+  .dot.done{background:var(--accent); color:#fff}
+  .dot.now{outline:2px solid var(--accent); outline-offset:2px}
+  .line{height:2px; width:26px; background:var(--border)}
+  .line.fill{background:var(--accent)}
+
+  /* öğeler */
+  .opt{border:1px solid var(--border); border-radius:12px; padding:11px 12px; display:flex; gap:10px; align-items:flex-start;
+    font-size:12.5px; line-height:1.4; cursor:pointer; transition:border-color .15s, background .15s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.sel{border-color:var(--accent); background:var(--accent-soft)}
+  .opt .ic{font-size:16px; flex:none}
+  .opt b{display:block; font-size:12.5px}
+  .opt small{color:var(--muted)}
+  .badge{font-size:10px; font-weight:600; padding:2px 7px; border-radius:999px; flex:none}
+  .badge.ok{background:#E7F8F0; color:var(--success)}
+  .badge.warn{background:#FFF4E0; color:var(--warning)}
+  .badge.tag{background:var(--accent-soft); color:var(--accent)}
+  .btn{border:none; border-radius:10px; padding:9px 16px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit}
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.wide{width:100%}
+  .progress{height:6px; border-radius:999px; background:var(--accent-soft); overflow:hidden}
+  .progress i{display:block; height:100%; width:38%; border-radius:inherit;
+    background:linear-gradient(90deg,var(--accent),#7C9BFF); background-size:200% 100%; animation:slide 1.6s ease-in-out infinite}
+  @keyframes slide{50%{background-position:100% 0}}
+  .note{font-size:11px; color:var(--muted); line-height:1.5; background:#FBFCFE; border:1px dashed var(--border); border-radius:10px; padding:9px 11px}
+  html.dark .note{background:#12161D}
+  .field{border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--muted); font-family:var(--font-mono)}
+  .skip{font-size:11px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; background:none; border:none; cursor:pointer}
+  .bar-t{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:4px}
+  .toggle{position:fixed; top:16px; right:16px; z-index:5; background:var(--card); border:1px solid var(--border);
+    border-radius:999px; padding:8px 14px; font-size:12px; cursor:pointer; color:var(--foreground)}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.classList.toggle('dark')">🌙 Açık/Koyu deneme</button>
+<h1>Karşılama Sihirbazı — Menü Taslağı</h1>
+<p class="sub">v1.5 ilk açılış sihirbazı · 5 adım · Magic UI tarzı (DotPattern zemin, MagicCard kartlar, ShineBorder indirme çerçevesi) · sağ üstteki düğmeyle karanlık hali denenir</p>
+
+<div class="dots"><div class="row">
+
+  <!-- 1 -->
+  <div class="screen">
+    <div class="head">
+      <div class="stepper"><span class="dot done">1</span><span class="line fill"></span><span class="dot">2</span><span class="line"></span><span class="dot">3</span><span class="line"></span><span class="dot">4</span><span class="line"></span><span class="dot">5</span></div>
+      <span class="stepchip">🎙️ Hoş geldiniz</span>
+      <h2>Dikte'ye hoş geldin</h2>
+    </div>
+    <p class="desc">Sağ Ctrl'ye basılı tut, konuş; bırakınca konuşmanız yazıya döner. İstersen yapay zekâ ile temizler ya da başka dile çevirir.</p>
+    <div class="body">
+      <div class="shine"><div class="shine-inner" style="font-size:12.5px; line-height:1.5">
+        <b>3 kısa bilgi:</b><br>
+        · Yazıya çevirme kendi bilgisayarında olur<br>
+        · Veriler bilgisayarından çıkmaz (sağlayıcı seçmezsen)<br>
+        · Kurulum ~3 dakika sürer
+      </div></div>
+    </div>
+    <div class="foot">
+      <button class="skip">Atla</button>
+      <button class="btn primary">Başla →</button>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="screen">
+    <div class="head">
+      <div class="stepper"><span class="dot done">1</span><span class="line fill"></span><span class="dot done">2</span><span class="line fill"></span><span class="dot now">3</span><span class="line"></span><span class="dot">4</span><span class="line"></span><span class="dot">5</span></div>
+      <span class="stepchip">🧠 Ses modeli seç</span>
+      <h2>Hangi model dinlesin?</h2>
+    </div>
+    <p class="desc">Büyük model daha iyi anlar ama daha yavaş ve çok yer kaplar. Küçük kartlarla başlaman önerilir.</p>
+    <div class="body">
+      <div class="opt sel"><span class="ic">⚡</span><span><b>tiny <span class="badge tag">önerilen</span></b><small>~75 MB · çok hızlı · temel doğruluk</small></span></div>
+      <div class="opt"><span class="ic">🎯</span><span><b>base</b><small>~140 MB · hızlı · iyi</small></span></div>
+      <div class="opt"><span class="ic">✨</span><span><b>small</b><small>~460 MB · orta · daha doğru</small></span></div>
+      <div class="opt"><span class="ic">💎</span><span><b>medium</b><small>~1,5 GB · yavaş · çok doğru</small></span></div>
+      <div class="opt"><span class="ic">🏆</span><span><b>large-v3</b><small>~3 GB · en yavaş · en doğru</small></span></div>
+    </div>
+    <div class="foot">
+      <button class="skip">← Geri</button>
+      <button class="btn primary">İndir ve devam</button>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="screen">
+    <div class="head">
+      <div class="stepper"><span class="dot done">1</span><span class="line fill"></span><span class="dot done">2</span><span class="line fill"></span><span class="dot done">3</span><span class="line fill"></span><span class="dot now">4</span><span class="line"></span><span class="dot">5</span></div>
+      <span class="stepchip">🚀 GPU hızlandırma</span>
+      <h2>NVIDIA kartı bulundu</h2>
+    </div>
+    <p class="desc">RTX 5060 saptandı. CUDA bileşenleri (~600 MB) indirilirse yazıya çevirme GPU'da çok daha hızlı çalışır. İstersen sonra Ayarlar'dan kurabilirsin.</p>
+    <div class="body">
+      <div class="shine">
+        <div class="shine-inner">
+          <div class="bar-t"><span>CUDA bileşenleri</span><span>38%</span></div>
+          <div class="progress"><i></i></div>
+          <div style="font-size:11px; color:var(--muted); margin-top:8px">⏸ Duraklat · ⏭ İptal · cublas-cu12 380 MB</div>
+        </div>
+      </div>
+      <div class="opt"><span class="ic">🖥️</span><span><b>CPU modu <span class="badge ok">daha az indirme</span></b><small>Ek indirme yok, yalnız daha yavaş çeviri</small></span></div>
+    </div>
+    <div class="foot">
+      <button class="skip">← Geri</button>
+      <button class="btn primary">İndir (GPU)</button>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="screen">
+    <div class="head">
+      <div class="stepper"><span class="dot done">1</span><span class="line fill"></span><span class="dot done">2</span><span class="line fill"></span><span class="dot done">3</span><span class="line fill"></span><span class="dot done">4</span><span class="line fill"></span><span class="dot now">5</span><span class="line"></span><span class="dot">6</span></div>
+      <span class="stepchip">🤖 Yapay zekâ sağlayıcısı</span>
+      <h2>Metni kim düzenlesin?</h2>
+    </div>
+    <p class="desc">Temizleme ve çeviri için bir sağlayıcı seç. Şimdilik yok da seçebilirsin; sonra Ayarlar'dan eklersin.</p>
+    <div class="body">
+      <div class="opt sel"><span class="ic">🔒</span><span><b>Yok (şimdilik)</b><small>Temizle/Çevir kapalı; tam gizlilik</small></span></div>
+      <div class="opt"><span class="ic">💾</span><span><b>Yerel GGUF modeli</b><small>Bilgisayarında çalışır · 1,2–2,5 GB indirme</small></span></div>
+      <div class="opt"><span class="ic">🌐</span><span><b>OpenRouter <span class="badge warn">ücretli</span></b><small>İnternete gider · ucuz küçük modeller</small></span></div>
+      <div class="field">OpenRouter API anahtarı: sk-or-…·······</div>
+      <div class="note">🌐 seçersen konuştuğun metin internete gönderilir.</div>
+    </div>
+    <div class="foot">
+      <button class="skip">← Geri</button>
+      <button class="btn primary">Devam</button>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="screen">
+    <div class="head">
+      <div class="stepper"><span class="dot done">1</span><span class="line fill"></span><span class="dot done">2</span><span class="line fill"></span><span class="dot done">3</span><span class="line fill"></span><span class="dot done">4</span><span class="line fill"></span><span class="dot done">5</span><span class="line fill"></span><span class="dot done">✓</span></div>
+      <span class="stepchip">✅ Bitiş</span>
+      <h2>Her şey hazır 🎉</h2>
+    </div>
+    <p class="desc">Seçimlerin kaydedildi. Sağ Ctrl'ye basıp konuşmayı dene.</p>
+    <div class="body">
+      <div class="note" style="font-size:12px">
+        <b>Özet</b><br>
+        · Ses modeli: tiny (GPU float16)<br>
+        · CUDA: kurulu, 1,7 sn yükleme<br>
+        · Yapay zekâ: Yok — sonra Ayarlar'dan<br>
+        · Kısayol: Sağ Ctrl · Otomatik yapıştırma açık
+      </div>
+      <div class="opt" style="border-color:var(--accent)"><span class="ic">⌨️</span><span><b>SENİN YAPACAĞIN TEST</b><small>Sağ Ctrl basılı tut → konuş → bırak → metin kutusuna düşmeli</small></span></div>
+    </div>
+    <div class="foot">
+      <button class="skip">← Geri</button>
+      <button class="btn primary" style="flex:1">Dikteye başla</button>
+    </div>
+  </div>
+
+</div></div>
+</body>
+</html>

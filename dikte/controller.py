@@ -8,10 +8,10 @@ import shutil
 import threading
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
-from . import config, diagnostics, openrouter, text_engine
+from . import config, diagnostics, openrouter, text_engine, uninstall, updater
 from .audio import AudioError, AudioRecorder, Recording
 from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
@@ -1202,7 +1202,20 @@ class Controller:
             "effects": bool(self.settings.get("effects", True)),
             "key_set": bool(key),
             "key_masked": mask_key(key) if key else None,
+            "update_check_on_start": bool(self.settings.get("update_check_on_start", True)),
+            "update_last_check_text": self._update_last_check_text(),
+            "version": config.APP_VERSION,
         }
+
+    def _update_last_check_text(self) -> str:
+        raw = self.settings.get("update_last_check")
+        if not raw:
+            return "—"
+        try:
+            when = datetime.fromisoformat(str(raw))
+            return when.strftime("%d.%m.%Y %H:%M")
+        except ValueError:
+            return "—"
 
     def ai_state(self) -> dict:
         with self._lock:
@@ -1222,7 +1235,113 @@ class Controller:
             self.settings.save(**changes)
         except SettingsError as exc:
             return {"ok": False, "message": str(exc)}
+        if "autostart" in changes:
+            result = self.autostart_set(bool(changes["autostart"]))
+            if not result.get("ok"):
+                return result
         return {"ok": True, "message": "Ayarlar kaydedildi.", "ai": self.ai_state()}
+
+    # ---------- uygulama (otomatik başlatma / kaldırma) ----------
+
+    def autostart_set(self, enabled: bool) -> dict:
+        try:
+            uninstall.set_autostart(bool(enabled))
+        except uninstall.UninstallError as exc:
+            return {"ok": False, "message": str(exc)}
+        return {"ok": True, "enabled": bool(enabled)}
+
+    def uninstall_info(self) -> dict:
+        return {
+            "ok": True,
+            "installed": uninstall.is_installed(),
+            "version": config.APP_VERSION,
+            "size_text": uninstall.format_size(uninstall.data_bytes()),
+            "autostart": uninstall.autostart_enabled(),
+        }
+
+    def uninstall(self) -> dict:
+        try:
+            uninstall.run_uninstaller()
+        except uninstall.UninstallError as exc:
+            logger.warning("Kaldırıcı başlatılamadı: %s", exc)
+            return {"ok": False, "message": str(exc)}
+        return {"ok": True, "message": "Kaldırıcı başlatıldı"}
+
+    # ---------- güncelleme (v1.6) ----------
+
+    UPDATE_MESSAGES = {
+        "http_rejected": "Güncelleme denetimi yalnız HTTPS üzerinden yapılır.",
+        "no_url": "Güncelleme sunucusu yapılandırılmamış.",
+        "net": "Sunucuya ulaşılamadı.",
+        "bad_json": "Güncelleme bildirimi okunamadı.",
+        "host_rejected": "İndirme adresi güvenilir değil.",
+        "http_rejected_download": "İndirme yalnız HTTPS üzerinden yapılır.",
+    }
+
+    def update_check(self, force: bool = False) -> dict:
+        """Güncelleme denetimi. force=False açılışta sessiz denetim için."""
+        try:
+            result = updater.check(force=force)
+        except updater.UpdaterError as exc:
+            message = self.UPDATE_MESSAGES.get(exc.code, "Denetlenemedi.")
+            if force:
+                return {"ok": False, "code": exc.code, "message": message}
+            logger.info("Açılış güncelleme denetimi başarısız (%s)", exc.code)
+            return {"ok": False, "code": exc.code, "message": message}
+        if result is None:
+            return {"ok": False, "code": "net", "message": "Sunucuya ulaşılamadı."}
+        self.settings.save(update_last_check=datetime.now(timezone.utc).isoformat())
+        if not result.get("update_available"):
+            return {
+                "ok": True,
+                "update_available": False,
+                "version": result.get("version", ""),
+                "notes": result.get("notes", ""),
+                "message": "Güncelsin.",
+            }
+        return {
+            "ok": True,
+            "update_available": True,
+            "version": result.get("version", ""),
+            "notes": result.get("notes", ""),
+            "url": result.get("url", ""),
+            "message": f"Yeni sürüm: {result.get('version', '')}",
+        }
+
+    def update_apply(self) -> dict:
+        check = self.update_check(force=True)
+        if not check.get("ok") or not check.get("update_available"):
+            return {
+                "ok": False,
+                "code": check.get("code", "no_update"),
+                "message": check.get("message") or "Yeni sürüm yok.",
+            }
+        url = check.get("url", "")
+        try:
+            path = updater.download(url)
+        except updater.UpdaterError as exc:
+            logger.info("Güncelleme indirilemedi (%s)", exc.code)
+            return {"ok": False, "code": exc.code, "message": "İndirme başarısız. Bağlantını kontrol et."}
+        if not updater.verify_sha256(path, check.get("sha256", "")):
+            return {"ok": False, "code": "sha_mismatch", "message": "İndirilen dosyanın özeti uyuşmuyor; dosya silindi."}
+        try:
+            updater.apply(path)
+        except updater.UpdaterError as exc:
+            return {"ok": False, "code": exc.code, "message": "Kurulum başlatılamadı."}
+        return {"ok": True, "message": "Kurulum başlatıldı; uygulama kapanacak."}
+
+    def maybe_startup_update_check(self) -> None:
+        """Açılışta sessiz sürüm denetimi.
+        Yalnız kurulu (PyInstaller) sürümde ve ayar açıksa çalışır;
+        hata olursa uygulama çalışmaya devam eder.
+        """
+        if not config.is_packaged():
+            return
+        if not self.settings.get("update_check_on_start", True):
+            return
+        threading.Thread(
+            target=self.update_check, kwargs={"force": False}, daemon=True
+        ).start()
 
     def openrouter_key_save(self, key: str) -> dict:
         try:

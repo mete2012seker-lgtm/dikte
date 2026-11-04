@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı; v1.5 kurucu sırada.
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı. 7e kalite tablosu (Gemma 3 4B, 10/10) 2026-11-04'te ölçüldü; v1.5 kurucu + kaldırma ve v1.6 otomatik güncelleme kod tarafı 2026-11-04'te tamamlandı (kur/kaldır ve gerçek güncelleme kullanıcı testi bekliyor).
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -63,11 +63,14 @@ Akış:
 ## Arayüz yönü (deneme)
 `web/`, Dikte'nin pywebview arayüzünden bağımsız bir Next.js denemesidir (`cd web; npm run dev`). Mevcut uygulama hâlâ `dikte/ui/` altındaki HTML/CSS/JS'i kullanır. 2026-11-01'de Magic UI'ın CSS/JS uyarlaması seçildi; Next.js'e geçilmeyecek. Yeni görünüm v1.4'te `design/v2/` ile belgelenecek.
 
-## Planlanan modüller (henüz yok)
-| Dosya | Planlanan görev |
+## v1.5 / v1.6 ile gelen modüller
+| Dosya | Görev |
 | :--- | :--- |
-| `Dikte.spec`, `installer/Dikte.iss` | PyInstaller + Inno Setup kurucu, kaldırma (v1.5) |
-| `dikte/updater.py` | Sürüm denetimi (`latest.json`), kurucu indirme, SHA-256 doğrulama, sessiz kurulum ve yeniden açılış (v1.6) |
+| `dikte/uninstall.py` | Kurulum kontrolü (`is_installed`), silinecek boyut (`data_bytes`), otomatik başlatma (HKCU Run), Inno kaldırıcısını sessiz başlatma |
+| `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama, sessiz kurulum (v1.6; `UPDATE_URL` boş, K2 bekliyor) |
+| `Dikte.spec` | PyInstaller onedir yapılandırması (CPU-only, ui/ paketlenir, models/data/tests dışlanır) |
+| `installer/Dikte.iss` | Inno Setup 6: kullanıcı bazlı kurulum (`%LOCALAPPDATA%\Programs\Dikte`), masaüstü kısayolu; derleme kanıtı kullanıcı testinde |
+| `installer/latest.json` | Güncelleme bildirimi örneği (yayın yerinde gerçek değerler doldurulur) |
 
 ## Bileşenler ve bağlantıları
 | Bileşen | Neye bağlı | Değişirse neler etkilenir |
