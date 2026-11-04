@@ -215,6 +215,23 @@
 
       <div class="models-layout">
         <div>
+          <div class="bento" id="bentoRow">
+            <div class="bento-card" id="bentoAudio">
+              <div class="bento-ico"><svg class="ic"><use href="#i-mic"/></svg></div>
+              <div class="bento-title">Ses modelleri</div>
+              <div class="bento-sub" id="bentoAudioSub">Yükleniyor…</div>
+            </div>
+            <div class="bento-card" id="bentoText">
+              <div class="bento-ico"><svg class="ic"><use href="#i-doc"/></svg></div>
+              <div class="bento-title">Metin modelleri</div>
+              <div class="bento-sub" id="bentoTextSub">Yükleniyor…</div>
+            </div>
+            <div class="bento-card" id="bentoProvider">
+              <div class="bento-ico"><svg class="ic"><use href="#i-spark"/></svg></div>
+              <div class="bento-title">Metin sağlayıcısı</div>
+              <div class="bento-sub" id="bentoProviderSub">Yükleniyor…</div>
+            </div>
+          </div>
           <div class="tabs" role="tablist" aria-label="Model türü">
             <button class="tab is-active" id="tabText" role="tab" data-tab="text" aria-selected="true">Metin Modelleri</button>
             <button class="tab" id="tabAudio" role="tab" data-tab="audio" aria-selected="false">Ses Modelleri</button>
@@ -425,6 +442,15 @@
               <button class="seg" type="button" data-theme-choice="system">Sistem</button>
               <button class="seg" type="button" data-theme-choice="light">Açık</button>
               <button class="seg" type="button" data-theme-choice="dark">Koyu</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Arayüz efektleri</div>
+              <div class="set-desc">İşlem sırasında parlayan kenar, liste giriş animasyonu ve kart ışığı. Sistemde hareketi azalt açıksa otomatik kapanır.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch" id="effectsSwitch" role="switch" aria-checked="true" aria-label="Arayüz efektleri"></button>
             </div>
           </div>
         </div>

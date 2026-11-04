@@ -38,7 +38,7 @@ def prepare_cuda_dlls() -> None:
         if base_candidate.is_dir():
             bases.add(base_candidate)
 
-        for module_name in ("nvidia.cublas", "nvidia.cudnn"):
+        for module_name in ("nvidia.cublas", "nvidia.cudnn", "nvidia.cuda_runtime"):
             try:
                 module = importlib.import_module(module_name)
                 if module.__file__:
@@ -48,7 +48,7 @@ def prepare_cuda_dlls() -> None:
 
         added = []
         for base in bases:
-            for relative in (("cublas", "bin"), ("cudnn", "bin"), ("cudnn", "lib")):
+            for relative in (("cublas", "bin"), ("cudnn", "bin"), ("cudnn", "lib"), ("cuda_runtime", "bin")):
                 folder = base.joinpath(*relative)
                 if not folder.is_dir():
                     continue

@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün ilk partisi (7a: metin motoru, OpenRouter, Temizle/Çevir, Ayarlar kartları) 2026-11-01'de tamamlandı; GGUF/llama.cpp, bellek takası ve otomatik yapıştırma sırada.
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı; v1.5 kurucu sırada.
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -27,18 +27,18 @@ Akış:
 | `dikte/history.py` | `data/history.json`: ekle/listele/ara/sil/temizle, 500 sınırı, bozuk dosya yedeği | Hazır |
 | `dikte/models.py` | 6 ses modeli kataloğu, disk taraması, indirme, silme, boyut biçimleme | Hazır |
 | `dikte/paste.py` | Etkin pencereye Ctrl+V; Dikte penceresini atlar, hata sessiz | Hazır |
-| `dikte/text_models.py` | 4 GGUF modeli kataloğu, `.part` + HTTP Range indirme (duraklat/devam/iptal), boyut doğrulama, llama.cpp sarmalayıcısı | Hazır (llama.cpp paketi isteğe bağlı) |
+| `dikte/text_models.py` | 4 GGUF modeli kataloğu, `.part` + HTTP Range indirme (duraklat/devam/iptal), boyut doğrulama, llama.cpp sarmalayıcısı (yükleme öncesi CUDA DLL hazırlığı) | Hazır (llama-cpp-python GPU kurulu, cu124) |
 | `dikte/engine.py` | Cihaz seçimi, seçili modeli yükleme/boşaltma, çeviri, GPU→CPU düşüşü | Hazır |
 | `dikte/audio.py` | sounddevice kaydı, geçici wav, temizlik | Hazır |
 | `dikte/hotkey.py` | pynput ile seçilebilir kısayol dinleyicisi (7 hazır tuş) | Hazır |
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
-| `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu, VRAM/RAM, Türkçe hata metinleri, log | Hazır |
+| `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu (cublas/cudnn/cudart), VRAM/RAM, Türkçe hata metinleri, log | Hazır |
 | `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, ses/metin modelleri, ayarlar, yenile, temizle/çevir, anahtar) | Hazır |
-| `dikte/ui/index.html` | Dört sayfa + tema düğmesi; Ayarlar: Yapay Zeka, Yapıştırma/Dil, Görünüm | Hazır |
-| `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), sayfa yönlendirici, Magic UI geçiş sınıfları | Hazır |
-| `dikte/ui/style.css` | Tasarım token'ları, sayfa yönlendirici ve bileşen stilleri | Hazır |
-| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, model sekmeleri | Hazır |
+| `dikte/ui/index.html` | Dört sayfa + tema düğmesi; Ayarlar: Yapay Zeka, Yapıştırma/Dil, Görünüm (tema + efekt anahtarı) | Hazır |
+| `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), MagicCard/ShineBorder/AnimatedList/Bento/DotPattern efektleri | Hazır |
+| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, efekt anahtarı + kart ışığı, model sekmeleri | Hazır |
+| `design/v2/` | v1.4 efekt dokümantasyonu: ui-spec.md + 10 ekran görüntüsü (koyu/açık × 4 sayfa + modeller-ses) | Hazır |
 | `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 201 test geçti |
 | `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 201 test geçti |
 | `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 201 test geçti |
@@ -66,7 +66,6 @@ Akış:
 ## Planlanan modüller (henüz yok)
 | Dosya | Planlanan görev |
 | :--- | :--- |
-| `design/v2/` + Magic UI efektleri | MagicCard, ShineBorder, AnimatedList, Bento, DotPattern (v1.4) |
 | `Dikte.spec`, `installer/Dikte.iss` | PyInstaller + Inno Setup kurucu, kaldırma (v1.5) |
 | `dikte/updater.py` | Sürüm denetimi (`latest.json`), kurucu indirme, SHA-256 doğrulama, sessiz kurulum ve yeniden açılış (v1.6) |
 
@@ -117,7 +116,8 @@ Akış:
 - Geçmiş kapalıyken yapılan dikteden sonra anahtar açılıp Yenile yapılırsa sonuç kayıtlara yazılmaz (ses korunur, pano güncellenir).
 - Yerel metin modeli (GGUF) çalıştırmak için `llama-cpp-python` paketi gerekir; paket yokken arayüz "motor kurulu değil" bilgisini gösterir ve OpenRouter önerilir.
 - `input_language` ayarı kaydediliyor ama Whisper'a henüz bağlanmadı; motor hâlâ otomatik dil algılar.
-- Magic UI efektleri (MagicCard, ShineBorder, AnimatedList, Bento, DotPattern) henüz yok; tema düğmesi ve açık tema var.
+- llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
+- v1.4 efektleri testlerle doğrulandı; kullanıcı gözle onayı bekleniyor.
 - v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
 - v1.6'da otomatik güncelleme eklenecek: `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → doğrulama → sessiz kurulum → yeniden açılış.
 
@@ -140,3 +140,6 @@ Akış:
 - 2026-11-01: 4 GGUF metin modeli kataloğu, Range ile duraklat/devam/iptal indirme, Modeller sayfasında Metin/Ses sekmeleri.
 - 2026-11-01: Tema düğmesi "Aktif model" kartının üstünde; View Transitions + circle clip-path; Ayarlar → Görünüm.
 - 2026-11-01: Alt ajanlar ana ajanla aynı modeli kullanır (`.kilo/agents` dosyalarında `DeepSeek V4.1 Flash 1017`); oturum içi model önbelleği için yeni oturum gerekir.
+- 2026-11-03: AGENTS.md'den alt ajanlar bölümü silindi (kullanıcı isteği); tek ajan çalışır.
+- 2026-11-03: llama-cpp-python GPU (cu124) kuruldu; `nvidia-cuda-runtime-cu12` requirements'a eklendi, `prepare_cuda_dlls()` cublas/cudnn/cudart yollarını llama yüklemeden önce tanıtır.
+- 2026-11-03: v1.4 efektleri CSS uyarlaması olarak eklendi; `effects` ayarı Ayarlar → Görünüm'de, varsayılan açık; `prefers-reduced-motion` animasyonları kapatır.

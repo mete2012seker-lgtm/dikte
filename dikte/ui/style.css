@@ -510,4 +510,87 @@ html.light .mb-ai{color:#2E3E9E}
 html.dark{color-scheme:dark}
 html.light{color-scheme:light}
 
+/* ---------- v1.4: Magic UI esintili efektler (MagicCard, ShineBorder, AnimatedList, Bento, DotPattern) ---------- */
+
+@property --shine-angle{syntax:"<angle>";initial-value:0deg;inherits:false}
+
+/* DotPattern: dikte sayfası zemininde soluk nokta deseni */
+.fx-on .page{position:relative}
+.fx-on #page-dikte::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(125,152,255,.16) 1px,transparent 1.4px);
+  background-size:22px 22px;
+  mask-image:radial-gradient(680px 420px at 42% 0%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(680px 420px at 42% 0%,#000 20%,transparent 78%);
+}
+.fx-on #page-dikte > *{position:relative;z-index:1}
+html.light.fx-on #page-dikte::before{background-image:radial-gradient(rgba(61,91,245,.18) 1px,transparent 1.4px)}
+
+/* MagicCard: fareyi izleyen ışık halkası (kart içi) */
+.fx-on .card,.fx-on .m-card,.fx-on .h-item,.fx-on .bento-card{position:relative;overflow:hidden}
+.fx-on .card::after,.fx-on .m-card::after,.fx-on .h-item::after,.fx-on .bento-card::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  opacity:0;transition:opacity .25s ease;
+  background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),
+    rgba(108,130,255,.14),transparent 65%);
+}
+.fx-on [data-fx-glow]::after{opacity:1}
+html.light.fx-on [data-fx-glow]::after{
+  background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),
+    rgba(61,91,245,.09),transparent 65%);
+}
+
+/* ShineBorder: işleme sırasında metin kartının kenarında dönen parlak şerit */
+.fx-on .text-card.is-shine::before{
+  content:"";position:absolute;inset:-1px;border-radius:var(--radius);padding:1.5px;
+  pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--shine-angle),
+    transparent 0turn 0.86turn,rgba(124,144,255,.85) 0.92turn,
+    rgba(226,232,255,.95) 0.96turn,transparent 1turn);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  animation:shine-spin 2.4s linear infinite;
+}
+@keyframes shine-spin{to{--shine-angle:360deg}}
+
+/* AnimatedList: satırların kademeli giriş animasyonu */
+.fx-on .tl-item{animation:fx-slide-in .38s ease backwards;animation-delay:calc(var(--i,0)*70ms)}
+.fx-on .h-item{animation:fx-slide-in .38s ease backwards;animation-delay:calc(var(--i,0)*60ms)}
+@keyframes fx-slide-in{
+  from{opacity:0;transform:translateY(10px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+
+/* BentoGrid: Modeller sayfasının üstündeki üçlü özet ızgarası */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.bento-card{
+  padding:15px 16px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card);
+  box-shadow:0 10px 26px rgba(0,0,0,.25)
+}
+.bento-card .bento-ico{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;margin-bottom:10px;
+  background:radial-gradient(120% 120% at 30% 15%,#6380FF,#3A3AB8 62%,#201C6B)
+}
+.bento-card .bento-ico svg.ic{width:17px;height:17px}
+.bento-title{font-size:13.5px;font-weight:600}
+.bento-sub{margin-top:4px;font-size:11.5px;color:var(--text2);line-height:1.5}
+.bento-card::before{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.75;
+  background:linear-gradient(140deg,rgba(76,107,255,.10),transparent 55%)
+}
+html.light .bento-card{box-shadow:0 8px 20px rgba(16,24,40,.06)}
+html.light .bento-card::before{background:linear-gradient(140deg,rgba(61,91,245,.07),transparent 55%)}
+@media (max-width:1240px){
+  .bento{grid-template-columns:1fr}
+}
+
+/* Kullanıcı sistemde hareketi azaltmayı isterse tüm efekt animasyonları kapanır */
+@media (prefers-reduced-motion: reduce){
+  .fx-on .tl-item,.fx-on .h-item{animation:none}
+  .fx-on .text-card.is-shine::before{animation:none;opacity:.5}
+  .fx-on .card::after,.fx-on .m-card::after,.fx-on .h-item::after,.fx-on .bento-card::after{transition:none}
+}
+
 

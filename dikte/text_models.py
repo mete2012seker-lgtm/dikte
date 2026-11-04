@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config
+from . import config, diagnostics
 from .models import human_size
 
 logger = logging.getLogger(__name__)
@@ -277,6 +277,7 @@ class LocalTextModel:
         path = text_model_path(name)
         if not path.exists():
             raise TextModelError("Metin modeli yüklü değil.")
+        diagnostics.prepare_cuda_dlls()
         from llama_cpp import Llama
 
         layers = -1 if prefer_gpu else 0

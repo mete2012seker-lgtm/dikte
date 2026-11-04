@@ -1,4 +1,4 @@
-/* Dikte arayüzü: Python köprüsünden gelen veriyi ekrana yansıtır. */
+﻿/* Dikte arayüzü: Python köprüsünden gelen veriyi ekrana yansıtır. */
 (function () {
   "use strict";
 
@@ -268,6 +268,12 @@
     stage.classList.toggle("is-loading", state === "loading");
     stage.classList.toggle("is-error", state === "error");
 
+    const textCard = $(".text-card");
+    if (textCard) {
+      textCard.classList.toggle("is-shine",
+        state === "processing" || state === "loading" || state === "cleaning");
+    }
+
     micBtn.setAttribute("aria-pressed", state === "recording" ? "true" : "false");
     micBtn.setAttribute("aria-label",
       state === "recording" ? "Kaydı bitir" :
@@ -342,9 +348,10 @@
       activityList.appendChild(empty);
       return;
     }
-    items.forEach((item) => {
+    items.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "tl-item";
+      row.style.setProperty("--i", String(Math.min(index, 5)));
       const dot = document.createElement("span");
       dot.className = "tl-dot " + (item.kind === "ok" ? "ok" : item.kind === "warn" ? "warn" : item.kind === "err" ? "err" : "");
       const line = document.createElement("div");
@@ -475,9 +482,10 @@
       return;
     }
 
-    historyItems.forEach((item) => {
+    historyItems.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "h-item";
+      row.style.setProperty("--i", String(Math.min(index, 5)));
       row.dataset.id = item.id;
 
       const icon = document.createElement("div");
@@ -1002,6 +1010,7 @@
     try {
       const result = await api.models_list();
       modelsState = result || null;
+      updateBento();
       const signature = JSON.stringify({
         tab: modelTab,
         items: (result.items || []).map((item) => [item.name, item.active, item.installed, item.partial, item.size_bytes]),
@@ -1122,7 +1131,9 @@
         textModelRow.textContent = ai.text_model || "Seçilmedi";
       }
     }
+    applyEffects(ai.effects !== false);
     updateActionButtons();
+    updateBento();
   }
 
   function updateActionButtons() {
@@ -1248,6 +1259,7 @@
     if (outputSettings) outputSettings.value = ai.output_language || "tr";
     setSwitchEl($("#autoPasteSwitch"), ai.auto_paste !== false);
     setSwitchEl($("#autoTranslateSettings"), Boolean(ai.auto_translate));
+    setSwitchEl($("#effectsSwitch"), ai.effects !== false);
     const showAll = $("#orShowAll");
     if (showAll) showAll.checked = Boolean(ai.openrouter_show_all);
     const prompt = $("#systemPrompt");
@@ -1408,6 +1420,62 @@
   $$("[data-theme-choice]").forEach((button) => {
     button.addEventListener("click", () => setTheme(button.dataset.themeChoice, true));
   });
+
+  /* ---------- efektler ve bento ---------- */
+
+  function applyEffects(on) {
+    document.body.classList.toggle("fx-on", Boolean(on));
+    setSwitchEl($("#effectsSwitch"), Boolean(on));
+  }
+
+  function providerSummary(ai) {
+    if (!ai || ai.provider === "none" || !ai.provider) return "Kapalı";
+    if (ai.provider === "openrouter") return (ai.openrouter_model || "Model seçilmedi") + " · OpenRouter";
+    return ai.text_model || "Yerel";
+  }
+
+  function updateBento() {
+    const audioSub = $("#bentoAudioSub");
+    const textSub = $("#bentoTextSub");
+    const providerSub = $("#bentoProviderSub");
+    if (audioSub) {
+      const items = (modelsState && modelsState.items) || [];
+      const installed = items.filter((item) => item.installed).length;
+      const active = items.find((item) => item.active);
+      audioSub.textContent = installed
+        ? installed + " yüklü" + (active ? " · aktif: " + (active.label || active.name) : "")
+        : "Henüz model yüklenmedi";
+    }
+    if (textSub) {
+      const items = (modelsState && modelsState.text_items) || [];
+      const installed = items.filter((item) => item.installed).length;
+      const active = items.find((item) => item.active || item.loaded);
+      textSub.textContent = installed
+        ? installed + " yüklü" + (active ? " · aktif: " + (active.label || active.name) : "")
+        : "Henüz model yüklenmedi";
+    }
+    if (providerSub) providerSub.textContent = providerSummary(aiState);
+  }
+
+  $("#effectsSwitch").addEventListener("click", async () => {
+    const next = !(aiState && aiState.effects !== false);
+    const ai = await saveAi({ effects: next });
+    if (ai) applyEffects(next);
+  });
+
+  /* MagicCard: fareyi izleyen kart ışığı */
+  document.addEventListener("pointermove", (event) => {
+    const target = event.target && event.target.closest
+      ? event.target.closest(".card, .m-card, .h-item, .bento-card")
+      : null;
+    $$("[data-fx-glow]").forEach((el) => el.removeAttribute("data-fx-glow"));
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      target.style.setProperty("--mx", (event.clientX - rect.left) + "px");
+      target.style.setProperty("--my", (event.clientY - rect.top) + "px");
+      target.setAttribute("data-fx-glow", "");
+    }
+  }, { passive: true });
 
   /* ---------- ayarlar ---------- */
 

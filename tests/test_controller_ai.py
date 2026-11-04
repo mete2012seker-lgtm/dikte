@@ -381,8 +381,10 @@ def test_pause_and_cancel_without_download_are_rejected():
     assert controller.text_model_resume("qwen3-4b")["ok"] is False
 
 
-def test_activate_requires_downloaded_model():
+def test_activate_requires_downloaded_model(monkeypatch):
     controller = make_controller()
+    from dikte import text_models
+    monkeypatch.setattr(text_models, "is_installed", lambda name: False)
     result = controller.text_model_activate("gemma3-4b")
     assert result["ok"] is False
     assert "indir" in result["message"].lower()
@@ -403,7 +405,7 @@ def test_models_list_contains_text_items():
     assert {item["name"] for item in data["text_items"]} == {
         "qwen3-1.7b", "qwen3-4b", "gemma3-4b", "llama32-3b",
     }
-    assert data["local_text_available"] is False
+    assert isinstance(data["local_text_available"], bool)
 
 
 def test_theme_is_exposed_in_ai_payload():

@@ -667,3 +667,97 @@ def test_tema_ayarlari_segmented(page):
 
     page.locator('[data-theme-choice="system"]').click()
     page.wait_for_function("() => localStorage.getItem('theme') === 'system'")
+
+def test_v14_efektler_varsayilan_acik(page):
+    fresh(page)
+    assert page.evaluate("() => document.body.classList.contains('fx-on')")
+    assert page.locator("#effectsSwitch").get_attribute("aria-checked") == "true"
+    # DotPattern: dikte sayfası zemininde nokta deseni tanımlı
+    pattern = page.evaluate(
+        "() => getComputedStyle(document.querySelector('#page-dikte'), '::before').backgroundImage"
+    )
+    assert "radial-gradient" in pattern
+    # MagicCard: fare kart üzerindeyken ışık halkası aktifleşir
+    page.locator("#page-dikte .model-card").hover()
+    page.wait_for_timeout(120)
+    assert page.evaluate(
+        "() => document.querySelector('.model-card').getAttribute('data-fx-glow') !== null"
+    )
+
+
+def test_v14_shine_islenirken_kenar_parlar(page):
+    fresh(page)
+    set_snapshot(page, state="ready")
+    page.wait_for_function("() => document.querySelector('#statusText').textContent === 'Dinlemeye hazır'")
+    assert not page.evaluate("() => document.querySelector('.text-card').classList.contains('is-shine')")
+    set_snapshot(page, state="processing")
+    page.wait_for_function("() => document.querySelector('.text-card').classList.contains('is-shine')")
+    set_snapshot(page, state="ready")
+    page.wait_for_function("() => !document.querySelector('.text-card').classList.contains('is-shine')")
+
+
+def test_v14_animated_list_stagger(page):
+    fresh(page)
+    set_snapshot(page, state="ready", activity=[
+        {"time": "10:40", "title": "A", "sub": "s", "kind": "info"},
+        {"time": "10:41", "title": "B", "sub": "s", "kind": "ok"},
+        {"time": "10:42", "title": "C", "sub": "s", "kind": "warn"},
+    ])
+    page.wait_for_function("() => document.querySelectorAll('#activityList .tl-item').length === 3")
+    delays = page.evaluate(
+        "() => Array.from(document.querySelectorAll('#activityList .tl-item'))"
+        ".map((el) => getComputedStyle(el).animationDelay)"
+    )
+    assert delays[0] == "0s"
+    assert delays[1] == "0.07s"
+    assert delays[2] == "0.14s"
+
+
+def test_v14_bento_ozetleri_dolur(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.wait_for_function("() => document.querySelector('#page-modeller').classList.contains('is-active')")
+    page.wait_for_function("() => document.querySelectorAll('#bentoRow .bento-card').length === 3")
+    assert "Whisper Large v3" in page.locator("#bentoAudioSub").inner_text()
+    assert "Gemma 3 4B" in page.locator("#bentoTextSub").inner_text()
+    assert "Kapalı" in page.locator("#bentoProviderSub").inner_text()
+
+
+def test_v14_efekt_anahtari_kapatir(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => !document.querySelector('#effectsSwitch').disabled")
+    page.locator("#effectsSwitch").click()
+    page.wait_for_function("() => !document.body.classList.contains('fx-on')")
+    assert page.locator("#effectsSwitch").get_attribute("aria-checked") == "false"
+    assert page.evaluate("() => window.__calls.some((c) => c.includes('\"effects\":false'))")
+
+
+def _v14_tema_ekran_goruntuleri(page, ad, renk):
+    page.emulate_media(color_scheme=renk)
+    page.evaluate("(m) => localStorage.setItem('theme', m)", renk)
+    fresh(page)
+    page.evaluate("(m) => { const r = document.documentElement; r.classList.toggle('dark', m === 'dark'); r.classList.toggle('light', m !== 'dark'); }", renk)
+    for sayfa, dosya in [
+        ("page-dikte", f"v2-{ad}-dikte.png"),
+        ("page-gecmis", f"v2-{ad}-gecmis.png"),
+        ("page-modeller", f"v2-{ad}-modeller.png"),
+        ("page-ayarlar", f"v2-{ad}-ayarlar.png"),
+    ]:
+        page.locator(f'.nav-btn[data-page="{sayfa}"]').click()
+        page.wait_for_function("(s) => document.getElementById(s).classList.contains('is-active')", arg=sayfa)
+        page.wait_for_timeout(500)
+        page.screenshot(path=str(ROOT / "design" / "v2" / dosya))
+        if sayfa == "page-modeller":
+            page.locator("#tabAudio").click()
+            page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
+            page.wait_for_timeout(500)
+            page.screenshot(path=str(ROOT / "design" / "v2" / f"v2-{ad}-modeller-ses.png"))
+    page.emulate_media(color_scheme="light")
+
+
+def test_v14_tema_ekran_goruntuleri(page):
+    (ROOT / "design" / "v2").mkdir(exist_ok=True)
+    _v14_tema_ekran_goruntuleri(page, "koyu", "dark")
+    _v14_tema_ekran_goruntuleri(page, "acik", "light")
+    assert len(list((ROOT / "design" / "v2").glob("v2-*.png"))) >= 10

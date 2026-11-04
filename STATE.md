@@ -1,9 +1,9 @@
-# STATE.md — Güncel Durum
+﻿# STATE.md — Güncel Durum
 
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.3 / 7a tamamlandı (2026-11-01):** metin motoru (OpenRouter), DPAPI anahtar saklama, Çıktı Dili + Temizle/Çevir + otomatik çevir akışı ve Ayarlar'da Yapay Zeka + Yapıştırma/Dil kartları çalışıyor. Ayrıca metin modeli indirme/duraklat/iptal, ses↔metin bellek takası, otomatik yapıştırma ve tema düğmesi + açık tema eklendi. **201 test geçiyor**; gerçek OpenRouter testi 6/6. Sırada v1.4 Magic UI efektleri ve v1.5 kurucu.
+**v1.3 (7a–7d) + v1.4 tamamlandı (2026-11-03):** llama-cpp-python GPU kuruldu (Gemma 3 4B GGUF, GPU 1,7 sn yükleme, ~60 token/sn); v1.4 Magic UI efektleri (MagicCard, ShineBorder, AnimatedList, BentoGrid, DotPattern), `design/v2/` ekran görüntüleri ve ui-spec hazır; Ayarlar → Görünüm'de "Arayüz efektleri" anahtarı. **206 test geçiyor, 1 skip.** Kullanıcı görsel onayı bekleniyor; sırada v1.5 kurucu.
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -22,25 +22,27 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Otomatik yapıştırma eklendi (2026-11-01):** `paste.py` etkin pencereye Ctrl+V gönderir; Dikte penceresi etkinse atlar; `auto_paste` kapatılabilir.
 - **Tema eklendi (2026-11-01):** sağ panelde "Aktif model" kartının üstünde yuvarlak düğme; AnimatedThemeToggler davranışı (View Transitions + circle clip-path, 400 ms); Ayarlar → Görünüm kartı (Sistem/Açık/Koyu); açık tema paleti. `artifacts/ui-tema-*.png`.
 - **201 test geçti**; Playwright 17 test (alt ajanla doğrulandı, skip yok).
+- **llama-cpp-python kuruldu (2026-11-03):** GPU whl (cu124) + `nvidia-cuda-runtime-cu12`; `cudart64_12.dll` eksiği `diagnostics` yoluna eklenerek çözüldü. Gemma 3 4B GGUF ile GPU yükleme 1,7 sn; üretim ~60 tok/s. `text_models.py` yükleme öncesi `prepare_cuda_dlls()` çağırıyor.
+- **v1.4 Magic UI efektleri tamamlandı (2026-11-03):** MagicCard (fareyi izleyen kart ışığı), ShineBorder (işleme sırasında dönen kenar), AnimatedList (geçmiş/etkinlik satırlarının kademeli girişi), BentoGrid (Modeller sayfası üstünde 3'lü özet), DotPattern (Dikte zemininde nokta deseni). Ayarlar → Görünüm'de "Arayüz efektleri" anahtarı; prefers-reduced-motion desteği. Ekran görüntüleri design/v2/ altında (10 PNG).
+- **206 test geçti** (2026-11-03); Playwright 23 test.
 - **Gözden geçirme düzeltmeleri (2026-11-01):** tema ayarı AI yükünde döndürülüyor (Ayarlar'da sıfırlanmıyor), `refresh_last` ses modelini geri yüklüyor, ses modeli değiştirilirken yüklü metin modeli boşaltılıyor, OpenRouter'da model seçilmemişse açık hata, `.part` boyutu büyükse baştan indirme, `Content-Range` başlangıcı doğrulanıyor, açık tema sekme seçicisi düzeltildi.
 - **Uygulama açılışı doğrulandı (2026-11-01):** `python -m dikte` penceresi açıldı (başlık `Dikte — VoxNote AI`), log: `Model hazır: Whisper Large | GPU | float16`; kapatınca süreç kapandı.
 
 ## Yarım kalan
-- **v1.3:** llama.cpp paketi kurulu değil (yerel metin modeli "motor kurulu değil" diyor; OpenRouter çalışıyor); 7e 10 cümle kalite tablosu.
-- **v1.4:** Magic UI efektleri (MagicCard, ShineBorder, AnimatedList, Bento, DotPattern) ve `design/v2/` henüz yok. Tema düğmesi/açık tema tamam.
+- **v1.3:** 7e 10 cümle kalite tablosu (llama.cpp kuruldu, model inmiş; ölçüm bekliyor).
+- **v1.4 tamamlandı:** efektler + `design/v2/` hazır; kullanıcı gözle onayı bekleniyor.
 - **v1.5 kodlanmadı:** kurucu + kaldırma.
 - **v1.6 kodlanmadı:** otomatik güncelleme.
 
 ## Sıradaki ilk adım
-1. **SENİN YAPACAĞIN ŞEY (isteğe bağlı):** `.venv\Scripts\pip.exe install llama-cpp-python` (GPU için `--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124`). Paket yoksa yerel sağlayıcı çalışmaz.
-2. Sıradaki kod işi: v1.4 Magic UI efektleri (ShineBorder, MagicCard, AnimatedList, Bento, DotPattern), sonra v1.5 kurucu + kaldırma.
+1. **SENİN YAPACAĞIN ŞEY:** uygulamayı aç (`python -m dikte`), efektleri ve açık/koyu temayı gözle onayla; `/asama-bitir` ile v1.4'ü kapat.
+2. Sıradaki kod işi: 7e kalite tablosu (gerçek GGUF), sonra v1.5 kurucu + kaldırma.
 3. 7e: gerçek GGUF ile 10 cümle kalite tablosu.
 
 ## Açık sorunlar
-- **llama.cpp paketi yok:** Yerel metin modeli indirilebiliyor ama çalıştırmak için `llama-cpp-python` gerekli; yokken "motor kurulu değil" mesajı verilir, OpenRouter çalışır.
-- **Alt ajan model önbelleği:** Oturum başında `.kilo/agents` eski modeli (GLM) yüklemişti; dosyalar düzeltildi, etkili olması için yeni oturum gerekir. Testler bu oturumda `general` alt ajanıyla koşturuldu.
-- **Magic UI efektleri yok:** MagicCard, ShineBorder, AnimatedList, Bento, DotPattern ve `design/v2/` henüz eklenmedi.
-- **llama.cpp kurulumu:** Python 3.12 + Windows + CUDA için hazır wheel bulunamayabilir; önce CPU, sonra GPU denenecek.
+- **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn sürüyor; sonraki çağrılar hızlı (~60 tok/s). UI çağrılarında tek seferlik ısınma kabul edilebilir; gerekirse ön ısınma çağrısı eklenir.
+- **Efekt kullanıcı onayı yok:** efektler testlerle doğrulandı; kullanıcı gözle onaylamadı.
+
 - **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; kod hazır, gerçek GGUF ile ölçüm yapılmadı.
 - **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora henüz bağlanmadı.
 - **OpenRouter:** ücret ve gizlilik riski; yalnız ucuz modeller önerilir, harcama STATE.md'de izlenir.
@@ -74,15 +76,18 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Bellek takası: dikte başlarken metin modeli boşaltılır, ses modeli geri yüklenir.
 - Otomatik yapıştırma: etkin pencereye Ctrl+V; Dikte penceresi etkinse atlanır; varsayılan açık.
 - Tema: düğme sağ panelde "Aktif model" kartının üstünde; Ayarlar → Görünüm (Sistem/Açık/Koyu); açık tema paleti onaylandı.
+- 2026-11-03: AGENTS.md'den alt ajanlar bölümü silindi (artık tek ajan çalışır).
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **201 passed** (2026-11-01, 21,9 sn) |
+| `pytest -q` | **206 passed, 1 skipped** (2026-11-03, 31,2 sn) |
 | `--selftest` (geçici TTS wav) | GPU float16, metin üretildi (v1.2); **2026-11-01'de çalıştırılamadı: `tests/data/test.wav` yok** |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
-| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile |
+| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile, efektler (23 test) |
+| llama.cpp gerçek GGUF (2026-11-03) | gemma3-4b GPU yükleme 1,7 sn; üretim ~60 tok/s; ilk çağrı ~50 sn CUDA ısınması |
+| v1.4 efektler | Playwright: efekt anahtarı, `fx-on`, shine geçişi, liste gecikmeleri, bento, nokta deseni, kart ışığı — 6 test; ekran görüntüleri `design/v2/*.png` |
 | Gerçek mikrofon / kısayol / pano | Kullanıcı test etti (2026-10-31) |
 | Gerçek model indirme | tiny silindi + yeniden indirildi (78,2 MB) |
 | v1.3 metin motoru (sahte sunucu) | 201 testin içinde: secrets 7, settings +10, openrouter 17, text_engine 27, controller AI 31, text_models 12, paste 5 |

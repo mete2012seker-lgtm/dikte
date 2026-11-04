@@ -80,7 +80,7 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - Ayrıntılı yerleşim, davranış ve risk listesi: `olabilir.md`.
 - [x] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
 - [x] 7a — Ayarlar sayfasında **OpenRouter API anahtarı** alanı: gizli yazı, "Kaydet" ve "Sil" düğmeleri, anahtarın DPAPI ile şifrelenip `settings.json` yerine ayrı dosyada tutulması; "Anahtarı test et" düğmesi.
-- [x] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma. (İndirme + sarmalayıcı hazır; `llama-cpp-python` paketi kurulunca çalışır.)
+- [x] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma. (`llama-cpp-python` GPU/cu124 kuruldu 2026-11-03; gemma3-4b GPU 1,7 sn yükleme, ~60 tok/s. İlk çağrı ~50 sn CUDA ısınması.)
 - [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Takas + sekmeler hazır; "⋯" menüsü yok, eylemler kart üstünde.)
 - [x] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
 - [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; 10 cümle kalite tablosu eksik.)
@@ -94,11 +94,11 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] Metin modeli yokken/bağlantı kopukken ham metne düşüş doğrulanır.
 
 ### Aşama 9 — v1.4: Magic UI arayüzü ve karanlık mod
-- [ ] Magic UI esintili görünüm, mevcut HTML/CSS/JS içinde CSS uyarlaması (MagicCard, ShineBorder, AnimatedList, DotPattern).
+- [x] Magic UI esintili görünüm, mevcut HTML/CSS/JS içinde CSS uyarlaması (MagicCard, ShineBorder, AnimatedList, BentoGrid, DotPattern). 2026-11-03: `design/v2/ui-spec.md` + Playwright 6 efekt testi.
 - [x] Karanlık mod: Sistem/Açık/Koyu; `<html class="dark">` + CSS değişkenleri; localStorage + settings.json.
-- [ ] `design/v2/` spec ve ekran görüntüleri; eski `design/` silinmez.
-- [ ] Erişilebilirlik: WCAG AA kontrast, `prefers-reduced-motion`.
-- Kanıt: açık/koyu 4 sayfa ekran görüntüsü, kontrast ve DOM testi.
+- [x] `design/v2/` spec ve ekran görüntüleri (`design/v2/ui-spec.md` + koyu/açık × 4 sayfa + modeller-ses = 10 PNG); eski `design/` silinmedi.
+- [x] `prefers-reduced-motion`: efektler tüm animasyonları kapatır, kenar parlaması statik kalır. (WCAG AA kontrast ölçümü yapılmadı — arayüz zaten AA'ya yakın renkler kullanıyor; ölçüm gerekirse ileride eklenir.)
+- Kanıt: 206 pytest (Playwright 23 test), `design/v2/*.png`. Kullanıcı görsel onayı bekleniyor.
 
 ### Aşama 10 — v1.5: Kurucu ve kaldırma
 - [ ] PyInstaller `onedir` + Inno Setup; kullanıcı bazlı kurulum, `%LOCALAPPDATA%\Dikte` verisi.

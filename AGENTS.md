@@ -7,21 +7,21 @@ Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, k
 Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3 kapsamı 2026-11-01'de onaylandı (yapay zeka ile temizle/çevir); kod henüz yazılmadı. Sırada v1.4 (Magic UI + karanlık mod), v1.5 (kurucu + kaldırma) ve v1.6 (otomatik güncelleme) var.
 
 ## Dosyalar
-| Dosya | Ne için |
-| :--- | :--- |
-| AGENTS.md | Kurallar ve onaylı kararlar (bu dosya) |
-| PLAN.md | Yol haritası |
-| UYGULAMA-PLANI.md | v1.3–v1.6 için dosya/sayfa düzeyinde uygulama sırası (olabilir.md'yi koda eşler) |
-| STATE.md | Güncel durum, sıradaki adım, çalıştırma komutları |
-| architecture.md | Kod haritası |
-| ogrenme-gunlugu.md | Kullanıcının öğrendikleri |
-| STIL.md | Ajanın konuşma tarzı |
-| design/ | Tasarımın tek kaynağı (görseller, ui-spec.md, prototype.html) |
-| reports/ | Araştırma raporları (README.md dizin) |
-| .kilo/skills/ | `asama-baslat` ve `asama-bitir` skill'leri |
-| promptlar.md | Kullanıcının istem notları (ajan okumaz) |
-| olabilir.md | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır) |
-| web/ | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
+| Dosya              | Ne için                                                                                                                        |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| AGENTS.md          | Kurallar ve onaylı kararlar (bu dosya)                                                                                         |
+| PLAN.md            | Yol haritası                                                                                                                   |
+| UYGULAMA-PLANI.md  | v1.3–v1.6 için dosya/sayfa düzeyinde uygulama sırası (olabilir.md'yi koda eşler)                                               |
+| STATE.md           | Güncel durum, sıradaki adım, çalıştırma komutları                                                                              |
+| architecture.md    | Kod haritası                                                                                                                   |
+| ogrenme-gunlugu.md | Kullanıcının öğrendikleri                                                                                                      |
+| STIL.md            | Ajanın konuşma tarzı                                                                                                           |
+| design/            | Tasarımın tek kaynağı (görseller, ui-spec.md, prototype.html)                                                                  |
+| reports/           | Araştırma raporları (README.md dizin)                                                                                          |
+| .kilo/skills/      | `asama-baslat` ve `asama-bitir` skill'leri                                                                                     |
+| promptlar.md       | Kullanıcının istem notları (ajan okumaz)                                                                                       |
+| olabilir.md        | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır)                                                |
+| web/               | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
 
 ## Kullanıcı
 - Kodlamaya yeni başlıyor. Sade Türkçe ile konuş, terimi bir cümleyle açıkla.
@@ -99,6 +99,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **Açık tema (2026-11-01 onaylı):** Zemin `#F7F9FD`, kart `#FFFFFF`, ana yazı `#101828`, vurgu `#3D5BF5`; tema düğmesi `Aktif model` kartının üstünde, View Transitions + circle clip-path (400 ms).
 - **Kurucu paketi (2026-11-01 onaylı):** Tek CPU kurucu; CUDA bileşeni paketlenmez (GPU isteğe bağlı ayrı iş).
 - **Goal bölünmesi (2026-11-01 onaylı):** İlk koşu parti 1–5, sonra 6–10, sonra 11–13; her koşu sonunda test kanıtı ve kullanıcı testi.
+- **llama-cpp-python (2026-11-03 onaylı):** GPU whl (cu124) kuruldu; CUDA DLL yolları `diagnostics.prepare_cuda_dlls()` ile llama yüklemeden önce tanıtılır (`nvidia-cuda-runtime-cu12` requirements'a eklendi).
+- **v1.4 efektleri (2026-11-03):** MagicCard/ShineBorder/AnimatedList/BentoGrid/DotPattern CSS+JS uyarlaması; Ayarlar → Görünüm'de "Arayüz efektleri" anahtarı (varsayılan açık); `prefers-reduced-motion` animasyonları kapatır. Ayrıntı `design/v2/ui-spec.md`.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.
@@ -115,6 +117,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - İndirme duraklatma anlık değil: açık dosya parçası bitince durur. İptal, Windows dosya kilidi yüzünden gecikebilir.
 - Girdi dili otomatik algılanır; Türkçe doğruluğu düşerse Ayarlar'a "Girdi dili: Türkçe" sabitleme eklenecek.
 - Kurulum kullanıcı bazlıdır, yönetici izni istemez; kaldırma tüm verileri (modeller dahil) siler.
+- v1.4 efektleri kod tarafında tamamlandı (2026-11-03); kullanıcı gözle onayı bekleniyor.
+- llama.cpp ilk üretim çağrısı ~50 sn CUDA ısınması sürer; kabul edildi, gerekirse ön ısınma çağrısı eklenir.
 
 ## Kod yazma ilkeleri (Karpathy)
 - Kodlamadan önce varsayımlarını açıkça söyle. Emin değilsen sor, sessizce seçme.
