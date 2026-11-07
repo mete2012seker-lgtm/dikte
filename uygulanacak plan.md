@@ -1,124 +1,225 @@
 # uygulanacak plan.md — Kalan işler için uygulama planı
 
-Oluşturma: 2026-11-04. Kaynak: `olabilir.md` (yapılmayan maddeler), AGENTS.md kararları ve 2026-11-04 kullanıcı kararları.
-Bu plan kod yazılmadan önce kullanıcı onayına sunulmuştur; onay alındıktan sonra sırayla uygulanır.
+Oluşturma: 2026-11-04 · **Yeniden yazıldı: 2026-11-07**
+Kaynaklar: `Dikte-Denetim-Raporu.md` (2026-11-06), kodun satır satır doğrulanması, `pytest` koşumu, AGENTS.md kararları.
+Bu dosya **plan**dır; onay olmadan kod yazılmaz. 2026-11-07 oturumunda yalnız doküman güncellendi, kod değişmedi.
 
-## Kullanıcı kararları (2026-11-04)
-
-| Konu | Karar |
-| :--- | :--- |
-| Depo görünürlüğü | GitHub deposu herkese açık yapıldı → v1.6 için GitHub Releases kullanılabilir |
-| 7e kalite seti | Sentetik TTS sesleri ile 10 cümle ölçümü |
-| v1.6 yayın yeri | GitHub Releases (`latest.json` + kurucu + SHA-256) |
-| v1.4 efektleri | Kullanıcı gözle onayladı → v1.4 kapatılmış sayılır |
-| Yeni kapsam | Kurucuya ilk açılış karşılama sihirbazı eklenir; 5 ekranlı Magic UI taslağı kullanıcı tarafından onaylandı (açık + karanlık hal), kaynak `design/v2/karsilama-sihirbazi-taslak.html` |
-| Sihirbazda animasyon | Magic UI animasyonları sihirbazda da çalışır (MagicCard fare ışığı, ShineBorder, DotPattern, adım geçiş animasyonu); Ayarlar'daki "Arayüz efektleri" anahtarı sihirbazı da kapatır |
-| Kurulum davranışı (2026-11-04) | Tek kurucu exe çift tıkla kurulur, normal bir Windows programı gibi Program Files altına kurulur |
-| Python gereksinimi (2026-11-04) | Kurucu, bilgisayarda Python yoksa gerekli ortamı kendisi kurar (aşağıda 2c'de iki yol tanımlı) |
-
-**Kurulum ve Python notu (önemli):** PyInstaller ile paketlenen kurucu, Python'u **zaten kendi içinde taşır** — kullanıcının Python kurması gerekmez; bu yol "Python otomatik kurulumu"nu gereksiz kılar. Kullanıcının istediği "Python yoksa kurucu kursun" ihtiyacı iki yolla sağlanır; 2c'de ikisi de planlıdır ve uygulama sırasında karar verilir:
-
-- **Yol A (önerilen, büyük olasılıkla yeterli):** Tek exe içinde Python gömülü gelir (PyInstaller onedir). Kurucu hiçbir şeye muhtaç değildir; çift tık → Program Files'a kur → çalışır.
-- **Yol B (yedek):** Python gömülmediğinde (ör. antivirüs boyut kısıtı ya da PyInstaller patlaması), kurucu açılışta Python 3.12'yi denetler; yoksa resmi kurulum paketini sessiz indirip kurar, sonra ortamı hazırlar. Bu yolda internet gereklidir ve kurucu küçülür.
-
-## Kapsam dışı / onay bekleyen
-
-- Kod imzalama (antivirüs uyarısı) — şimdilik yok; gerekirse ayrı aşama.
-- Sistem tepsisi — bilinen sınırlama olarak kalır.
-- Whisper girdi dili sabitleme motora bağlanacak mı — v1.5 sırasında değerlendirilir.
+## Yöntem (`calisma-duzeni.md` — zorunlu)
+Bu plan `calisma-duzeni.md` sırasıyla hazırlandı; aşamalar atlanmadı:
+1. **Keşif:** proje kökü, `git status`/`git log`, izlenen dosyalar, derleme araçlarının varlığı.
+2. **Doküman okuma:** AGENTS, STIL, STATE, PLAN, architecture, reports, `Dikte.spec`, `installer/Dikte.iss`.
+3. **Dört paralel salt-okunur iş kolu:** backend çekirdek, veri katmanı, arayüz+köprü, paketleme+doküman.
+4. **Sentez:** tekrar ayıklama, doküman–kod çelişkileri, test maskeleri.
+5. **Çapraz doğrulama:** en kritik 3 iddia kod satırından doğrulandı: (a) `sha256` akışı, (b) `UPDATE_URL`/sürüm, (c) kaldırma verisi.
+6. **Rapor + fazlı plan + doğrulanamayanlar:** §0 durum tablosu, Faz 1–4, §10.
 
 ---
 
-## Adım 0 — Public depo güvenlik kontrolü (küçük iş)
+## 0. Doğrulanan mevcut durum (2026-11-07)
 
-Repo artık herkese açık; git geçmişinde ve izlenen dosyalarda gizli bilgi olmadığını doğrula.
-
-- [ ] `git ls-files` ile izlenen dosyalarda anahtar/e-posta/kişisel yol taraması (API anahtarı, `sk-or-`, DPAPI verisi).
-- [ ] `.gitignore` kontrolü: `.env`, `data/` (secrets + history), `models/`, `logs/`, `artifacts/` dışarıda mı?
-- [ ] Geçmiş taraması: `git log -p` üzerinde "sk-or", "api_key" araması; temizse bitti, kirliyse kullanıcıya bildir (tarih değiştirme kararı kullanıcıya ait).
-- **Kanıt:** tarama çıktısı özeti, STATE.md'ye tek satır.
-
-## Adım 1 — 7e kalite tablosu (orta iş, ~1 oturum)
-
-Gerçek gemma3-4b GGUF ile sentetik seslerden üretilen metinler üzerinde ölçüm.
-
-- [ ] 10 cümlelik Türkçe test seti yaz (günlük konuşma dili, dolgu kelimeleri, Türkçe özel karakterler: ı ğ ş ç ö ü). TTS ile 10 wav üret.
-- [ ] Akış: sentetik wav → Whisper → ham metin → (a) temizle, (b) tr→en çevir, (c) tr→de çevir.
-- [ ] VRAM takas ölçümü: ses modeli yüklüyken temizlik isteği → boşaltma + metin modeli yükleme + iş + geri yükleme süreleri.
-- [ ] İlk çağrı CUDA ısınma süresi (~50 sn) tekrar ölçülür; ısınma çağrısı eklenip eklenmeyeceğine ölçüm sonrası karar verilir.
-- [ ] Rapor: `reports/2026-11-XX-7e-kalite.md` (önce/sonra tablosu, süreler), `reports/README.md`'ye satır ekle.
-- [ ] STATE.md güncelle.
-- **Kanıt:** rapor dosyası + pytest bozulmadan geçiyor.
-- **Zayıf nokta:** sentetik TTS sesi gerçek konuşmadan daha temiz olduğundan Whisper ham metni az hatalı çıkar; tablo "en iyi durum" ölçümü olarak yorumlanır (rapora not düşülür).
-
-## Adım 2 — v1.5 kurucu + kaldırma + karşılama sihirbazı (büyük iş, 2–3 oturum)
-
-### 2a. Veri yolları taşınması
-
-- [ ] Veri kökünü `data_root()` fonksiyonuna topla: geliştirmede proje klasörü, kurulu sürümde `%LOCALAPPDATA%\Dikte` (ayrım: `--gelistirme` bayrağı veya paket göstergesi).
-- [ ] İlk paketli açılışta eski proje klasöründeki `data/` tek seferlik taşınır; taşınmadan önce yedek klasörü alınır.
-- [ ] pytest: yol çözümleme, taşıma, yedek.
-
-### 2b. İlk açılış karşılama sihirbazı (yeni kapsam, 2026-11-04 kararı; tasarım kullanıcı onaylı)
-
-**Tasarım kaynağı (kullanıcı onaylı, 2026-11-04):** `design/v2/karsilama-sihirbazi-taslak.html` — 5 ekranın açık temalı taslağı; dosyanın içinden `html.dark` sınıfıyla karanlık hali de denenir. Uygulama bu taslağa sadık yapılır; Magic UI fikirleri: DotPattern zemin, MagicCard fare ışığı, ShineBorder indirme çerçevesi, üstte adım göstergesi (dolgu çizgili stepper).
-
-Geliştirme modunda ilk açılışta da gösterilir; `settings.json`'da `setup_done` işaretiyle bir kez çalışır.
-
-Ekranlar (tek pencere içinde adım adım, ileri/geri butonları; taslaktaki metinler kullanılır). **Animasyonlar:** taslaktaki tüm Magic UI animasyonları sihirbazda da aktiftir — kartlarda fareyi izleyen MagicCard ışığı, indirme çerçevesinde kayan ShineBorder, zeminde DotPattern ve adımlar arası yumuşak geçiş; `prefers-reduced-motion` ve Ayarlar → Görünüm'deki "Arayüz efektleri" anahtarı sihirbazda da geçerlidir.
-
-1. **Hoş geldiniz:** "Dikte'ye hoş geldin" — Sağ Ctrl kısayolu tanıtımı, 3 kısa bilgi (çevirme yerel olur, veri çıkmaz, kurulum ~3 dk), ShineBorder bilgi çerçevesi, "Başla" + "Atla".
-2. **Ses modeli seçimi:** "Hangi model dinlesin?" — 6 model kartı (tiny önerilen rozetli: ~75 MB çok hızlı; base, small, medium, large-v3, large-v3-turbo). İndirme sihirbazın içinde başlar, ilerleme gösterilir; "sonra indir" ile atlanabilir.
-3. **GPU / CUDA bileşeni:** "NVIDIA kartı bulundu" — GPU tespit edilir; varsa CUDA bileşenleri (~600 MB) ShineBorder + ilerleme çubuğuyla isteğe bağlı indirilir (duraklat/iptal dahil); CPU modu alternatifi "daha az indirme" rozetiyle listelenir. Atlanabilir; Ayarlar'dan sonra da kurulabilir.
-4. **Metin sağlayıcı seçimi:** "Metni kim düzenlesin?" — Yok (önerilen, tam gizlilik) / Yerel GGUF / OpenRouter (ücretli rozeti). OpenRouter seçilirse maskeli anahtar alanı + "metin internete gider" uyarısı; Yerel seçilirse metin modeli seçimi + indirme. Hepsi atlanabilir — sonra Ayarlar'dan seçilir.
-5. **Bitiş:** "Her şey hazır" — seçim özeti (model, CUDA, sağlayıcı, kısayol) + "SENİN YAPACAĞIN TEST" kartı (Sağ Ctrl denemesi) + "Dikteye başla".
-
-Davranış kuralları:
-
-- Sihirbaz sırasında kısayol dinleyicisi çalışmaya başlamaz; bitişte başlar.
-- Her adım atlanabilir; iptal/geri desteklenir; kapatırsa uygulama varsayılanlarla devam eder (`setup_done` yine yazılır).
-- Arayüz: mevcut HTML/CSS/JS içinde yeni `#sayfa-kurulum`; tasarım `design/v2/ui-spec.md`'ye ek bölüm olarak yazılır (MagicCard/DotPattern uyumlu, karanlık mod destekli).
-
-### 2c. Tek kurucu exe: çift tıkla Program Files'a kurulum
-
-Kullanıcı kararı (2026-11-04): kurulum normal bir Windows programı gibi olmalı — tek exe çift tıklanır, Program Files altına kurulur, Python yoksa kurucu gerekli ortamı kendisi kurar. Bunu sağlayan iki yol yukarıdaki "Kurulum ve Python notu"nda tanımlıdır (A: Python gömülü tek exe; B: Python'suz kurucu + otomatik Python kurulumu). Uygulama sırasında önce Yol A denenir, patlarsa Yol B'ye geçilir.
-
-- [ ] `dikte.spec` (PyInstaller onedir; Yol A — Python gömülü, CPU-only; CUDA bileşenleri paketlenmez — kullanıcı isterse sihirbazdan indirir).
-- [ ] `installer/dikte.iss` (Inno Setup 6): tek exe, çift tıkla kurulur; varsayılan kurulum yeri `C:\Program Files\Dikte` (x64 sistemde `Program Files`), değiştirilebilir; yalnız yönetici hakları isteyen kurulumda Inno'nun `PrivilegesRequired=admin` ayarı kullanılır, güncelleme akışı sessiz çalışır.
-- [ ] **Yol B yedeği:** kurucu açılışta Python 3.12 varlığını denetler; yoksa resmi kurulumu sessiz indirip kurar, sonra paketi açar. Yalnız Yol A başarısız olursa devreye alınır.
-- [ ] Kurucu çıktısı: `dist/Dikte-Setup-vX.Y.Z.exe`; boyut ve SHA-256 yazılır.
-- [ ] Ayarlar sayfasına büyük kırmızı "Uygulamayı Kaldır" bölümü: çift onay, ikinci onayda silinecek boyut, Inno kaldırıcıyı sessiz çalıştırma; geliştirme modunda pasif ("Bu sürüm kurulumla gelmedi").
-- [ ] pytest: kaldırma onay akışı, boyut hesabı. Playwright: sihirbaz ekranları + Ayarlar butonu.
-- **SENİN YAPACAĞIN TEST:** kurucuyu çalıştır → uygulama %LOCALAPPDATA%'ya kurulur → kaldır; kısayol ve modeller klasörünün silindiğini gözle kontrol et.
-- **Zayıf nokta:** PyInstaller'da pywebview + faster-whisper yolları patlayabilir; çözülmezse v1.5 "kurucu önce, kaldırma sonra" diye bölünür.
-
-**Dikkat — eski karar çelişkisi:** AGENTS.md'de 2026-11-01'de onaylanan "kurulum kullanıcı bazlıdır, yönetici izni istemez" kararı ile yeni karar (Program Files'a kurulum) çelişiyor. Program Files'a yazma genelde yönetici izni ister. Bu oturumda yalnız plan yazıldığından karar değişikliği AGENTS.md'ye henüz işlenmedi; uygulama oturumunda kullanıcıya netleştirilir: Program Files (yönetici ister, standart program) mi, yoksa eski karar (`%LOCALAPPDATA%\Programs\Dikte`, izin istemez) mi? İkisi de Inno Setup'ta tek satır değişikliği.
-
-## Adım 3 — v1.6 otomatik güncelleme (orta iş, 1–2 oturum)
-
-- [ ] GitHub Releases akışı: sürüm etiketi `vX.Y.Z`, varlıklar = kurucu exe + `latest.json` (sürüm, exe bağlantısı, SHA-256, yayın tarihi) + SHA-256 checksum dosyası.
-- [ ] `update.py`: açılışta sessiz sürüm denetimi (Kara yoksa 30 sn gecikmeli; `check_updates` ayarı ile kapatılabilir) → yeni sürüm varsa Ayarlar'da rozet.
-- [ ] Ayarlar'da "Güncelleme" kartı: güncel sürüm, mevcut sürüm, "Uygulamayı Güncelle" butonu.
-- [ ] Güncelleme akışı: kurucuyu indir (ilerleme) → SHA-256 doğrula → Inno `/SILENT` çalıştır → uygulama kapanır → kurulum bitince yeniden açılır.
-- [ ] Hata durumları: ağ hatası, SHA uyuşmazlığı, indirme yarıda kesilme → Türkçe uyarı; uygulama çalışmaya devam eder; yarım indirme `%TEMP%\dikte\` altında tutulur ve silinebilir.
-- [ ] pytest: sürüm karşılaştırma, SHA doğrulama (sahte dosya), akış durum makinesi. Playwright: kart ve buton durumları.
-- **SENİN YAPACAĞIN TEST:** gerçek güncelleme turu (eski kurucudan yenisine) — ben sahte `latest.json` ile uygulanabilir akışı test ederim, gerçek indirmeyi sen onaylarsın.
-- **Zayıf nokta:** kurucu boyutu (kurucu ~200 MB) her güncellemede indirilir; artımlı yama şimdilik yok — rapora/uyarıya boyut bilgisi eklenir.
-
-## Adım 4 — Bitiş
-
-- [ ] Tüm testler: `pytest -q` + `python -m dikte --selftest` + Playwright.
-- [ ] `/asama-bitir`: STATE.md, architecture.md, PLAN.md, AGENTS.md, ogrenme-gunlugu.md güncelle; commit + push (repo public → push öncesi gizli bilgi son kontrolü).
-- [ ] Kullanıcıya 5 maddelik sade özet.
-
-## Sıralama ve maliyet özeti
-
-| Adım | İş | Bağımlılık |
+| Konu | Gerçek durum | Kanıt |
 | :--- | :--- | :--- |
-| 0. Public kontrol | Küçük | — (depo zaten public) |
-| 1. 7e kalite tablosu | Orta | — |
-| 2. v1.5 kurucu + sihirbaz + kaldırma | Büyük | 0 |
-| 3. v1.6 güncelleme | Orta | 2 (kurucu dosyası gerekir) |
-| 4. Bitiş | Küçük | hepsi |
+| Testler | **220 passed, 1 skipped** (41,08 sn) | `.venv\Scripts\python.exe -m pytest -q` |
+| Selftest | Çalıştırılamıyor | `tests/data/test.wav` ve `test.txt` yok |
+| Sürüm | **1.3.0** | `dikte/config.py:12`, `dikte/__init__.py:3`, `installer/Dikte.iss:7` |
+| Güncelleme | **Her zaman başarısız** | `controller.py:1302-1309` `sha256` döndürmüyor; `:1312` yeniden denetliyor; `:1325` boş özetle karşılaştırıp dosyayı siliyor |
+| Yayın adresi | Boş | `config.py:17` `UPDATE_URL = ""`; `latest.json` örnek değerlerde |
+| Kaldırma | Veriyi ve autostart kaydını silmiyor | `uninstall.py:108-121`; `Dikte.iss` `[UninstallDelete]` ve `[Registry]` boş |
+| Kurucu | Hiç derlenmemiş | `dist/` yok; PyInstaller ve Inno Setup kurulu değil; `.venv` içinde `PyInstaller` yok |
+| Spec | Giriş betiği hatalı, `llama_cpp` eksik | `Dikte.spec:15` `dikte\__main__.py`; `hiddenimports` listesinde `llama_cpp` yok |
+| Karşılama sihirbazı | **Yok** | `setup_done`, `#sayfa-kurulum`, 5 ekran kodda yok; yalnız `design/v2/karsilama-sihirbazi-taslak.html` var |
+| v1.4 efektleri | Kullanıcı gözle onayladı (2026-11-04) | `uygulanacak plan` eski sürümü ve kullanıcı kararı |
+| 7e kalite tablosu | **Kısmen** | 10/10 OK var; tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok (`reports/2026-11-04-7e-kalite-tablosu.md`) |
 
-Para maliyeti: yok (tümü yerel; OpenRouter kullanılmaz).
+**Sonuç:** "v1.6 kodu tamamlandı" ifadesi yanlış. Kodun büyük kısmı var; **yayın zinciri (kurulum + güncelleme + kaldırma) çalışmıyor**.
+
+---
+
+## 1. Kararlar
+
+### 1.1 Kesinleşen kararlar
+- **GitHub Releases** güncelleme yayın yeri olarak seçildi (2026-11-04). `UPDATE_URL` buna göre doldurulacak.
+- **v1.4 efektleri** kullanıcı tarafından gözle onaylandı (2026-11-04); aşama kapalı.
+- **Karşılama sihirbazı** (5 ekran) kurucu kapsamına dahil; tasarım `design/v2/karsilama-sihirbazi-taslak.html` onaylı.
+- **Tek kurucu exe**, çift tıkla kurulum; PyInstaller Python'u içinde taşır (Yol A). Yol B (Python'u sessiz kurma) yalnız Yol A patlarsa devreye girer.
+- **Metin sağlayıcısı varsayılanı `none`**, otomatik yapıştırma varsayılan açık (2026-11-01).
+
+### 1.2 2026-11-07'de verilen kararlar (uygulama için bağlayıcı)
+1. **Kurulum yeri:** `C:\Program Files\Dikte`; Inno `PrivilegesRequired=admin`. Kurulum ve sessiz güncelleme UAC onayı ister.
+2. **Hedef sürüm:** **1.6.0**. Tek kaynak `config.APP_VERSION`; `installer/latest.json` ve Inno `AppVersion` bununla uyumlu olacak.
+3. **Kaldırmada veri:** kullanıcı seçecek. İkinci onay ekranında **"Modelleri koru"** kutusu (varsayılan işaretli) gösterilecek; geçmiş, ayarlar, loglar ve geçici dosyalar her durumda silinecek.
+4. **Veri silme katmanı:** Inno `[UninstallDelete]` silecek. "Modelleri koru" seçilirse uygulama kaldırıcıyı başlatmadan önce bir bayrak yazacak; Inno `[Code]` bu bayrağa göre `models\` klasörünü atlayacak. Uygulama içi `rmtree` kullanılmayacak.
+5. **Depo ve yayın:** depo **public** (`github.com/mete2012seker-lgtm/dikte`). Güncelleme GitHub Releases üzerinden; kurucu ve `latest.json` upload'ını **kullanıcı** yapacak. `UPDATE_URL = https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json`; indirme yönlendirmeleri için `objects.githubusercontent.com` izinli olacak.
+6. **Derleme araçları:** PyInstaller ve Inno Setup bu makineye kurulacak.
+7. **CUDA sihirbazı:** yalnız NVIDIA GPU varsa gösterilecek; indirme isteğe bağlı ve atlanabilir.
+8. **Selftest sesi:** sentetik TTS ile `tests/data/test.wav` + `test.txt` üretilecek.
+9. **7e kalite tablosu:** tamamlanacak (10 girdi/çıktı çifti + VRAM takas ölçümü).
+10. **`web/`:** tutulacak; README'de "deneme, üretim arayüzü değil" notu olacak.
+11. **Lisans:** MIT.
+12. **İkon:** basit bir `.ico` üretilip `Dikte.spec` ve `Dikte.iss`'e bağlanacak.
+13. **Eski `data/` taşıma:** **yapılmayacak**; kurulu sürüm temiz başlayacak.
+
+---
+
+## 2. Faz 0 — Doküman senkronu (bu oturumda yapıldı)
+
+- [x] `uygulanacak plan.md` denetim ve doğrulanmış kod durumuna göre yeniden yazıldı.
+- [x] `STATE.md` "Yarım kalan", "Sıradaki ilk adım", "Açık sorunlar" ve test tablosu gerçek duruma çekildi.
+- [x] `PLAN.md` 7c/7e/10/11 maddeleri "kod var, doğrulanmadı" olarak işaretlendi.
+- [x] `AGENTS.md` proje durumu ve v1.6 yayın yeri notu güncellendi.
+- [x] `architecture.md` "Bilinen sorunlar" gelecek zamandan gerçek duruma çevrildi.
+- [x] `reports/README.md` denetim raporu satırı eklendi.
+
+**Kanıt:** değişen dosyaların `git diff` çıktısı.
+
+---
+
+## 3. Faz 1 — Yayın blockerları (orta iş, 1–2 oturum)
+
+Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme akışını gerçekten çalıştırmak.
+
+### 1.1 Sürümü tek kaynağa indir
+- [ ] `config.APP_VERSION` **1.6.0**'a çek (karar 1.2/2).
+- [ ] `dikte/__init__.py` sürümü `config.APP_VERSION`'dan türetilsin (kopya sabit kalmasın).
+- [ ] `installer/Dikte.iss` `AppVersion` aynı değeri kullansın; mümkünse üretilen bir `version.iss` dosyasından okunsun.
+- [ ] `installer/latest.json` örnek sürümü aynı değere çekilsin.
+- [ ] `text_models.py` ve `openrouter.py` User-Agent sürümü `config.APP_VERSION`'dan gelsin.
+- [ ] Test: dört yerde sürüm aynı mı (pytest).
+
+### 1.2 Güncelleme `sha256` akışını düzelt
+- [ ] `controller.update_check()` her iki başarı dalında da `sha256` döndürsün.
+- [ ] `controller.update_apply()` yeniden denetim yapmak yerine aynı sonucu kullansın (URL + sha256 aynı nesneden).
+- [ ] `sha_mismatch`, `incomplete`, `bad_url` için Türkçe mesaj eklensin.
+- [ ] Boş `sha256` ile doğrulama **reddedilsin** (sessizce dosya silinmesin; "özet bilgisi yok" hatası).
+- [ ] Test: sahte `latest.json` + sahte kurucu ile başarılı akış; bozuk özet; eksik indirme.
+
+### 1.3 `UPDATE_URL` ve hata mesajı
+- [ ] GitHub Releases URL'si `config.UPDATE_URL`'e yazılsın: `.../releases/latest/download/latest.json` (karar 1.2/5).
+- [ ] `updater.check()` `None` döndüğünde `update_check` `code="no_url"` ve "Güncelleme sunucusu yapılandırılmamış." desin; "Sunucuya ulaşılamadı" yanlış mesajı kaldırılsın.
+- [ ] `latest.json` gerçek değerlerle yayınlansın (sürüm, kurucu URL, SHA-256, not, tarih).
+
+### 1.4 Kaldırmada veri + autostart temizliği
+- [ ] Inno `[UninstallDelete]` + "Modelleri koru" bayrağı (`[Code]`) uygulanacak (karar 1.2/3-4).
+- [ ] `%LOCALAPPDATA%\Dikte` altındaki `models\`, `data\` (settings/history/secrets), `logs\` ve `%TEMP%\dikte` silinsin.
+- [ ] HKCU `...\Run\Dikte` değeri kaldırılsın (`Dikte.iss` `[Registry]` + `uninsdeletevalue` veya uygulama içi `set_autostart(False)`).
+- [ ] `data_bytes()` çift sayımı düzeltilsin: paketli sürümde `exe_dir()` tümünü kapsıyorsa `MODELS_DIR`/`LOG_DIR` ayrıca eklenmesin; "silinecek veri" kurulu ikili dosyaları kapsamasın.
+- [ ] UI metni gerçek davranışla aynı olsun (`app.js:1718`).
+- [ ] Test: `tests/test_uninstall.py` eklensin (`is_installed`, `data_bytes`, `set_autostart`, `autostart_enabled`, `run_uninstaller` sahte subprocess ile).
+
+### 1.5 PyInstaller kurucusu
+- [ ] Üst düzey `run_dikte.py` ekle (`from dikte.__main__ import main`); `Dikte.spec` girişini buna çevir (göreli import hatası çözülür).
+- [ ] `hiddenimports`/`collect_all("llama_cpp")` ekle; `llama.dll`, `ggml*.dll` paketlensin.
+- [ ] `datas` hedefini `"dikte/ui"` (ileri bölü) yap.
+- [ ] İkon ve sürüm bilgisi ekle; `console=False` kararını belgele (paketli sürümde `--selftest` görünmez).
+- [ ] `requirements-dev.txt`'e PyInstaller ekle; `build.ps1` yaz (PyInstaller → Inno sırası).
+- [ ] PyInstaller + Inno Setup kur; `dist\Dikte` ve `installer\Output\Dikte-Setup-*.exe` üret.
+- [ ] Kurulu pakette duman testleri: uygulama açılışı, model yükleme, yerel GGUF, kayıt/kısayol.
+- **Kanıt:** `dist` yolu, kurucu boyutu + SHA-256, kurulum logu.
+
+### 1.6 Inno Setup düzeltmeleri
+- [ ] Geçerli sabit GUID kullan (`Dikte.iss:11`; `DIKTE` onaltılık değil).
+- [ ] `DefaultDirName={autopf}\Dikte` + `PrivilegesRequired=admin` yap (karar 1.2/1).
+- [ ] `[UninstallDelete]` ve `[Registry]` bölümlerini 1.4'e göre doldur.
+- [ ] Masaüstü/Başlat menüsü kısayolları ve isteğe bağlı otomatik başlatma doğrulansın.
+
+### 1.7 Depo hijyeni (yayın öncesi)
+- [ ] `.gitignore`'a `dist/`, `build/`, `installer/Output/`, `*.log`, `web/.next/`, `web/node_modules/` ekle.
+- [ ] `docs/` altındaki 8 adet 0 baytlık dosyayı sil.
+- [ ] `mevcut tasarım/` kopyasını sil (asıl kaynak `design/`; kopya 4,8 MB).
+- [ ] `README.md`, `LICENSE`, basit GitHub Actions (pytest) ekle.
+- [ ] `web/` için README'de "deneme, üretim arayüzü değil" notu veya arşiv kararı.
+
+**Faz 1 bitti tanımı:** `pytest` yeşil; `dist\Dikte\Dikte.exe` açılıyor; `Dikte-Setup.exe` kuruyor; kaldırma veriyi + autostart kaydını siliyor; sahte `latest.json` ile güncelleme indirme → SHA → sessiz kurulum adımı çalışıyor.
+
+---
+
+## 4. Faz 2 — Veri kaybı ve çökme hataları (2–3 oturum)
+
+- [ ] **Pano hatasında yapıştırma iptal:** `_process` ve otomatik çeviri akışında `if copy_ok and auto_paste` (`controller.py:432-448`, `:1570-1573`).
+- [ ] **Kısayol thread'i bloke olmasın:** `on_hotkey_press → toggle_record → load_engine` zincirini worker'a al; bas-bırak olayları kuyruklansın (`controller.py:295-335`, `:218-250`).
+- [ ] **İki Whisper modeli yüklenmesin:** `_whisper_loaded` kontrolü ve set'i aynı kilit altında; `_prepare_whisper` bayrağı kilit içinde okusun (`:218-235`, `:261-271`).
+- [ ] **Geçmiş kimliği:** `history_open` `_last_history_id`'yi güncellesin; Temizle/Çevir yanlış kaydı ezmesin (`:637-647`, `:1466`, `:1578-1584`).
+- [ ] **GGUF indirme yarışı:** indirme başına jeton/thread kimliği; eski worker bitmeden yeni thread başlamasın; `delete_part` yalnız açık iptalde ve worker durduktan sonra çalışsın (`controller.py:978-1026`).
+- [ ] **Bütünlük doğrulaması:** GGUF için SHA-256 veya GGUF sihirli baytları; Whisper snapshot için `model.bin` + `config.json` + tokenizer kontrolü (`text_models.py:104-106, 197-200`; `models.py:124-134`).
+- [ ] **Kırpılan yanıt:** `finish_reason == "length"` başarı yolunda da hata sayılsın; ≥3 kelimede eksiltme/halüsinasyon koruması (`text_engine.py:202-216, 290-329`).
+- [ ] **`strip_response`:** `"i corrected"`, `"note:"` gibi etiketler yalnız çok satırlı meta yanıtlarda temizlensin; gerçek dikte cümlesi silinmesin (`text_engine.py:102-160`).
+- [ ] **`audio.stop()`:** `_write_wav` istisnası `AudioError`'a sarılsın; durum `RECORDING`'de kilitlenmesin (`audio.py:92, 101-106`; `controller.py:356-362`).
+- [ ] **Ayar/geçmiş kilitleri:** `SettingsStore.save`, `HistoryStore`, `SecretStore` yazımlarına kilit + benzersiz temp + `fsync`; `history.load` yalnız `JSONDecodeError`'da sıfırlasın (`settings.py:178-199`, `history.py:78-82`).
+- [ ] **Kapanış:** `_closed` gerçekten okunsun; worker/download thread'leri join edilsin; çıkışta `kayit-*.wav` kalmasın (`controller.py:122, 273-291`).
+
+**Faz 2 bitti tanımı:** Her madde için hata üreten test önce yazılır (kırmızı), düzeltme sonrası yeşil; pano hatasında eski pano yapıştırılmıyor; iki model aynı anda yüklenmiyor.
+
+---
+
+## 5. Faz 3 — Ürün bütünlüğü (3–5 oturum)
+
+### 3.1 Karşılama sihirbazı (5 ekran)
+- [ ] `settings.json`'a `setup_done` ekle; ilk açılışta göster, bir kez çalıştır.
+- [ ] `#sayfa-kurulum` + adım göstergesi + ileri/geri/atla.
+- [ ] Ekranlar: hoş geldin, ses modeli seçimi/indirme, GPU/CUDA bileşeni, metin sağlayıcısı, bitiş.
+- [ ] Sihirbaz sırasında kısayol dinleyicisi başlamasın; bitişte başlasın.
+- [ ] Magic UI efektleri (MagicCard, ShineBorder, DotPattern) ve `prefers-reduced-motion` uyumu.
+- [ ] Playwright: 5 ekran, atlama, karanlık mod, `setup_done` kalıcılığı.
+
+### 3.2 Diğer ürün eksikleri
+- [ ] `input_language` motora bağlansın: `auto` → `language=None`, `tr` → `"tr"` (`engine.py:157`).
+- [ ] `snapshot.ai` içine `state` eklensin; Temizle/Çevir düğmeleri loading/recording durumunda doğru kapansın (`controller.py:613`, `:1181-1208`; `app.js:1122`).
+- [ ] 7c "⋯" model menüsü ekle (eylemler kart üstünde dağınık kalmasın).
+- [ ] Ses modeli indirmesinde duraklat/devam/iptal ekle (metin modelindeki `.part` + Range düzeniyle).
+- [ ] Temizle/Çevir'i arka plan thread'ine al; ilerleme/iptal; otomatik çeviride `CLEANING` durumunu kullan (`state.py:15-21`).
+- [ ] `refresh_last` otomatik çeviriyi de uygulasın; ham Whisper metni çevrilmiş metnin üzerine yazılmasın (`controller.py:530-573`).
+- [ ] UI yarışları: kaydedilmemiş ayar koruması, `outputLang`/`autoTranslate` poll ezmesi, async jetonlar, düğme toparlanması, `updateNotes` gösterimi (`app.js:255, 1123-1124, 1373-1414, 1811-1829`).
+- [ ] Kaldırma/otomatik başlatma geliştirme modunda düzgün davransın (`uninstall.py:83`; `app.js:1722-1737`).
+
+### 3.3 Yayın kararları
+- [ ] Güncellemeyi arka plan thread'ine al; ilerleme göster; kurulumdan önce uygulamayı kapat; kurulum sonrası yeniden aç.
+- [ ] `compare_versions` ön sürüm (beta/rc) önceliğini doğru ele alsın (`updater.py:40-47`).
+- [ ] `update_last_check` UTC kaydedilip yerel saat gösterilsin (`controller.py:1293, 1210-1218`).
+
+---
+
+## 6. Faz 4 — Test, hijyen ve kapanış (1 oturum)
+
+- [ ] `tests/data/test.wav` + `test.txt` ekle; `--selftest` gerçekten çalışsın.
+- [ ] Test boşlukları: gerçek `update_check` + `update_apply`, kaldırma, autostart, `snapshot.ai.state`, geçmiş dönem filtresi.
+- [ ] Playwright'ı gerçek tarayıcıda koştur; ekran görüntülerini `design/v2/` ile karşılaştır.
+- [ ] `reports/2026-11-04-7e-kalite-tablosu.md` tamamlanacaksa 10 girdi/çıktı çifti + VRAM takas ölçümü ekle; yoksa PLAN'da "kısmen" olarak kalsın.
+- [ ] README/LICENSE/CI tamamla; `web/` kararını uygula.
+- [ ] `/asama-bitir` ile STATE, PLAN, AGENTS, architecture, ogrenme-gunlugu güncelle; commit + push.
+
+---
+
+## 7. Sıra, bağımlılık ve maliyet
+
+| Faz | İş | Bağımlılık | Büyüklük |
+| :--- | :--- | :--- | :--- |
+| 0 | Doküman senkronu | — | Küçük (bu oturum) |
+| 1 | Yayın blockerları | Kararlar 1.2/1–4 | Orta (1–2 oturum) |
+| 2 | Veri kaybı/çökme | Faz 1 (yeşil test tabanı) | Orta-büyük (2–3 oturum) |
+| 3 | Ürün bütünlüğü | Faz 1 + 2 | Büyük (3–5 oturum) |
+| 4 | Test/hijyen/kapanış | Hepsi | Küçük (1 oturum) |
+
+Para maliyeti: **yok** (tüm iş yerel; OpenRouter yalnız isteğe bağlı testlerde, ~$0,001).
+
+## 8. Riskler ve zayıf noktalar
+- **PyInstaller + pywebview + faster-whisper** paketlemesi patlayabilir; Yol A başarısızsa Yol B (Python'u sessiz kurma) devreye girer ve internet gerekir.
+- **Kurucu ~200 MB**; her güncellemede tam indirme yapılır (artımlı yama yok).
+- **Antivirüs** imzasız kurucuya uyarı verebilir; kod imzalama kapsam dışı.
+- **Program Files seçildi** (karar 1.2/1); kurulum ve sessiz güncelleme UAC onayı isteyecek. Güncelleme testi bu onayla yapılmalı.
+- **Sentetik TTS** kalite tablosu gerçek konuşmadan daha iyi sonuç verir; ölçüm "en iyi durum" olarak yorumlanır.
+
+## 9. Bitti tanımı (her faz için)
+1. Çalışan sonuç (komut/çıktı).
+2. Kanıt: pytest çıktısı, ekran görüntüsü, dosya yolu veya kurulum logu.
+3. Kullanıcı için 5 maddelik sade özet.
+4. Kullanıcının doğrulaması gerekenler "SENİN YAPACAĞIN TEST:" başlığıyla ayrı yazılır.
+
+## 10. Doğrulanamayanlar ve test maskeleri (`calisma-duzeni.md` §4–8)
+- **Gerçek mikrofon, GPU, kurulum ve güncelleme** bu ortamda çalıştırılamadı; ilgili maddeler statik kanıt + kullanıcı testine dayanıyor.
+- **Test maskesi — güncelleme:** `test_ui.py` sahte `update_check` yanıtına `sha256` koyuyor ve `update_apply`'ı köprüde taklit ediyor; gerçek `sha256` hatası bu testle yakalanamıyor.
+- **Test maskesi — AI durumu:** `test_ui.py:93` `ai.state` enjekte ediyor; `snapshot.ai` içinde `state` olmaması maskeleniyor.
+- **Test maskesi — geçmiş filtresi:** `history_list` sahtesi `period` parametresini yok sayıyor; Bugün/Bu hafta filtresi test edilmiyor.
+- **Eksik test dosyası:** `tests/test_uninstall.py` yok; `is_installed`, `data_bytes`, `set_autostart`, `autostart_enabled`, `run_uninstaller` test edilmiyor.
+- **Eksik fixture:** `tests/data/test.wav` ve `test.txt` yok; `--selftest` hiç çalıştırılamıyor.
+- **Playwright:** 25 test var; gerçek tarayıcı koşumu bu makinede doğrulanmadı.
+- **7e kalite tablosu:** sentetik TTS ile üretildiği için "en iyi durum" ölçümü; gerçek konuşma performansı ölçülmedi.

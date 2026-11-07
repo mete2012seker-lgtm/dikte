@@ -1,11 +1,11 @@
 # UYGULAMA-PLANI.md — v1.3 → v1.6 tam uygulama planı
 
-Bu dosya projenin **tek uygulama planıdır**: ne yapılacak, hangi dosyaya, hangi sayfada nerede duracak, nasıl test edilecek, ne ters giderse ne yapılacak.
+Bu dosya v1.3 → v1.6'nın **dosya düzeyi uygulama ayrıntısıdır**: ne yapılacak, hangi dosyaya, hangi sayfada nerede duracak, nasıl test edilecek, ne ters giderse ne yapılacak. **Güncel durum ve düzeltme sırası `uygulanacak plan.md` (2026-11-07) dosyasındadır.**
 
 Okuma sırası ve çelişki çözümü: `olabilir.md` (davranış isteği) → `design/ui-spec.md` (ölçü/renk) → **bu dosya** (uygulama) → `PLAN.md` (aşama özeti).
 `olabilir.md` §7.4'teki "tema düğmesi kenar çubuğunun altında" ifadesi **geçersizdir**; düğme sağ panelde, "Aktif model" kartının üstündedir (§5.1, §5.7).
 
-Son kararlar: 2026-11-01 (soru-cevap turu). Açık kalan: K2 (yayın yeri), K3 (açık palet görseli), K4 (paketli sürümde GPU).
+Son kararlar: 2026-11-01 (soru-cevap turu), 2026-11-04 (GitHub Releases, karşılama sihirbazı) ve 2026-11-07 (Program Files + admin, sürüm 1.6.0, kaldırmada "Modelleri koru", PyInstaller + Inno kurulumu, sentetik TTS, 7e tam, `web/` notla, MIT, basit ikon, eski `data/` taşınmaz). Açık karar kalmadı.
 
 ---
 
@@ -35,22 +35,22 @@ Son kararlar: 2026-11-01 (soru-cevap turu). Açık kalan: K2 (yayın yeri), K3 (
 | Yapıştırma | `auto_paste` varsayılan **açık**; Dikte penceresine yapıştırma atlanır |
 | Tema | Sistem / Açık / Koyu; düğme sağ panelde aktif model kartının üstünde |
 | Tema geçişi | View Transitions + circle clip-path, 400 ms (Magic UI davranışı) |
-| Paketleme | PyInstaller `onedir` + Inno Setup 6, kullanıcı bazlı, **tek CPU kurucu** |
-| Veri yolu | Kurulu sürümde `%LOCALAPPDATA%\Dikte` |
-| Kaldırma | Çift onay, tüm veriler silinir |
-| Güncelleme | `latest.json` → SHA-256 → sessiz kurulum → yeniden açılış |
+| Paketleme | PyInstaller `onedir` + Inno Setup 6, **Program Files + admin**, tek CPU kurucu |
+| Veri yolu | Kurulu sürümde `%LOCALAPPDATA%\Dikte` (kurulum klasörü değil) |
+| Kaldırma | Çift onay; kullanıcı "Modelleri koru" seçer; silmeyi Inno yapar |
+| Güncelleme | GitHub Releases: `latest.json` → SHA-256 → sessiz kurulum → yeniden açılış |
 | İmza | Yok; antivirüs/SmartScreen riski kabul |
-| Alt ajanlar | Üçü de `deepseek/deepseek-v4.1-flash-1017` / openrouter |
+| Alt ajanlar | Denetimde 4 salt-okunur alt ajan; plan/denetim dışında tek ajan |
 | Test yaklaşımı | Sahte HTTP sunucusu + en sonda tek gerçek OpenRouter çağrısı |
 
-### 2.2 Açık kararlar
-| # | Soru | Durum | Ne zaman gerekir |
-| :--- | :--- | :--- | :--- |
-| K2 | Güncelleme dosyaları nerede yayınlanacak? | Kullanıcı: **sonra karar ver** | Parti 13 |
-| K3 | Açık tema paleti onayı | Kullanıcı: **önce ekran görüntüsü göster** | Parti 11 |
-| K4 | Paketli sürümde GPU desteği | Açık: tek CPU kurucu seçildi; CUDA bileşeni indirme **kapsamda değil** | Parti 12 |
+### 2.2 Kararlar (2026-11-07)
+| # | Soru | Karar |
+| :--- | :--- | :--- |
+| K2 | Güncelleme dosyaları nerede yayınlanacak? | **GitHub Releases**; `latest.json` + kurucu yüklemeyi kullanıcı yapar |
+| K3 | Açık tema paleti onayı | Onaylandı (2026-11-01), uygulandı |
+| K4 | Paketli sürümde GPU desteği | CUDA paketlenmez; sihirbaz yalnız NVIDIA GPU varsa isteğe bağlı indirir |
 
-K2 için plan: kod yazılırken `UPDATE_URL` tek sabit kalır; yayın yeri seçilince yalnız bu değer değişir.
+`UPDATE_URL = https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json`; indirme yönlendirmelerinde `objects.githubusercontent.com` izinli olacak.
 
 ---
 

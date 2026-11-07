@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı. 7e kalite tablosu (Gemma 3 4B, 10/10) 2026-11-04'te ölçüldü; v1.5 kurucu + kaldırma ve v1.6 otomatik güncelleme kod tarafı 2026-11-04'te tamamlandı (kur/kaldır ve gerçek güncelleme kullanıcı testi bekliyor).
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı; kullanıcı 2026-11-04'te onayladı. 7e kalite tablosu kısmen (10/10 OK; tam çiftler ve VRAM ölçümü yok). v1.5 kurucu + kaldırma ve v1.6 güncelleme **kodları yazıldı**; ancak 2026-11-06 denetimi yayın zincirinin çalışmadığını gösterdi: `UPDATE_URL` boş, `sha256` akışı bozuk, sürüm 1.3.0, kaldırma veriyi silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Ayrıntı ve sıra: `uygulanacak plan.md`.
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -39,22 +39,22 @@ Akış:
 | `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), MagicCard/ShineBorder/AnimatedList/Bento/DotPattern efektleri | Hazır |
 | `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, efekt anahtarı + kart ışığı, model sekmeleri | Hazır |
 | `design/v2/` | v1.4 efekt dokümantasyonu: ui-spec.md + 10 ekran görüntüsü (koyu/açık × 4 sayfa + modeller-ses) | Hazır |
-| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 201 test geçti |
-| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 201 test geçti |
-| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 201 test geçti |
-| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 201 test geçti |
-| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 201 test geçti |
-| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 201 test geçti |
-| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 201 test geçti |
-| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 201 test geçti |
-| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, 404, silme | 201 test geçti |
-| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 201 test geçti |
-| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 201 test geçti |
-| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı, tema, model sekmeleri | 201 test geçti |
-| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 201 test geçti |
+| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 220 test geçti |
+| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 220 test geçti |
+| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 220 test geçti |
+| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 220 test geçti |
+| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 220 test geçti |
+| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 220 test geçti |
+| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 220 test geçti |
+| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 220 test geçti |
+| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, 404, silme | 220 test geçti |
+| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 220 test geçti |
+| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 220 test geçti |
+| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı, tema, model sekmeleri | 220 test geçti |
+| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 220 test geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
-| `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (uygulanmadı) |
+| `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
 | `web/` | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid); Dikte arayüzüne bağlı değil | Deneme |
 | `Dikte.bat` | Çift tıklayarak uygulamayı açan Windows başlatıcı | Hazır |
@@ -67,9 +67,9 @@ Akış:
 | Dosya | Görev |
 | :--- | :--- |
 | `dikte/uninstall.py` | Kurulum kontrolü (`is_installed`), silinecek boyut (`data_bytes`), otomatik başlatma (HKCU Run), Inno kaldırıcısını sessiz başlatma |
-| `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama, sessiz kurulum (v1.6; `UPDATE_URL` boş, K2 bekliyor) |
-| `Dikte.spec` | PyInstaller onedir yapılandırması (CPU-only, ui/ paketlenir, models/data/tests dışlanır) |
-| `installer/Dikte.iss` | Inno Setup 6: kullanıcı bazlı kurulum (`%LOCALAPPDATA%\Programs\Dikte`), masaüstü kısayolu; derleme kanıtı kullanıcı testinde |
+| `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama, sessiz kurulum (v1.6; `UPDATE_URL` boş, GitHub Releases seçildi 2026-11-04) |
+| `Dikte.spec` | PyInstaller onedir yapılandırması (CPU-only, ui/ paketlenir, models/data/tests dışlanır); **giriş betiği ve `llama_cpp` düzeltilmeli** |
+| `installer/Dikte.iss` | Inno Setup 6: **Program Files** kurulumu + admin, masaüstü kısayolu; **derlenmedi**, `AppId` geçersiz, `[UninstallDelete]` boş; "Modelleri koru" bayrağı eklenecek |
 | `installer/latest.json` | Güncelleme bildirimi örneği (yayın yerinde gerçek değerler doldurulur) |
 
 ## Bileşenler ve bağlantıları
@@ -120,9 +120,12 @@ Akış:
 - Yerel metin modeli (GGUF) çalıştırmak için `llama-cpp-python` paketi gerekir; paket yokken arayüz "motor kurulu değil" bilgisini gösterir ve OpenRouter önerilir.
 - `input_language` ayarı kaydediliyor ama Whisper'a henüz bağlanmadı; motor hâlâ otomatik dil algılar.
 - llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
-- v1.4 efektleri testlerle doğrulandı; kullanıcı gözle onayı bekleniyor.
-- v1.5'te PyInstaller + Inno Setup kurucusu ve çift onaylı kaldırma eklenecek.
-- v1.6'da otomatik güncelleme eklenecek: `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → doğrulama → sessiz kurulum → yeniden açılış.
+- v1.4 efektleri testlerle doğrulandı; kullanıcı 2026-11-04'te gözle onayladı.
+- **Yayın blockerları (2026-11-06 denetimi):** güncelleme `sha256` akışı bozuk (`controller.py:1302-1325`), `UPDATE_URL` boş (`config.py:17`), sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi (`Dikte.spec` girişi `dikte\__main__.py`, `llama_cpp` eksik), karşılama sihirbazı yok, Inno `AppId` geçersiz.
+- **Veri kaybı riskleri:** panoya yazma başarısızsa eski pano yapıştırılıyor; Temizle/Çevir yanlış geçmiş kaydını ezebiliyor; GGUF indirmede iptal/duraklat yarışı `.part` dosyasını bozabiliyor; `finish_reason == "length"` kırpılan yanıt tam sanılıyor.
+- **7c "⋯" model menüsü yok; eylemler kart üstünde.**
+- **Karşılama sihirbazı (5 ekran) ve CUDA bileşeni indirme akışı hiç yazılmadı.**
+- **`tests/data/test.wav` yok; `--selftest` çalıştırılamıyor.**
 
 ## Karar geçmişi
 - 2026-10-22: Proje başlatıldı. Python, faster-whisper, deepseek-v4-flash.
@@ -146,3 +149,8 @@ Akış:
 - 2026-11-03: AGENTS.md'den alt ajanlar bölümü silindi (kullanıcı isteği); tek ajan çalışır.
 - 2026-11-03: llama-cpp-python GPU (cu124) kuruldu; `nvidia-cuda-runtime-cu12` requirements'a eklendi, `prepare_cuda_dlls()` cublas/cudnn/cudart yollarını llama yüklemeden önce tanıtır.
 - 2026-11-03: v1.4 efektleri CSS uyarlaması olarak eklendi; `effects` ayarı Ayarlar → Görünüm'de, varsayılan açık; `prefers-reduced-motion` animasyonları kapatır.
+- 2026-11-04: v1.4 efektleri kullanıcı onayı aldı; v1.6 yayın yeri GitHub Releases seçildi; karşılama sihirbazı kurucu kapsamına alındı.
+- 2026-11-06: Kod denetimi yapıldı; 8 yayın blockerı ve çok sayıda orta/yüksek bulgu raporlandı (`Dikte-Denetim-Raporu.md`).
+- 2026-11-07: Yalnız doküman/plan güncellendi; `uygulanacak plan.md` yeniden yazıldı, STATE/PLAN/AGENTS/architecture senkronlandı. Kod değişmedi.
+- 2026-11-07: Plan/denetim düzeni zorunlu: `calisma-duzeni.md` (keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama); bulgular `dosya:satır` kanıtıyla yazılır. Denetim dışında tek ajan.
+- 2026-11-07: Kurulum Program Files + admin; sürüm 1.6.0; kaldırmada "Modelleri koru" seçeneği (Inno); PyInstaller + Inno kurulacak; GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tam; `web/` notla; MIT; basit `.ico`; eski `data/` taşınmaz.

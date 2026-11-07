@@ -36,7 +36,7 @@ Bu dosya, bu projede kullanıcıyla nasıl konuşulacağını tanımlar. Yeni aj
 - API anahtarı, parola veya kişisel bilgiyi dosyaya/rapora yazmamak.
 - Tasarımdan sessizce sapmamak; sapma gerekiyorsa önce sormak.
 - Uzun logları ve büyük dosyaları baştan sona okumamak.
-- Aynı anda ikiden fazla alt ajan çalıştırmamak.
+- Denetim/plan düzeninde (`calisma-duzeni.md`) 4 salt-okunur alt ajan paralel çalışabilir; bunun dışında aynı anda ikiden fazla alt ajan çalıştırmamak.
 
 ## Örnekler
 > En kolay yol: proje klasörüne `Dikte.bat` dosyası ekledim.

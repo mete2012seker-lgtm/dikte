@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.3 (7e dahil) + v1.4 + v1.5 + v1.6 kod tarafı tamamlandı (2026-11-04):** 7e kalite tablosu Gemma 3 4B ile 10/10 geçti (rapor: reports/2026-11-04-7e-kalite-tablosu.md); v1.5'te `dikte/uninstall.py` (kaldırma kartı, çift onay, boyut, otomatik başlatma), `Dikte.spec` ve `installer/Dikte.iss` yazıldı; v1.6'da `dikte/updater.py` (latest.json → SHA-256 → sessiz kurulum), Ayarlar'da Güncelleme kartı ve açılışta sessiz denetim eklendi. **220 pytest + 25 Playwright testi geçiyor (1 skip).** Kurulum/derleme ve gerçek güncelleme kullanıcı testi bekliyor; yayın yeri (K2) kararı açık.
+**Kod büyük ölçüde yazıldı; yayın zinciri çalışmıyor (2026-11-07):** v1.3/7a-7d, v1.4, v1.5 kaldırma kodu ve v1.6 güncelleme kodu mevcut. Ancak 2026-11-06 denetimi **8 yayın blockerı** buldu: güncelleme `sha256` akışı her zaman başarısız (`controller.py:1302-1325`), `UPDATE_URL` boş (`config.py:17`), sürüm hâlâ **1.3.0**, kaldırma veriyi ve autostart kaydını silmiyor, kurucu hiç derlenmemiş, karşılama sihirbazı yok. **220 pytest + 1 skip geçiyor (2026-11-07, 41,08 sn).** `tests/data/test.wav` yok; PyInstaller ve Inno Setup kurulu değil. Ayrıntılı sıra: `uygulanacak plan.md`.
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -27,28 +27,37 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **206 test geçti** (2026-11-03); Playwright 23 test.
 - **Gözden geçirme düzeltmeleri (2026-11-01):** tema ayarı AI yükünde döndürülüyor (Ayarlar'da sıfırlanmıyor), `refresh_last` ses modelini geri yüklüyor, ses modeli değiştirilirken yüklü metin modeli boşaltılıyor, OpenRouter'da model seçilmemişse açık hata, `.part` boyutu büyükse baştan indirme, `Content-Range` başlangıcı doğrulanıyor, açık tema sekme seçicisi düzeltildi.
 - **Uygulama açılışı doğrulandı (2026-11-01):** `python -m dikte` penceresi açıldı (başlık `Dikte — VoxNote AI`), log: `Model hazır: Whisper Large | GPU | float16`; kapatınca süreç kapandı.
+- **Denetim + doküman senkronu (2026-11-07):** `Dikte-Denetim-Raporu.md` kod satırlarıyla doğrulandı; testler **220 passed, 1 skipped** (41,08 sn); `uygulanacak plan.md` yeniden yazıldı; STATE/PLAN/AGENTS/architecture gerçek duruma çekildi. Kod değişmedi.
 
 ## Yarım kalan
-- **v1.3:** 7e 10 cümle kalite tablosu (llama.cpp kuruldu, model inmiş; ölçüm bekliyor).
-- **v1.4 tamamlandı:** efektler + `design/v2/` hazır; kullanıcı gözle onayı bekleniyor.
-- **v1.5 kodlanmadı:** kurucu + kaldırma.
-- **v1.6 kodlanmadı:** otomatik güncelleme.
+- **v1.3 / 7c:** Bellek takası + Metin/Ses sekmeleri var; "⋯" model menüsü yok. PLAN'da işaretsiz.
+- **v1.3 / 7e:** Arayüz + Playwright var; kalite tablosu **kısmen** (10/10 OK var, tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok).
+- **v1.4:** Efektler + `design/v2/` hazır; kullanıcı gözle onayladı (2026-11-04) → kapalı.
+- **v1.5:** Kaldırma kodu + `Dikte.spec` + `installer/Dikte.iss` var; **kurucu derlenmedi**, kur/kaldır testi yapılmadı, kaldırma veriyi/autostart kaydını silmiyor.
+- **v1.6:** `updater.py` + Ayarlar kartı var; `UPDATE_URL` boş, `sha256` akışı bozuk → güncelleme hiç çalışmıyor.
+- **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
 
 ## Sıradaki ilk adım
-1. **SENİN YAPACAĞIN ŞEY:** v1.4 efektlerini uygulamada gözle onayla; `/asama-bitir` ile aşamayı kapat.
-2. v1.5 kurucu derlemesi: PyInstaller + Inno Setup kur (`Dikte.spec` → `dist\Dikte`, `ISCC installer\Dikte.iss`); kur/kaldır kullanıcı testi.
-3. v1.6 yayın yeri kararı (K2): herkese açık Releases ya da statik sunucu; seçilince `config.UPDATE_URL` tek sabit doldurulur, gerçek güncelleme testi yapılır.
+1. **Kararlar verildi (2026-11-07):** Program Files, sürüm 1.6.0, Inno + "Modelleri koru", GitHub Releases (yüklemeyi kullanıcı yapar), sentetik TTS, 7e tamam, `web/` notla tutulur, MIT, ikon üretilir, eski `data/` taşınmaz.
+2. **Faz 1 yayın blockerları:** sürüm tek kaynağı, `sha256` akışı, `UPDATE_URL`, kaldırma verisi + autostart, `run_dikte.py` + spec, geçerli GUID, `.gitignore`.
+3. PyInstaller + Inno Setup kur; `build.ps1` ile derle; kur/kaldır kullanıcı testi.
+4. Karşılama sihirbazı (Faz 3) ve kalan veri kaybı hataları (Faz 2).
 
 ## Açık sorunlar
-- **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn sürüyor; sonraki çağrılar hızlı (~60 tok/s). UI çağrılarında tek seferlik ısınma kabul edilebilir; gerekirse ön ısınma çağrısı eklenir.
-- **Efekt kullanıcı onayı yok:** efektler testlerle doğrulandı; kullanıcı gözle onaylamadı.
-
+- **Güncelleme (blocker):** `update_check` `sha256` döndürmüyor; `update_apply` boş özetle doğrulayıp dosyayı siliyor. `UPDATE_URL` boş; hata mesajı yanıltıcı ("Sunucuya ulaşılamadı").
+- **Sürüm (blocker):** `config.py`, `__init__.py` ve `Dikte.iss` → **1.3.0**; `latest.json` → 1.6.1. Tek kaynak yok.
+- **Kaldırma (blocker):** `uninstall.py` yalnız `unins000.exe` çalıştırıyor; `%LOCALAPPDATA%\Dikte` (modeller/geçmiş/ayarlar/loglar) ve HKCU `Run\Dikte` silinmiyor. UI aksini söylüyor.
+- **Kurucu (blocker):** `dist/` yok; PyInstaller + Inno Setup kurulu değil. `Dikte.spec` girişi `dikte\__main__.py` (göreli import hatası), `llama_cpp` hiddenimports'ta yok.
+- **Karşılama sihirbazı (blocker):** 5 ekranlı akış hiç yok; `setup_done` ayarı yok.
+- **Inno AppId:** `Dikte.iss:11` geçersiz GUID (`DIKTE` onaltılık değil).
+- **Kurulum yeri:** **Program Files** seçildi (2026-11-07); `Dikte.iss` hâlâ `%LOCALAPPDATA%` + `lowest`, Faz 1'de güncellenecek. Kurulum/güncelleme UAC onayı ister.
+- **Veri kaybı riski:** Panoya yazma başarısızsa eski pano yapıştırılıyor; Temizle/Çevir yanlış geçmiş kaydını ezebiliyor; GGUF indirmede iptal/duraklat yarışı `.part` dosyasını bozabiliyor; kırpılan yanıt tam sanılıyor.
 - **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; kod hazır, gerçek GGUF ile ölçüm yapılmadı.
-- **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora henüz bağlanmadı.
+- **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora bağlanmadı.
+- **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn; sonraki çağrılar ~60 tok/s.
 - **OpenRouter:** ücret ve gizlilik riski; yalnız ucuz modeller önerilir, harcama STATE.md'de izlenir.
-- **İndirme duraklatma anlık değil:** açık dosya parçası bitince durur; iptal Windows kilidi yüzünden gecikebilir.
+- **İndirme duraklatma anlık değil:** açık dosya parçası bitince durur; iptal Windows kilidi yüzünden gecikebilir. Ses modelinde duraklat/iptal yok.
 - **Otomatik yapıştırma:** yönetici pencerelerine sentetik tuş gitmeyebilir; panodaki eski içerik geri yüklenmez.
-- **Kurucu:** PyInstaller + paket henüz yok; antivirüs yanlış uyarısı verebilir.
 - **Kaldırma geri alınamaz:** modeller, geçmiş ve ayarlar silinecek; ikinci onayda boyut gösterilecek.
 - **Tepsi yok:** pencere kapanınca uygulama çıkar, kısayol da durur.
 
@@ -67,22 +76,27 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Metin sağlayıcısı varsayılanı `none` (kapalı); kullanıcı seçmeden Temizle/Çevir çalışmaz.
 - Otomatik yapıştırma varsayılan açık; kurucu tek CPU paketi.
 - Tema düğmesi sağ panelde "Aktif model" kartının 12 px üstünde; AnimatedThemeToggler (circle, 400 ms).
-- Üç alt ajan da ana ajanla aynı modeli kullanır: `deepseek/deepseek-v4.1-flash-1017`.
+- Denetimde 4 salt-okunur alt ajan ana ajanla aynı modeli kullanır; plan/denetim dışında tek ajan çalışır.
 - Goal bölünmesi: parti 1–5, sonra 6–10, sonra 11–13.
 - OpenRouter'da "Tüm modelleri göster" açılınca katalogdaki herhangi bir model aranıp seçilebilir; varsayılan liste ucuz/küçük modellerdir.
-- v1.6 yayın yeri ve açık tema paleti henüz onaylanmadı (sırasıyla parti 13 ve 11).
+- v1.6 yayın yeri **GitHub Releases** olarak seçildi (2026-11-04); `UPDATE_URL` henüz doldurulmadı. Açık tema paleti 2026-11-01'de onaylandı.
 - Metin modelleri: 4 GGUF modeli (`qwen3-1.7b`, `qwen3-4b`, `gemma3-4b`, `llama32-3b`), Hugging Face'ten `.part` + Range ile indirme, duraklat/devam/iptal, disk kontrolü.
 - Modeller sayfası Metin/Ses sekmeleri; metin modelinde indir/duraklat/iptal/aktifleştir/sil.
 - Bellek takası: dikte başlarken metin modeli boşaltılır, ses modeli geri yüklenir.
 - Otomatik yapıştırma: etkin pencereye Ctrl+V; Dikte penceresi etkinse atlanır; varsayılan açık.
 - Tema: düğme sağ panelde "Aktif model" kartının üstünde; Ayarlar → Görünüm (Sistem/Açık/Koyu); açık tema paleti onaylandı.
 - 2026-11-03: AGENTS.md'den alt ajanlar bölümü silindi (artık tek ajan çalışır).
+- 2026-11-07: **Plan/denetim düzeni zorunlu:** `calisma-duzeni.md` sırası (keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama) uygulanır; bulgular `dosya:satır` kanıtıyla yazılır. Denetim dışında tek ajan çalışır.
+- 2026-11-04: v1.4 efektleri kullanıcı tarafından gözle onaylandı; v1.5 karşılama sihirbazı kurucu kapsamına alındı.
+- 2026-11-07: Bu oturumda **yalnız doküman/plan** yapıldı; eski `uygulanacak plan.md` silinip denetim + doğrulanmış kod durumuna göre yeniden yazıldı. Kod değişmedi.
+- 2026-11-07: **Kurulum:** Program Files + `PrivilegesRequired=admin`; **sürüm 1.6.0**; kaldırmada kullanıcı seçer (Inno `[UninstallDelete]` + "Modelleri koru" bayrağı); PyInstaller + Inno Setup kurulacak.
+- 2026-11-07: **Yayın:** GitHub Releases; `latest.json` + kurucu yüklemeyi kullanıcı yapar; `UPDATE_URL` Releases `latest/download` yolu. **Sihirbaz:** CUDA yalnız GPU varsa. **Selftest:** sentetik TTS. **7e:** tamamlanacak. **web/:** notla tutulur. **Lisans:** MIT. **İkon:** basit `.ico` üretilir. **Eski `data/`:** taşınmaz, temiz başlangıç.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **220 passed, 1 skipped** (2026-11-04, 37,8 sn; +12 updater, +2 Playwright guncelleme) |
-| `--selftest` (geçici TTS wav) | GPU float16, metin üretildi (v1.2); **2026-11-01'de çalıştırılamadı: `tests/data/test.wav` yok** |
+| `pytest -q` | **220 passed, 1 skipped** (2026-11-07, 41,08 sn; doğrulandı) |
+| `--selftest` | **Çalıştırılamıyor:** `tests/data/test.wav` ve `test.txt` yok |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
 | Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile, efektler, guncelleme kartı (25 test) |
@@ -96,8 +110,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 | Tema | Playwright: düğme sınıf değişimi + Ayarlar segmenti; `artifacts/ui-tema-*.png` |
 | Gerçek uygulama açılışı | Pencere `Dikte — VoxNote AI`, model GPU float16 hazır |
 | v1.3 OpenRouter gerçek çağrı | 6 cümle geçti (gemma-3-4b-it, ~$0,0001); düzeltmeler `reports/2026-11-01-openrouter-gercek-test.md` |
-| Kurulum / kaldırma | Derleme + kur/kaldır kullanıcı testi bekliyor (kod + iss + spec hazır) |
-| Güncelleme (v1.6) | test_updater 12 test geçti; gerçek yükseltme kullanıcı testi bekliyor |
+| Derleme araçları | **Yok:** PyInstaller ve Inno Setup kurulu değil; `dist/` yok |
+| Kurulum / kaldırma | **Hiç denenmedi:** kod + iss + spec hazır değil (spec giriş hatası); kaldırma veriyi/autostart kaydını silmiyor |
+| Güncelleme (v1.6) | test_updater 12 test geçti; `sha256` akışı ve `UPDATE_URL` nedeniyle **gerçek akış çalışmıyor** |
 
 ## Çalıştırma komutları
 ```powershell

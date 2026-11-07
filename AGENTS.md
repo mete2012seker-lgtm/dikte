@@ -4,7 +4,7 @@ Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat
 
 ## Proje
 Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3 kapsamı 2026-11-01'de onaylandı (yapay zeka ile temizle/çevir); kod henüz yazılmadı. Sırada v1.4 (Magic UI + karanlık mod), v1.5 (kurucu + kaldırma) ve v1.6 (otomatik güncelleme) var.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3/7a-7d, v1.4 ve v1.5/v1.6 kodları yazıldı; ancak **yayın zinciri çalışmıyor** (2026-11-06 denetimi): güncelleme `sha256` akışı bozuk, `UPDATE_URL` boş, sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Sıra: `uygulanacak plan.md` Faz 1–4.
 
 ## Dosyalar
 | Dosya              | Ne için                                                                                                                        |
@@ -21,6 +21,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | .kilo/skills/      | `asama-baslat` ve `asama-bitir` skill'leri                                                                                     |
 | promptlar.md       | Kullanıcının istem notları (ajan okumaz)                                                                                       |
 | olabilir.md        | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır)                                                |
+| calisma-duzeni.md  | **Zorunlu plan/denetim düzeni:** keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama                 |
 | web/               | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
 
 ## Kullanıcı
@@ -41,6 +42,14 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Karar ile öneriyi ayır. Kararlar'a yalnızca kullanıcının onayladığı şeyler girer.
 - Hata olursa aynı komutu tekrarlama. Eksik bilgiyi bul, ekle, öyle yeniden dene.
 - Commit ve push yalnızca `/asama-bitir` çağrıldığında ya da kullanıcı açıkça isterse yapılır.
+
+## Plan ve denetim düzeni (zorunlu)
+- Plan, denetim veya "eksik / yarım / hata" çıkarımı yaparken **`calisma-duzeni.md` zorunludur**; aşamalar atlanmaz: keşif → doküman okuma → 4 paralel salt-okunur alt ajan (backend çekirdek, veri katmanı, arayüz+köprü, paketleme+doküman) → sentez + çapraz doğrulama → rapor → doğrulama.
+- Her bulgu `önem | dosya:satır | kısa alıntı | neden yanlış | somut düzeltme` biçiminde yazılır. Kanıtsız iddia rapora veya plana girmez; doğrulanamayanlar ayrı başlıkta toplanır.
+- Doküman iddiası kanıt sayılmaz. En kritik 3 iddia kod satırından bizzat doğrulanır; test sahtesi bir hatayı gizliyorsa bu ayrıca "test maskesi" olarak yazılır.
+- Çıktı sırası: blocker → yüksek → orta → düşük; sonunda fazlı düzeltme planı, kabul ölçütleri ve doğrulanamayanlar bölümü.
+- Denetim alt ajanları **yalnız salt okunur** çalışır: dosya oluşturmaz/değiştirmez/silmez, uygulamayı çalıştırmaz. Bu düzen dışında aynı anda en fazla 2 alt ajan çalıştırılır.
+- Plan dosyası, bu düzeni kullandığını ve hangi kanıtlara dayandığını başında yazar.
 
 ## Soru sorma
 - Soru sormak için `question` aracını kullan.
@@ -94,13 +103,16 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Modeller sayfası Metin/Ses sekmeleri; her modelde "⋯" menüsü; indirmede duraklat/devam/iptal.
 - **v1.4 kapsamı (onaylı):** Magic UI esintili yeni arayüz, Next.js'e geçmeden mevcut HTML/CSS/JS içinde CSS uyarlaması. Karanlık mod: Sistem/Açık/Koyu. Tema düğmesi sağ panelde "Aktif model" kartının hemen üstünde; Magic UI AnimatedThemeToggler davranışı (View Transitions API + circle clip-path, 400 ms). Ayrıntı `UYGULAMA-PLANI.md` §11.
 - **v1.5 kapsamı (onaylı):** PyInstaller + Inno Setup kurucu; veriler `%LOCALAPPDATA%\Dikte`; kısayollar; isteğe bağlı otomatik başlatma. Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, tüm verileri siler.
-- **v1.6 kapsamı (2026-11-01 onaylı):** Otomatik güncelleme. Açılışta sessiz sürüm denetimi (kapatılabilir); Ayarlar'da "Güncelleme" kartı ve "Uygulamayı Güncelle" butonu; `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → özet doğrulama → Inno Setup kurucusunu sessiz çalıştırma → yeniden açılış. Ağ/indirme hatasında Türkçe uyarı, uygulama çalışmaya devam eder. Depo özel olduğu için yayın yerinin (herkese açık Releases ya da statik sunucu) 11. aşama başında seçilmesi gerekiyor.
+- **v1.6 kapsamı (2026-11-01 onaylı):** Otomatik güncelleme. Açılışta sessiz sürüm denetimi (kapatılabilir); Ayarlar'da "Güncelleme" kartı ve "Uygulamayı Güncelle" butonu; `latest.json` (sürüm, kurucu bağlantısı, SHA-256) → indirme → özet doğrulama → Inno Setup kurucusunu sessiz çalıştırma → yeniden açılış. Ağ/indirme hatasında Türkçe uyarı, uygulama çalışmaya devam eder. **Yayın yeri 2026-11-04'te GitHub Releases olarak seçildi; `config.UPDATE_URL` henüz doldurulmadı.**
 - **Metin sağlayıcısı varsayılanı `none` (2026-11-01 onaylı):** İlk açılışta Temizle/Çevir kapalı; kullanıcı Ayarlar → Yapay Zeka'dan Yerel veya OpenRouter seçmeden çalışmaz. Otomatik yapıştırma varsayılan açık.
 - **Açık tema (2026-11-01 onaylı):** Zemin `#F7F9FD`, kart `#FFFFFF`, ana yazı `#101828`, vurgu `#3D5BF5`; tema düğmesi `Aktif model` kartının üstünde, View Transitions + circle clip-path (400 ms).
-- **Kurucu paketi (2026-11-01 onaylı):** Tek CPU kurucu; CUDA bileşeni paketlenmez (GPU isteğe bağlı ayrı iş).
+- **Kurucu paketi (2026-11-01 onaylı):** Tek CPU kurucu; CUDA bileşeni paketlenmez. Karşılama sihirbazı yalnız NVIDIA GPU varsa CUDA bileşenini isteğe bağlı indirir (2026-11-07).
 - **Goal bölünmesi (2026-11-01 onaylı):** İlk koşu parti 1–5, sonra 6–10, sonra 11–13; her koşu sonunda test kanıtı ve kullanıcı testi.
 - **llama-cpp-python (2026-11-03 onaylı):** GPU whl (cu124) kuruldu; CUDA DLL yolları `diagnostics.prepare_cuda_dlls()` ile llama yüklemeden önce tanıtılır (`nvidia-cuda-runtime-cu12` requirements'a eklendi).
 - **v1.4 efektleri (2026-11-03):** MagicCard/ShineBorder/AnimatedList/BentoGrid/DotPattern CSS+JS uyarlaması; Ayarlar → Görünüm'de "Arayüz efektleri" anahtarı (varsayılan açık); `prefers-reduced-motion` animasyonları kapatır. Ayrıntı `design/v2/ui-spec.md`.
+- **Doküman senkronu (2026-11-07):** Yalnız plan/doküman güncellendi, kod değişmedi. Eski `uygulanacak plan.md` silinip denetim + doğrulanmış kod durumuna göre yeniden yazıldı.
+- **Plan/denetim düzeni (2026-11-07 onaylı):** `calisma-duzeni.md` zorunlu; plan ve denetimler keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama sırasıyla yapılır.
+- **Uygulama kararları (2026-11-07 onaylı):** Kurulum `C:\Program Files\Dikte` + admin; sürüm **1.6.0**; kaldırmada "Modelleri koru" seçeneği (Inno `[UninstallDelete]` + bayrak); PyInstaller + Inno Setup kurulacak; güncelleme GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tamamlanacak; `web/` notla tutulur; lisans MIT; basit `.ico` üretilir; eski `data/` taşınmaz.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.
@@ -116,8 +128,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Geçmişte en fazla 500 kayıt tutulur; sınır aşılınca en eski kayıt düşer.
 - İndirme duraklatma anlık değil: açık dosya parçası bitince durur. İptal, Windows dosya kilidi yüzünden gecikebilir.
 - Girdi dili otomatik algılanır; Türkçe doğruluğu düşerse Ayarlar'a "Girdi dili: Türkçe" sabitleme eklenecek.
-- Kurulum kullanıcı bazlıdır, yönetici izni istemez; kaldırma tüm verileri (modeller dahil) siler.
-- v1.4 efektleri kod tarafında tamamlandı (2026-11-03); kullanıcı gözle onayı bekleniyor.
+- Kurulum **Program Files**'a yapılır ve yönetici izni ister. Kaldırmada geçmiş/ayarlar/loglar/geçici dosyalar silinir; kullanıcı "Modelleri koru" seçeneğiyle modelleri bırakabilir.
+- v1.4 efektleri kod tarafında tamamlandı (2026-11-03) ve kullanıcı tarafından gözle onaylandı (2026-11-04).
 - llama.cpp ilk üretim çağrısı ~50 sn CUDA ısınması sürer; kabul edildi, gerekirse ön ısınma çağrısı eklenir.
 
 ## Kod yazma ilkeleri (Karpathy)

@@ -3,6 +3,7 @@
 **Amaç:** Bir kod projesini "eksikler, yarım kalanlar ve hatalar" açısından hızlı ama kanıtlı biçimde denetlemek için kullandığım çalışma düzeni.
 **Ne zaman:** Yeni bir projeyi devraldığımda, "projede ne eksik / ne bozuk" sorusu geldiğinde, yayın öncesi kontrol gerektiğinde.
 **Çıktı:** Tek bir denetim raporu (`.md`) + öncelikli düzeltme planı.
+**Zorunluluk:** 2026-11-07'den itibaren plan ve denetimlerde bu düzen zorunludur (AGENTS.md → "Plan ve denetim düzeni").
 
 > Bu dosya "çalışma düzeni"dir: yeni bir oturumda bu dosyayı açıp aşağıdaki **Başlatma Promptu**'nu yapıştırmak yeterlidir.
 

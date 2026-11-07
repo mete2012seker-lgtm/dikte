@@ -81,11 +81,11 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
 - [x] 7a — Ayarlar sayfasında **OpenRouter API anahtarı** alanı: gizli yazı, "Kaydet" ve "Sil" düğmeleri, anahtarın DPAPI ile şifrelenip `settings.json` yerine ayrı dosyada tutulması; "Anahtarı test et" düğmesi.
 - [x] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma. (`llama-cpp-python` GPU/cu124 kuruldu 2026-11-03; gemma3-4b GPU 1,7 sn yükleme, ~60 tok/s. İlk çağrı ~50 sn CUDA ısınması.)
-- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Takas + sekmeler hazır; "⋯" menüsü yok, eylemler kart üstünde.)
+- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Takas + sekmeler hazır; **"⋯" menüsü yok**, eylemler kart üstünde.)
 - [x] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
-- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; 10 cümle kalite tablosu eksik.)
+- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; kalite tablosu **kısmen**: 10/10 OK var, tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok.)
 - Kural: aynı dilde yalnız temizlik; 3 kelimeden kısa metinde çeviri yok. Dil kararını metin modeli tek çağrıda verir.
-- Kanıt: 201 pytest, sahte HTTP sunucusuyla duraklat/devam/iptal testi, güncel Playwright ekran görüntüleri; OpenRouter gerçek çağrı 6/6 (`reports/2026-11-01-openrouter-gercek-test.md`). 10 cümle kalite tablosu ve VRAM ölçümü bekliyor.
+- Kanıt: 220 pytest (2026-11-07 doğrulandı), sahte HTTP sunucusuyla duraklat/devam/iptal testi, güncel Playwright ekran görüntüleri; OpenRouter gerçek çağrı 6/6 (`reports/2026-11-01-openrouter-gercek-test.md`). Tam kalite tablosu ve VRAM ölçümü bekliyor.
 - Senin yapacağın: Ayarlar → Yapay Zeka'dan anahtarı gir; mikrofon, yapıştırma ve indirme testlerini yap.
 
 ### Aşama 8 — Sağlamlaştırma
@@ -98,29 +98,42 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] Karanlık mod: Sistem/Açık/Koyu; `<html class="dark">` + CSS değişkenleri; localStorage + settings.json.
 - [x] `design/v2/` spec ve ekran görüntüleri (`design/v2/ui-spec.md` + koyu/açık × 4 sayfa + modeller-ses = 10 PNG); eski `design/` silinmedi.
 - [x] `prefers-reduced-motion`: efektler tüm animasyonları kapatır, kenar parlaması statik kalır. (WCAG AA kontrast ölçümü yapılmadı — arayüz zaten AA'ya yakın renkler kullanıyor; ölçüm gerekirse ileride eklenir.)
-- Kanıt: 206 pytest (Playwright 23 test), `design/v2/*.png`. Kullanıcı görsel onayı bekleniyor.
+- Kanıt: 206 pytest (Playwright 23 test), `design/v2/*.png`. **Kullanıcı görsel onayı 2026-11-04'te alındı; aşama kapalı.**
 
-### Aşama 10 — v1.5: Kurucu ve kaldırma
-- [x] PyInstaller `onedir` + Inno Setup; kullanıcı bazlı kurulum, `%LOCALAPPDATA%\Dikte` verisi. (2026-11-04: `Dikte.spec` + `installer/Dikte.iss` yazıldı; derleme kullanıcı testinde)
-- [x] Masaüstü/Başlat menüsü kısayolları; isteğe bağlı Windows açılışında başlatma. (kısayollar iss'te; açılışta başlatma Ayarlar'daki anahtar + HKCU Run)
+### Aşama 10 — v1.5: Kurucu ve kaldırma (kod yazıldı, yayın doğrulanmadı)
+- [x] PyInstaller `onedir` + Inno Setup dosyaları yazıldı. (2026-11-04: `Dikte.spec` + `installer/Dikte.iss`)
 - [x] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi. (`dikte/uninstall.py` + appCard)
-- [x] Kaldırma: exe, kısayol, otomatik başlatma, modeller, geçmiş, ayarlar, loglar ve `%TEMP%\dikte` silinir. (Inno kaldırıcısı sessiz başlatılır)
-- Kanıt: kod + testler hazır (220 pytest); kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi) bekliyor.
+- [ ] **Kurucu derlenmedi:** PyInstaller + Inno Setup kurulu değil, `dist/` yok; `Dikte.spec` girişi `dikte\__main__.py` (göreli import hatası), `llama_cpp` hiddenimports'ta yok.
+- [ ] **Kaldırma veriyi silmiyor:** `%LOCALAPPDATA%\Dikte` (modeller/geçmiş/ayarlar/loglar) ve HKCU `Run\Dikte` kalıyor; UI ve PLAN aksini söylüyor.
+- [ ] **Inno `AppId` geçersiz:** `Dikte.iss:11` içinde `DIKTE` onaltılık değil.
+- [ ] **Kurulum yeri kararı açık:** 2026-11-04 planı Program Files diyor; `.iss` hâlâ `%LOCALAPPDATA%` + `lowest`.
+- [ ] Kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi).
+- Kanıt hedefi: `dist\Dikte\Dikte.exe`, `Dikte-Setup-*.exe`, kur/kaldır logu, silinen klasör listesi.
 
-### Aşama 11 — v1.6: Otomatik güncelleme (kapsam 2026-11-01 onaylı)
-- [x] Açılışta sessiz sürüm denetimi (Ayarlar'dan kapatılabilir); yeni sürüm varsa Ayarlar kartında sonuç gösterilir. (2026-11-04: yalnız kurulu sürümde, `maybe_startup_update_check`)
-- [x] Ayarlar'da **Güncelleme** kartı: "Uygulamayı Güncelle" birincil butonu (yeni sürüm yoksa devre dışı), sürüm numarası, son denetim zamanı, "Şimdi denetle" düğmesi.
-- [x] Güncelleme akışı: küçük bir `latest.json` dosyası okunur (sürüm, kurucu bağlantısı, SHA-256, sürüm notu); yeni sürüm varsa kurucu indirilir, SHA-256 doğrulanır, Inno Setup kurucusu sessiz çalıştırılır, uygulama yeniden açılır. (`dikte/updater.py`)
-- [x] Düşüş: ağ yok / indirme yarıda kaldı / özet uyuşmadı durumlarında Türkçe uyarı; uygulama çalışmaya devam eder, yarım dosya silinir.
-- [x] Sürüm numarası tek kaynaktan (`dikte/config.py`) okunur; kurucu ve güncelleme denetimi aynı değeri kullanır.
-- Kanıt: sahte güncelleme sunucusuyla "yeni sürüm var / yok / bozuk dosya / ağ yok" pytest testleri; gerçek sürüm yükseltme kullanıcı testi.
-- Açık karar: depo özel olduğu için `latest.json` ve kurucunun kimlik doğrulamasız erişilebilir bir yerde durması gerekir (herkese açık GitHub Releases ya da basit statik sunucu). Bu seçim 11. aşama başında sorulacak.
-- Senin yapacağın: güncelleme dosyalarının yayınlanacağı yeri seçmek; ilk Release'i yayınlamak.
+### Aşama 11 — v1.6: Otomatik güncelleme (kod var, akış bozuk)
+- [x] Açılışta sessiz sürüm denetimi ve Ayarlar'da **Güncelleme** kartı yazıldı. (`dikte/updater.py`, `controller.py:1281-1344`)
+- [x] `latest.json` okuma, sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama ve sessiz kurulum iskeleti var.
+- [ ] **`sha256` akışı bozuk:** `update_check` `sha256` döndürmüyor; `update_apply` boş özetle doğrulayıp dosyayı siliyor (`controller.py:1302-1325`).
+- [ ] **`UPDATE_URL` boş:** `config.py:17`; `maybe_startup_update_check` bu yüzden ölü.
+- [ ] **Sürüm 1.3.0:** kurulu sürüm kendini eski sanıp aynı güncellemeyi önerir.
+- [ ] Güncelleme UI thread'inde senkron çalışıyor; ilerleme/iptal yok, uygulama kapanmıyor.
+- [ ] GitHub Releases seçildi (2026-11-04); ilk Release (`latest.json` + kurucu + SHA-256) yayınlanmadı.
+- Kanıt hedefi: sahte `latest.json` ile indirme → SHA → sessiz kurulum; gerçek sürüm yükseltme kullanıcı testi.
+
+### Aşama 12 — Yayın blockerlarını düzeltme (2026-11-07 planı)
+Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §3.
+- [ ] Sürüm tek kaynağı (`config.APP_VERSION`), `__init__`/`iss`/`latest.json`/User-Agent uyumu.
+- [ ] `sha256` akışı + `UPDATE_URL` + Türkçe hata mesajları.
+- [ ] Kaldırmada veri + autostart temizliği; `data_bytes` çift sayımı.
+- [ ] `run_dikte.py` + `Dikte.spec` (collect_all llama_cpp) + `build.ps1`; PyInstaller + Inno kur, derle.
+- [ ] Geçerli GUID; kurulum yeri kararı; `.gitignore` yayın artefaktları.
+- [ ] README/LICENSE/CI; boş `docs/` ve `mevcut tasarım/` kopyasını temizle.
+- Kanıt: pytest yeşil, `dist` + kurucu dosyası, kur/kaldır ve sahte güncelleme testi.
 
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (201 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (220 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |
