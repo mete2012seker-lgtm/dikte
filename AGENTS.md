@@ -18,7 +18,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | STIL.md            | Ajanın konuşma tarzı                                                                                                           |
 | design/            | Tasarımın tek kaynağı (görseller, ui-spec.md, prototype.html)                                                                  |
 | reports/           | Araştırma raporları (README.md dizin)                                                                                          |
-| .kilo/skills/      | `asama-baslat` ve `asama-bitir` skill'leri                                                                                     |
+| .kilo/skills/      | `asama-baslat`, `asama-bitir`, `proje-baslat` ve `belirsizleri-sor` skill'leri                                                 |
 | promptlar.md       | Kullanıcının istem notları (ajan okumaz)                                                                                       |
 | olabilir.md        | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır)                                                |
 | calisma-duzeni.md  | **Zorunlu plan/denetim düzeni:** keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama                 |
@@ -113,6 +113,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **Doküman senkronu (2026-11-07):** Yalnız plan/doküman güncellendi, kod değişmedi. Eski `uygulanacak plan.md` silinip denetim + doğrulanmış kod durumuna göre yeniden yazıldı.
 - **Plan/denetim düzeni (2026-11-07 onaylı):** `calisma-duzeni.md` zorunlu; plan ve denetimler keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama sırasıyla yapılır.
 - **Uygulama kararları (2026-11-07 onaylı):** Kurulum `C:\Program Files\Dikte` + admin; sürüm **1.6.0**; kaldırmada "Modelleri koru" seçeneği (Inno `[UninstallDelete]` + bayrak); PyInstaller + Inno Setup kurulacak; güncelleme GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tamamlanacak; `web/` notla tutulur; lisans MIT; basit `.ico` üretilir; eski `data/` taşınmaz.
+- **belirsizleri-sor skill'i (2026-11-07):** Uygulamadan önce plan/dokümanlardaki tüm açık kararlar tek turda kullanıcıya sorulur; doğrulanabilir bilgiler ajan kendin doğrular; cevaplar plana işlenir.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.
