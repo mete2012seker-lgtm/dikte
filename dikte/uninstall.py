@@ -45,12 +45,14 @@ def _dir_size(folder: Path) -> int:
 
 
 def data_bytes() -> int:
-    """Kaldırıldığında silinecek verinin toplam boyutu (modeller + veri + log)."""
+    """Kaldırıldığında silinecek verinin toplam boyutu (modeller + veri + log + geçici).
+
+    Kurulu sürümde bu klasörlerin hepsi %LOCALAPPDATA%\\Dikte altındadır ve kurulum
+    klasörü (Program Files) ayrıca sayılmaz; böylece boyut çift sayılmaz.
+    """
     total = 0
     for folder in (config.MODELS_DIR, config.DATA_DIR, config.LOG_DIR, config.TEMP_DIR):
         total += _dir_size(Path(folder))
-    if config.is_packaged():
-        total += _dir_size(config.exe_dir())
     return total
 
 
@@ -105,11 +107,20 @@ def autostart_enabled() -> bool:
         return False
 
 
-def run_uninstaller() -> None:
-    """Inno Setup kaldırıcısını sessiz kipte başlatır."""
+def run_uninstaller(keep_models: bool = True) -> None:
+    """Inno Setup kaldırıcısını sessiz kipte başlatır.
+
+    keep_models bayrağı kaldırıcıya iletilir: True ise modeller korunur.
+    Otomatik başlatma kaydı, kaldırıcının [Registry] bölümü yanında burada da temizlenir.
+    """
     path = uninstaller_path()
     if not path.exists():
         raise UninstallError("Kaldırıcı bulunamadı. Bu sürüm kurulumla gelmemiş.")
+    _write_keep_models_flag(keep_models)
+    try:
+        set_autostart(False)
+    except UninstallError:
+        logger.warning("Otomatik başlatma kaydı temizlenemedi; kaldırıcı yine de çalışır")
     try:
         subprocess.Popen(
             [str(path), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
@@ -119,3 +130,12 @@ def run_uninstaller() -> None:
     except OSError as exc:
         logger.exception("Kaldırıcı başlatılamadı")
         raise UninstallError(f"Kaldırıcı başlatılamadı: {exc}") from exc
+
+
+def _write_keep_models_flag(keep: bool) -> None:
+    flag = config.KEEP_MODELS_FLAG
+    if keep:
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.write_text("keep\n", encoding="utf-8")
+    else:
+        flag.unlink(missing_ok=True)

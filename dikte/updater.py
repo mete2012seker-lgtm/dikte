@@ -15,8 +15,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import subprocess
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -84,9 +86,8 @@ def check(force: bool = False, url: str | None = None) -> dict | None:
     """
     base = url or config.UPDATE_URL
     if not base:
-        if force:
-            raise UpdaterError("no_url", "Güncelleme sunucusu yapılandırılmamış.")
-        return None
+        # Yapılandırılmamış yayın yeri her iki modda da açık hata (no_url).
+        raise UpdaterError("no_url", "Güncelleme sunucusu yapılandırılmamış.")
     try:
         data = _fetch_json(base)
         version = str(data.get("version", "")).strip()
@@ -104,6 +105,11 @@ def check(force: bool = False, url: str | None = None) -> dict | None:
         return None
     if compare_versions(config.APP_VERSION, version) <= 0:
         return {"update_available": False, "version": version, "notes": notes}
+    if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        # Özet yoksa ya da biçimi bozuksa kurulum hiç başlamaz.
+        if force:
+            raise UpdaterError("bad_sha", "Güncelleme bildiriminde geçerli SHA-256 özeti yok.")
+        return None
     return {
         "update_available": True,
         "version": version,

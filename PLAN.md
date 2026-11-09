@@ -103,32 +103,32 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 ### Aşama 10 — v1.5: Kurucu ve kaldırma (kod yazıldı, yayın doğrulanmadı)
 - [x] PyInstaller `onedir` + Inno Setup dosyaları yazıldı. (2026-11-04: `Dikte.spec` + `installer/Dikte.iss`)
 - [x] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi. (`dikte/uninstall.py` + appCard)
-- [ ] **Kurucu derlenmedi:** PyInstaller + Inno Setup kurulu değil, `dist/` yok; `Dikte.spec` girişi `dikte\__main__.py` (göreli import hatası), `llama_cpp` hiddenimports'ta yok.
-- [ ] **Kaldırma veriyi silmiyor:** `%LOCALAPPDATA%\Dikte` (modeller/geçmiş/ayarlar/loglar) ve HKCU `Run\Dikte` kalıyor; UI ve PLAN aksini söylüyor.
-- [ ] **Inno `AppId` geçersiz:** `Dikte.iss:11` içinde `DIKTE` onaltılık değil.
-- [ ] **Kurulum yeri kararı açık:** 2026-11-04 planı Program Files diyor; `.iss` hâlâ `%LOCALAPPDATA%` + `lowest`.
-- [ ] Kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi).
+- [x] **Kurucu derlendi (2026-11-09):** `build.ps1` ile `dist\Dikte` ve `installer\Output\Dikte-Setup-1.6.0.exe` üretildi; `run_dikte.py` girişi ve `collect_all("llama_cpp")` eklendi.
+- [x] **Kaldırma veri ve autostart temizliyor (2026-11-09):** Inno `[UninstallDelete]` + `[Code]`, "Modelleri koru" bayrağı, `[Registry]` HKCU Run temizliği.
+- [x] **Inno `AppId` düzeltildi (2026-11-09):** yeni GUID; kurulum `{autopf}\Dikte`, `PrivilegesRequired=admin`.
+- [ ] Kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi; UAC gerekir).
 - Kanıt hedefi: `dist\Dikte\Dikte.exe`, `Dikte-Setup-*.exe`, kur/kaldır logu, silinen klasör listesi.
 
 ### Aşama 11 — v1.6: Otomatik güncelleme (kod var, akış bozuk)
 - [x] Açılışta sessiz sürüm denetimi ve Ayarlar'da **Güncelleme** kartı yazıldı. (`dikte/updater.py`, `controller.py:1281-1344`)
 - [x] `latest.json` okuma, sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama ve sessiz kurulum iskeleti var.
-- [ ] **`sha256` akışı bozuk:** `update_check` `sha256` döndürmüyor; `update_apply` boş özetle doğrulayıp dosyayı siliyor (`controller.py:1302-1325`).
-- [ ] **`UPDATE_URL` boş:** `config.py:17`; `maybe_startup_update_check` bu yüzden ölü.
-- [ ] **Sürüm 1.3.0:** kurulu sürüm kendini eski sanıp aynı güncellemeyi önerir.
-- [ ] Güncelleme UI thread'inde senkron çalışıyor; ilerleme/iptal yok, uygulama kapanmıyor.
-- [ ] GitHub Releases seçildi (2026-11-04); ilk Release (`latest.json` + kurucu + SHA-256) yayınlanmadı.
+- [x] **`sha256` akışı düzeltildi (2026-11-09):** `update_check` `sha256` döndürüyor; `update_apply` tek denetim sonucunu kullanıyor; boş/bozuk özet indirmeden reddediliyor.
+- [x] **`UPDATE_URL` dolduruldu (2026-11-09):** GitHub Releases `latest.json` adresi; yapılandırılmamışsa `no_url`.
+- [x] **Sürüm 1.6.0 (2026-11-09):** tek kaynak `config.APP_VERSION`.
+- [ ] Güncelleme UI thread'inde senkron çalışıyor; ilerleme/iptal yok, uygulama kapanmıyor (Faz 3.3).
+- [ ] GitHub Release yayınlanmadı (`latest.json` 404 veriyor); ilk Release kullanıcı tarafından yüklenecek.
 - Kanıt hedefi: sahte `latest.json` ile indirme → SHA → sessiz kurulum; gerçek sürüm yükseltme kullanıcı testi.
 
 ### Aşama 12 — Yayın blockerlarını düzeltme (2026-11-07 planı)
 Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §3.
-- [ ] Sürüm tek kaynağı (`config.APP_VERSION`), `__init__`/`iss`/`latest.json`/User-Agent uyumu.
-- [ ] `sha256` akışı + `UPDATE_URL` + Türkçe hata mesajları.
-- [ ] Kaldırmada veri + autostart temizliği; `data_bytes` çift sayımı.
-- [ ] `run_dikte.py` + `Dikte.spec` (collect_all llama_cpp) + `build.ps1`; PyInstaller + Inno kur, derle.
-- [ ] Geçerli GUID; kurulum yeri kararı; `.gitignore` yayın artefaktları.
-- [ ] README/LICENSE/CI; boş `docs/` ve `mevcut tasarım/` kopyasını temizle.
-- Kanıt: pytest yeşil, `dist` + kurucu dosyası, kur/kaldır ve sahte güncelleme testi.
+- [x] Sürüm tek kaynağı (`config.APP_VERSION`), `__init__`/`iss`/`latest.json`/User-Agent uyumu. (test_version.py)
+- [x] `sha256` akışı + `UPDATE_URL` + Türkçe hata mesajları. (test_updater.py, 20 test)
+- [x] Kaldırmada veri + autostart temizliği; `data_bytes` çift sayımı. (test_uninstall.py, 12 test)
+- [x] `run_dikte.py` + `Dikte.spec` (collect_all llama_cpp) + `build.ps1`; PyInstaller + Inno kuruldu, derlendi.
+- [x] Geçerli GUID; kurulum `{autopf}\Dikte` + admin; `.gitignore` yayın artefaktları.
+- [x] LICENSE (MIT), README; 0 baytlık docs dosyaları ve `mevcut tasarım/` silindi. CI yapılandırması yok (Faz 4).
+- Kanıt: pytest 245 passed / 1 skipped; `dist\Dikte\Dikte.exe` 25 sn açık kaldı; kurucu 172.888.124 bayt, SHA-256 `65a0fa04…da44d`.
+- **Faz 1 kullanıcı onayı bekleniyor:** kur/kaldır (UAC), gerçek Release güncellemesi ve model/mikrofon testi.
 
 ## Test yöntemi
 | Ne test edilir | Nasıl |

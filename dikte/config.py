@@ -9,25 +9,30 @@ from pathlib import Path
 
 APP_NAME = "Dikte"
 APP_TITLE = "Dikte — VoxNote AI"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.6.0"
 UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Dikte_is1"
 AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_VALUE = "Dikte"
-# v1.6: yayın yeri henüz seçilmedi (K2). Karar verilince yalnızca bu değer değişir.
-UPDATE_URL = ""
+# v1.6: yayın yeri GitHub Releases (karar 2026-11-07).
+UPDATE_URL = "https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json"
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = PACKAGE_DIR.parent
 UI_DIR = PACKAGE_DIR / "ui"
 
 # Testler ve farklı kurulumlar için ortam değişkeniyle değiştirilebilir.
-# Kurulu (PyInstaller) sürümde veri kökü %LOCALAPPDATA%\Dikte'dir (UYGULAMA-PLANI parti 12).
-_APPDATA_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", ROOT_DIR)) / "Dikte"
+# Kurulu (PyInstaller) sürümde tüm kullanıcı verisi %LOCALAPPDATA%\Dikte altındadır;
+# kurulum klasörü (Program Files) veri içermez, böylece kaldırma yalnız kendi verisini siler.
+_FROZEN = bool(getattr(sys, "frozen", False)) and not os.environ.get("DIKTE_DEV")
+_APPDATA_ROOT = Path(os.environ.get("LOCALAPPDATA", ROOT_DIR)) / "Dikte"
+_APPDATA_DATA_DIR = _APPDATA_ROOT / "data"
 
-MODELS_DIR = Path(os.environ.get("DIKTE_MODELS_DIR", ROOT_DIR / "models"))
-LOG_DIR = Path(os.environ.get("DIKTE_LOG_DIR", ROOT_DIR / "logs"))
+MODELS_DIR = Path(os.environ.get("DIKTE_MODELS_DIR", _APPDATA_ROOT / "models" if _FROZEN else ROOT_DIR / "models"))
+LOG_DIR = Path(os.environ.get("DIKTE_LOG_DIR", _APPDATA_ROOT / "logs" if _FROZEN else ROOT_DIR / "logs"))
 TEMP_DIR = Path(os.environ.get("DIKTE_TEMP_DIR", Path(tempfile.gettempdir()) / "dikte"))
-DATA_DIR = Path(os.environ.get("DIKTE_DATA_DIR", _APPDATA_DATA_DIR if getattr(sys, "frozen", False) else ROOT_DIR / "data"))
+DATA_DIR = Path(os.environ.get("DIKTE_DATA_DIR", _APPDATA_DATA_DIR if _FROZEN else ROOT_DIR / "data"))
+# Kaldırıcı bu bayrağı okur: varsa modeller silinmez (Inno [Code] bölümü).
+KEEP_MODELS_FLAG = _APPDATA_ROOT / "keep_models.flag"
 
 SETTINGS_FILE = DATA_DIR / "settings.json"
 HISTORY_FILE = DATA_DIR / "history.json"

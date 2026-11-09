@@ -4,7 +4,7 @@ Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat
 
 ## Proje
 Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3/7a-7d, v1.4 ve v1.5/v1.6 kodları yazıldı; ancak **yayın zinciri çalışmıyor** (2026-11-06 denetimi): güncelleme `sha256` akışı bozuk, `UPDATE_URL` boş, sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Sıra: `uygulanacak plan.md` Faz 1–4.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3/7a-7d, v1.4 ve v1.5/v1.6 kodları yazıldı; ancak **yayın zinciri çalışmıyor** (2026-11-06 denetimi): güncelleme `sha256` akışı bozuk, `UPDATE_URL` boş, sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Faz 1 kodla tamamlandı (2026-11-09): sürüm 1.6.0, sha256 akışı, UPDATE_URL, kaldırma temizliği, kurucu üretildi; kullanıcı kur/kaldır ve gerçek Release testi bekliyor. Sıra: `uygulanacak plan.md` Faz 2–4.
 
 ## Dosyalar
 | Dosya              | Ne için                                                                                                                        |
@@ -113,6 +113,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **Doküman senkronu (2026-11-07):** Yalnız plan/doküman güncellendi, kod değişmedi. Eski `uygulanacak plan.md` silinip denetim + doğrulanmış kod durumuna göre yeniden yazıldı.
 - **Plan/denetim düzeni (2026-11-07 onaylı):** `calisma-duzeni.md` zorunlu; plan ve denetimler keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama sırasıyla yapılır.
 - **Uygulama kararları (2026-11-07 onaylı):** Kurulum `C:\Program Files\Dikte` + admin; sürüm **1.6.0**; kaldırmada "Modelleri koru" seçeneği (Inno `[UninstallDelete]` + bayrak); PyInstaller + Inno Setup kurulacak; güncelleme GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tamamlanacak; `web/` notla tutulur; lisans MIT; basit `.ico` üretilir; eski `data/` taşınmaz.
+- **Faz 1 uygulama onayı (2026-11-09):** `uygulanacak plan.md` Faz 1 kullanıcı tarafından onaylanıp uygulandı.
 - **belirsizleri-sor skill'i (2026-11-07):** Uygulamadan önce plan/dokümanlardaki tüm açık kararlar tek turda kullanıcıya sorulur; doğrulanabilir bilgiler ajan kendin doğrular; cevaplar plana işlenir.
 
 ## Öneriler (onaylanmadı)

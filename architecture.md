@@ -66,11 +66,20 @@ Akış:
 ## v1.5 / v1.6 ile gelen modüller
 | Dosya | Görev |
 | :--- | :--- |
-| `dikte/uninstall.py` | Kurulum kontrolü (`is_installed`), silinecek boyut (`data_bytes`), otomatik başlatma (HKCU Run), Inno kaldırıcısını sessiz başlatma |
-| `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama, sessiz kurulum (v1.6; `UPDATE_URL` boş, GitHub Releases seçildi 2026-11-04) |
-| `Dikte.spec` | PyInstaller onedir yapılandırması (CPU-only, ui/ paketlenir, models/data/tests dışlanır); **giriş betiği ve `llama_cpp` düzeltilmeli** |
-| `installer/Dikte.iss` | Inno Setup 6: **Program Files** kurulumu + admin, masaüstü kısayolu; **derlenmedi**, `AppId` geçersiz, `[UninstallDelete]` boş; "Modelleri koru" bayrağı eklenecek |
-| `installer/latest.json` | Güncelleme bildirimi örneği (yayın yerinde gerçek değerler doldurulur) |
+| `dikte/uninstall.py` | Kurulum kontrolü (`is_installed`), silinecek boyut (`data_bytes`, yalnız %LOCALAPPDATA%\Dikte), otomatik başlatma (HKCU Run), "Modelleri koru" bayrağı (`keep_models.flag`), Inno kaldırıcısını sessiz başlatma | Faz 1 (2026-11-09) |
+| `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama (özet yoksa reddeder), sessiz kurulum; `UPDATE_URL` = GitHub Releases | Faz 1 (2026-11-09) |
+| `dikte/config.py` | `APP_VERSION` (tek sürüm kaynağı), yollar (paketli sürümde %LOCALAPPDATA%\Dikte), `UPDATE_URL`, `KEEP_MODELS_FLAG` | Faz 1 |
+| `run_dikte.py` | PyInstaller giriş noktası (`dikte.__main__.main` çağırır) | Yeni (2026-11-09) |
+| `Dikte.spec` | PyInstaller onedir: `run_dikte.py`, `collect_all("llama_cpp")`, `dikte/ui` verisi, ikon | Düzeltildi (2026-11-09) |
+| `build.ps1` | Sürümü okur, `installer/version.iss` üretir, PyInstaller + ISCC çalıştırır, boyut ve SHA-256 yazar | Yeni (2026-11-09) |
+| `installer/Dikte.iss` | Inno Setup 6: `{autopf}\Dikte`, admin, yeni AppId, HKCU Run temizliği, `[UninstallDelete]` + `[Code]` ile modelleri koruma | Derlendi (2026-11-09) |
+| `installer/Dikte.ico` | Basit uygulama ikonu (kurucu ve exe) | Yeni (2026-11-09) |
+| `installer/version.iss` | `build.ps1` üretir (`config.APP_VERSION`); git dışı | Otomatik |
+| `installer/latest.json` | Yayınlanan sürüm 1.6.0; kurucu URL ve SHA-256 gerçek değerlerle | Güncellendi (2026-11-09) |
+| `tests/test_updater.py` | Sürüm, denetim, indirme, SHA ve uçtan uca sahte akış (20 test) | Genişletildi |
+| `tests/test_uninstall.py` | Kurulum kontrolü, veri boyutu, autostart, kaldırıcı çağrısı (12 test) | Yeni (2026-11-09) |
+| `tests/test_version.py` | Paket, User-Agent, Inno, latest.json sürüm tutarlılığı | Yeni (2026-11-09) |
+| `LICENSE` / `README.md` | MIT lisansı; kurulum, derleme, güncelleme ve kaldırma notları | Yeni (2026-11-09) |
 
 ## Bileşenler ve bağlantıları
 | Bileşen | Neye bağlı | Değişirse neler etkilenir |
@@ -121,7 +130,10 @@ Akış:
 - `input_language` ayarı kaydediliyor ama Whisper'a henüz bağlanmadı; motor hâlâ otomatik dil algılar.
 - llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
 - v1.4 efektleri testlerle doğrulandı; kullanıcı 2026-11-04'te gözle onayladı.
-- **Yayın blockerları (2026-11-06 denetimi):** güncelleme `sha256` akışı bozuk (`controller.py:1302-1325`), `UPDATE_URL` boş (`config.py:17`), sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi (`Dikte.spec` girişi `dikte\__main__.py`, `llama_cpp` eksik), karşılama sihirbazı yok, Inno `AppId` geçersiz.
+- **Yayın blockerları (2026-11-09 itibarıyla):** 1.6.0 kodu ve kurucu çalışıyor (sha256, UPDATE_URL, kaldırma veri/autostart, Inno AppId, derleme). Açık kalanlar: gerçek GitHub Release yok (`latest.json` 404), kur/kaldır UAC ile elle test edilmedi, karşılama sihirbazı yok (Faz 3).
+- **Test yan etkisi:** `tests/test_ui.py` ekran görüntülerini `design/v2/` altına yazıyor; her test koşusu `design/v2/v2-*-dikte.png` gibi referans dosyalarını değiştirebilir. Commit'e girmemeli; `git restore` ile geri alınır (Faz 4'te test çıktısı `artifacts/`'a taşınacak).
+- **HKCU Run kaydı:** Kurucu admin modda çalışır; kayıt, kurulumu yapan kullanıcının HKCU'suna yazılır. Farklı bir yönetici hesabıyla kurulursa kayıt beklenen yerde olmayabilir.
+- **`bin\` klasörü** (`%LOCALAPPDATA%\Dikte\bin`, 27 Ağustos) Dikte kodunun oluşturmadığı bir klasör; kaldırma kapsamı dışında bırakıldı.
 - **Veri kaybı riskleri:** panoya yazma başarısızsa eski pano yapıştırılıyor; Temizle/Çevir yanlış geçmiş kaydını ezebiliyor; GGUF indirmede iptal/duraklat yarışı `.part` dosyasını bozabiliyor; `finish_reason == "length"` kırpılan yanıt tam sanılıyor.
 - **7c "⋯" model menüsü yok; eylemler kart üstünde.**
 - **Karşılama sihirbazı (5 ekran) ve CUDA bileşeni indirme akışı hiç yazılmadı.**
@@ -154,3 +166,4 @@ Akış:
 - 2026-11-07: Yalnız doküman/plan güncellendi; `uygulanacak plan.md` yeniden yazıldı, STATE/PLAN/AGENTS/architecture senkronlandı. Kod değişmedi.
 - 2026-11-07: Plan/denetim düzeni zorunlu: `calisma-duzeni.md` (keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama); bulgular `dosya:satır` kanıtıyla yazılır. Denetim dışında tek ajan.
 - 2026-11-07: Kurulum Program Files + admin; sürüm 1.6.0; kaldırmada "Modelleri koru" seçeneği (Inno); PyInstaller + Inno kurulacak; GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tam; `web/` notla; MIT; basit `.ico`; eski `data/` taşınmaz.
+- 2026-11-09: Faz 1 uygulandı: sürüm 1.6.0 tek kaynak; sha256 akışı; `UPDATE_URL` GitHub Releases; kaldırma bayrağı + HKCU temizliği; `run_dikte.py` + spec + `build.ps1`; kurucu üretildi (172.888.124 bayt); docs boş dosyaları ve `mevcut tasarım/` silindi. Kullanıcı testi bekleniyor.

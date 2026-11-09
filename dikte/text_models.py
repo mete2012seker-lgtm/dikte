@@ -19,7 +19,7 @@ from .models import human_size
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "Dikte/1.3"
+USER_AGENT = f"Dikte/{config.APP_VERSION}"
 MODEL_HOST = "https://huggingface.co/{repo}/resolve/main/{filename}"
 CHUNK_SIZE = 1 << 20
 

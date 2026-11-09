@@ -13,7 +13,7 @@ from . import config
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "Dikte/1.3"
+USER_AGENT = f"Dikte/{config.APP_VERSION}"
 
 
 class OpenRouterError(RuntimeError):

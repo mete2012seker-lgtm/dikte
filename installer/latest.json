@@ -1,7 +1,7 @@
 {
-  "version": "1.6.1",
-  "url": "https://ornek-sunucu/Dikte-1.6.1-kurulum.exe",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "notes": "Örnek güncelleme bildirimi. Gerçek değerler yayında (K2) doldurulur.",
-  "published": "2026-11-15T10:00:00Z"
+  "version": "1.6.0",
+  "url": "https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.0/Dikte-Setup-1.6.0.exe",
+  "sha256": "65a0fa042eb7eba25b70d179d346f11a366b6eb51f415c76cc2ed460177da44d",
+  "notes": "Dikte 1.6.0: otomatik güncelleme, kaldırma (modelleri koruma seçeneği) ve kurucu paketi.",
+  "published": "2026-11-09T12:00:00Z"
 }

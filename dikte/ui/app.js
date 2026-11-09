@@ -1715,7 +1715,7 @@
     } else {
       $("#uninstallDesc").textContent =
         "Silinecek veri yaklaşık " + uninstallState.size_text +
-        ": modeller, geçmiş, ayarlar ve günlükler. Bu işlem geri alınamaz.";
+        ": geçmiş, ayarlar ve günlükler her durumda silinir. Modeller ikinci onayda korunabilir. Bu işlem geri alınamaz.";
     }
   }
 
@@ -1754,7 +1754,8 @@
       uninstallStep = 2;
       const size = uninstallState ? uninstallState.size_text : "tüm";
       $("#uninstallQuestion").textContent =
-        "İkinci onay: yaklaşık " + size + " veri (modeller dahil) kalıcı olarak silinecek. Emin misin?";
+        "İkinci onay: yaklaşık " + size + " veri kalıcı olarak silinecek. Emin misin?";
+      $("#uninstallKeepRow").hidden = false;
       $("#uninstallYes").textContent = "Evet, her şeyi sil";
       return;
     }
@@ -1762,7 +1763,8 @@
     const status = $("#uninstallStatus");
     status.textContent = "Kaldırıcı başlatılıyor…";
     try {
-      const result = await api.uninstall();
+      const keepModels = $("#uninstallKeepModels").checked;
+      const result = await api.uninstall({ keep_models: keepModels });
       status.textContent = result && result.ok
         ? (result.message || "Kaldırıcı başlatıldı")
         : (result && result.message) || "Kaldırıcı başlatılamadı.";

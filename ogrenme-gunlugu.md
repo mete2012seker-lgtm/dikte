@@ -47,3 +47,12 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 - **Kaldırıcı (uninstaller):** Programı ve verilerini silen ayrı küçük program demek; Inno Setup bunu otomatik üretiyor.
 - **Otomatik güncelleme:** Uygulama açılışta bir küçük dosyaya (latest.json) bakıp yeni sürüm var mı diye kontrol eder; indirilen dosyanın özeti (SHA-256) doğrulanmadan kurulmaz.
 - **Kullanıcı testi:** Ajan kodu yazıp test edebilir ama kur/kaldır ve gerçek güncelleme ancak gerçek bilgisayarda senin denemenle kanıtlanır.
+
+## 2026-11-09 — Faz 1: yayın hazırlığı (kurucu ve güncelleme)
+
+1. **Tek kaynak ilkesi:** Sürüm numarası her yerde ayrı yazılınca (config, Inno, latest.json) birbirini tutmaz hâle geliyor. Bütün dosyalar tek bir değerden okunmalı; testler bu tutarlılığı kontrol eder.
+2. **Özet (SHA-256) neden gerekli:** İndirilen dosyanın hash'i yayında yazılı değerle eşleşmezse yarım veya değiştirilmiş kurucu çalıştırılmaz. Boş özet bile reddedilir, çünkü "doğrulama yok" demek "güven yok" demektir.
+3. **Kurucu ve geliştirme ortamı farkı:** PyInstaller uygulamayı tek klasöre toplar; giriş dosyasında göreli import (`from . import`) çalışmaz, bu yüzden küçük bir `run_dikte.py` başlatıcısı kullanılır.
+4. **Kaldırmada veri ayrımı:** Program dosyaları (Program Files) ile kullanıcı verisi (%LOCALAPPDATA%) ayrı tutulur. Kaldırıcı programı siler; "Modelleri koru" bayrağı büyük modelleri (GB'lar) boşuna yeniden indirmeyi önler.
+5. **Admin kurulum ve HKCU:** Yönetici izniyle kurulan programın kullanıcı kayıt defteri alanına (HKCU) yazması, kurulumu yapan hesapla aynı kişi değilse beklenmeyen yere düşer. Bu yüzden kayıt temizliği de kurulumu yapan kullanıcıyla test edilmeli.
+

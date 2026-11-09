@@ -501,7 +501,7 @@
           <div class="set-row">
             <div class="set-info">
               <div class="set-title">Kaldırma</div>
-              <div class="set-desc" id="uninstallDesc">Silinecek veri: modeller, geçmiş, ayarlar ve günlükler. Bu işlem geri alınamaz.</div>
+              <div class="set-desc" id="uninstallDesc">Silinecek veri: geçmiş, ayarlar ve günlükler. Modeller ikinci onayda korunabilir. Bu işlem geri alınamaz.</div>
             </div>
             <div class="set-control uninstall-control">
               <button class="btn btn-danger uninstall-btn" id="uninstallBtn" type="button">Uygulamayı Kaldır</button>
@@ -509,6 +509,9 @@
           </div>
           <div class="uninstall-confirm" id="uninstallConfirm" hidden>
             <div class="uninstall-question" id="uninstallQuestion">Dikte ve tüm verileri kaldırılsın mı?</div>
+            <label class="uninstall-keep" id="uninstallKeepRow" hidden>
+              <input type="checkbox" id="uninstallKeepModels" checked> Modelleri koru (yeniden kurulumda tekrar indirmeyi önler)
+            </label>
             <div class="uninstall-actions">
               <button class="btn" id="uninstallNo" type="button">Vazgeç</button>
               <button class="btn btn-danger" id="uninstallYes" type="button">Evet, kaldır</button>

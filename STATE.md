@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Kod büyük ölçüde yazıldı; yayın zinciri çalışmıyor (2026-11-07):** v1.3/7a-7d, v1.4, v1.5 kaldırma kodu ve v1.6 güncelleme kodu mevcut. Ancak 2026-11-06 denetimi **8 yayın blockerı** buldu: güncelleme `sha256` akışı her zaman başarısız (`controller.py:1302-1325`), `UPDATE_URL` boş (`config.py:17`), sürüm hâlâ **1.3.0**, kaldırma veriyi ve autostart kaydını silmiyor, kurucu hiç derlenmemiş, karşılama sihirbazı yok. **220 pytest + 1 skip geçiyor (2026-11-07, 41,08 sn).** `tests/data/test.wav` yok; PyInstaller ve Inno Setup kurulu değil. Ayrıntılı sıra: `uygulanacak plan.md`.
+**Faz 1 (yayın blockerları) kodla tamamlandı (2026-11-09):** sürüm 1.6.0 tek kaynak, güncelleme `sha256` akışı düzeltildi, `UPDATE_URL` GitHub Releases'e bağlandı, kaldırma "Modelleri koru" bayrağı ile veri ve HKCU Run kaydını temizliyor, `build.ps1` ile `dist\Dikte` ve `installer\Output\Dikte-Setup-1.6.0.exe` (172.888.124 bayt) üretildi. **Kullanıcı onayı bekleniyor:** kur/kaldır (UAC), gerçek Release güncellemesi, model/mikrofon/kısayol testi. **245 pytest + 1 skip geçiyor.** Sıradaki aşama: Faz 2 (veri kaybı ve çökme hataları). Ayrıntı: `uygulanacak plan.md`.
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -33,21 +33,23 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **v1.3 / 7c:** Bellek takası + Metin/Ses sekmeleri var; "⋯" model menüsü yok. PLAN'da işaretsiz.
 - **v1.3 / 7e:** Arayüz + Playwright var; kalite tablosu **kısmen** (10/10 OK var, tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok).
 - **v1.4:** Efektler + `design/v2/` hazır; kullanıcı gözle onayladı (2026-11-04) → kapalı.
-- **v1.5:** Kaldırma kodu + `Dikte.spec` + `installer/Dikte.iss` var; **kurucu derlenmedi**, kur/kaldır testi yapılmadı, kaldırma veriyi/autostart kaydını silmiyor.
-- **v1.6:** `updater.py` + Ayarlar kartı var; `UPDATE_URL` boş, `sha256` akışı bozuk → güncelleme hiç çalışmıyor.
+- **v1.5:** Kaldırma + kurucu **derlendi (2026-11-09)**; kur/kaldır kullanıcı testi bekliyor. Karşılama sihirbazı kapsamı Faz 3'te.
+- **v1.6:** Sürüm, sha256 akışı ve `UPDATE_URL` düzeltildi (2026-11-09). İlk GitHub Release yayınlanmadı; `latest.json` şu an 404 veriyor.
 - **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
 
 ## Sıradaki ilk adım
-1. **Kararlar verildi (2026-11-07):** Program Files, sürüm 1.6.0, Inno + "Modelleri koru", GitHub Releases (yüklemeyi kullanıcı yapar), sentetik TTS, 7e tamam, `web/` notla tutulur, MIT, ikon üretilir, eski `data/` taşınmaz.
-2. **Faz 1 yayın blockerları:** sürüm tek kaynağı, `sha256` akışı, `UPDATE_URL`, kaldırma verisi + autostart, `run_dikte.py` + spec, geçerli GUID, `.gitignore`.
-3. PyInstaller + Inno Setup kur; `build.ps1` ile derle; kur/kaldır kullanıcı testi.
-4. Karşılama sihirbazı (Faz 3) ve kalan veri kaybı hataları (Faz 2).
+1. **Faz 1 kullanıcı testi:** kurulumu kur, kaldır (modeller korunur/silinir), bir sonraki sürümde gerçek Release ile güncellemeyi dene.
+2. **Faz 2 (veri kaybı ve çökme hataları):** `uygulanacak plan.md` §4. Ayrı goal olarak başlat.
+3. Faz 3 (karşılama sihirbazı, ürün eksikleri) ve Faz 4 (test/hijyen/kapanış) sırayla.
 
 ## Açık sorunlar
-- **Güncelleme (blocker):** `update_check` `sha256` döndürmüyor; `update_apply` boş özetle doğrulayıp dosyayı siliyor. `UPDATE_URL` boş; hata mesajı yanıltıcı ("Sunucuya ulaşılamadı").
-- **Sürüm (blocker):** `config.py`, `__init__.py` ve `Dikte.iss` → **1.3.0**; `latest.json` → 1.6.1. Tek kaynak yok.
-- **Kaldırma (blocker):** `uninstall.py` yalnız `unins000.exe` çalıştırıyor; `%LOCALAPPDATA%\Dikte` (modeller/geçmiş/ayarlar/loglar) ve HKCU `Run\Dikte` silinmiyor. UI aksini söylüyor.
-- **Kurucu (blocker):** `dist/` yok; PyInstaller + Inno Setup kurulu değil. `Dikte.spec` girişi `dikte\__main__.py` (göreli import hatası), `llama_cpp` hiddenimports'ta yok.
+- **Güncelleme:** GitHub'da henüz Release yok; `latest.json` 404. Kullanıcı yükleyince test edilecek.
+- **Test yan etkisi:** `tests/test_ui.py` `design/v2/*.png` dosyalarının üzerine yazar. Commit'e girmemeli; her koşudan sonra `git restore design/v2/` gerekir. Faz 4'te `artifacts/`'a taşınacak.
+- **Kurulum/kaldırma:** Admin kurulumda HKCU Run kaydı kurulumu yapan kullanıcıya yazılır. Gerçek UAC testi yapılmadı.
+- **Karşılama sihirbazı:** hiç yazılmadı (Faz 3).
+- **Inno uyarısı:** `UsedUserAreasWarning` derleme uyarısı veriyor (HKCU + admin); bilinçli bırakıldı.
+- **`bin\` klasörü:** `%LOCALAPPDATA%\Dikte\bin` (27 Ağustos) Dikte kodunun dışında; kaldırmaya dahil değil.
+- **`data/`, `models/` boş:** paketli sürüm ilk açılışta model bulamıyor; kullanıcı Modeller sayfasından indirmeli.
 - **Karşılama sihirbazı (blocker):** 5 ekranlı akış hiç yok; `setup_done` ayarı yok.
 - **Inno AppId:** `Dikte.iss:11` geçersiz GUID (`DIKTE` onaltılık değil).
 - **Kurulum yeri:** **Program Files** seçildi (2026-11-07); `Dikte.iss` hâlâ `%LOCALAPPDATA%` + `lowest`, Faz 1'de güncellenecek. Kurulum/güncelleme UAC onayı ister.
@@ -95,7 +97,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **220 passed, 1 skipped** (2026-11-07, 41,08 sn; doğrulandı) |
+| `pytest -q` | **245 passed, 1 skipped** (2026-11-09, 31,5 sn) |
+| Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 172.888.124 bayt, SHA-256 65a0fa042eb7eba25b70d179d346f11a366b6eb51f415c76cc2ed460177da44d |
+| Paketli açılış | dist\Dikte\Dikte.exe 25 sn çalıştı; güncelleme denetimi 404 (yayın henüz yok), model yok (beklenen) |
 | `--selftest` | **Çalıştırılamıyor:** `tests/data/test.wav` ve `test.txt` yok |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
@@ -127,3 +131,4 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 | Tarih | Aşama | Toplam harcama |
 | :--- | :--- | :--- |
 | 2026-11-01 | 7a gerçek çağrı + model karşılaştırması (6 + 9 istek) | tahmini ~$0,001 — **OpenRouter Activity'den doğrula** |
+

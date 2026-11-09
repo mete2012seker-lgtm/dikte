@@ -1259,9 +1259,10 @@ class Controller:
             "autostart": uninstall.autostart_enabled(),
         }
 
-    def uninstall(self) -> dict:
+    def uninstall(self, payload: dict | None = None) -> dict:
+        keep_models = bool((payload or {}).get("keep_models", True))
         try:
-            uninstall.run_uninstaller()
+            uninstall.run_uninstaller(keep_models=keep_models)
         except uninstall.UninstallError as exc:
             logger.warning("Kaldırıcı başlatılamadı: %s", exc)
             return {"ok": False, "message": str(exc)}
@@ -1274,8 +1275,13 @@ class Controller:
         "no_url": "Güncelleme sunucusu yapılandırılmamış.",
         "net": "Sunucuya ulaşılamadı.",
         "bad_json": "Güncelleme bildirimi okunamadı.",
+        "bad_sha": "Güncelleme bildiriminde geçerli SHA-256 özeti yok; kurulum iptal edildi.",
+        "no_sha": "Güncelleme bildiriminde SHA-256 özeti yok; kurulum iptal edildi.",
         "host_rejected": "İndirme adresi güvenilir değil.",
-        "http_rejected_download": "İndirme yalnız HTTPS üzerinden yapılır.",
+        "bad_url": "İndirme adresi geçersiz.",
+        "incomplete": "İndirme tamamlanmadı. Tekrar dene.",
+        "sha_mismatch": "İndirilen dosyanın özeti uyuşmuyor; dosya silindi.",
+        "missing_installer": "Kurucu dosyası bulunamadı.",
     }
 
     def update_check(self, force: bool = False) -> dict:
@@ -1284,9 +1290,7 @@ class Controller:
             result = updater.check(force=force)
         except updater.UpdaterError as exc:
             message = self.UPDATE_MESSAGES.get(exc.code, "Denetlenemedi.")
-            if force:
-                return {"ok": False, "code": exc.code, "message": message}
-            logger.info("Açılış güncelleme denetimi başarısız (%s)", exc.code)
+            logger.info("Güncelleme denetimi başarısız (%s)", exc.code)
             return {"ok": False, "code": exc.code, "message": message}
         if result is None:
             return {"ok": False, "code": "net", "message": "Sunucuya ulaşılamadı."}
@@ -1305,29 +1309,31 @@ class Controller:
             "version": result.get("version", ""),
             "notes": result.get("notes", ""),
             "url": result.get("url", ""),
+            "sha256": result.get("sha256", ""),
             "message": f"Yeni sürüm: {result.get('version', '')}",
         }
 
     def update_apply(self) -> dict:
-        check = self.update_check(force=True)
-        if not check.get("ok") or not check.get("update_available"):
-            return {
-                "ok": False,
-                "code": check.get("code", "no_update"),
-                "message": check.get("message") or "Yeni sürüm yok.",
-            }
-        url = check.get("url", "")
+        """Denetim, indirme, SHA-256 doğrulama ve sessiz kurulum tek sonuç üzerinden yürür."""
+        try:
+            result = updater.check(force=True)
+        except updater.UpdaterError as exc:
+            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Denetlenemedi.")}
+        if result is None or not result.get("update_available"):
+            return {"ok": False, "code": "no_update", "message": "Yeni sürüm yok."}
+        sha = result.get("sha256", "")
+        url = result.get("url", "")
         try:
             path = updater.download(url)
         except updater.UpdaterError as exc:
             logger.info("Güncelleme indirilemedi (%s)", exc.code)
-            return {"ok": False, "code": exc.code, "message": "İndirme başarısız. Bağlantını kontrol et."}
-        if not updater.verify_sha256(path, check.get("sha256", "")):
-            return {"ok": False, "code": "sha_mismatch", "message": "İndirilen dosyanın özeti uyuşmuyor; dosya silindi."}
+            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "İndirme başarısız. Bağlantını kontrol et.")}
+        if not updater.verify_sha256(path, sha):
+            return {"ok": False, "code": "sha_mismatch", "message": self.UPDATE_MESSAGES["sha_mismatch"]}
         try:
             updater.apply(path)
         except updater.UpdaterError as exc:
-            return {"ok": False, "code": exc.code, "message": "Kurulum başlatılamadı."}
+            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Kurulum başlatılamadı.")}
         return {"ok": True, "message": "Kurulum başlatıldı; uygulama kapanacak."}
 
     def maybe_startup_update_check(self) -> None:

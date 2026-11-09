@@ -1,3 +1,3 @@
 """Dikte — Türkçe masaüstü dikte uygulaması."""
 
-__version__ = "1.3.0"
+from .config import APP_VERSION as __version__  # tek kaynak: config.APP_VERSION

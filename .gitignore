@@ -27,3 +27,12 @@ logs/
 artifacts/
 .pytest_cache/
 
+
+# Derleme çýktýlarý (build.ps1)
+dist/
+build/
+installer/Output/
+installer/version.iss
+*.log
+web/.next/
+web/node_modules/
