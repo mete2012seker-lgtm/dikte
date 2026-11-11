@@ -116,6 +116,7 @@ def make_controller(**kwargs):
     engine = kwargs.pop("engine", FakeEngine())
     hotkey = kwargs.pop("hotkey", FakeHotkey())
     clipboard = kwargs.pop("clipper", lambda text: None)
+    paster = kwargs.pop("paster", lambda: False)
     controller = Controller(
         engine=engine,
         recorder=recorder,
@@ -130,7 +131,7 @@ def make_controller(**kwargs):
             "percent": 40.0,
         },
         load_in_background=False,
-        paster=lambda: False,
+        paster=paster,
         **kwargs,
     )
     controller.load_engine()
@@ -565,3 +566,134 @@ def test_last_recording_is_removed_on_shutdown():
     assert last_path.exists()
     controller.shutdown()
     assert not last_path.exists()
+
+
+def test_audio_stop_write_wav_error_wrapped_and_unlocks_recording(tmp_path, monkeypatch):
+    from dikte.audio import AudioRecorder
+
+    rec = AudioRecorder(temp_dir=tmp_path / "rec")
+    rec._recording = True
+    rec._started_at = time.perf_counter()
+    rec._chunks = [b"\x00\x01" * 16000]
+
+    def fail_write(path, data):
+        raise OSError("Disk dolu")
+
+    monkeypatch.setattr(rec, "_write_wav", fail_write)
+
+    controller = make_controller(recorder=rec, model_manager=FakeModels())
+    controller._machine.set(RECORDING)
+    result = controller.toggle_record()
+    assert result["ok"] is False
+    assert controller.snapshot()["state"] == ERROR
+    assert controller.snapshot()["state"] != RECORDING
+
+
+def test_clipboard_error_skips_auto_paste():
+    pasted = []
+
+    def broken_copy(_text):
+        raise ClipboardError("pano kilitli")
+
+    controller = make_controller(
+        clipper=broken_copy,
+        paster=lambda: (pasted.append(1), True)[1],
+    )
+    controller.toggle_record()
+    controller.toggle_record()
+    assert controller.wait_until_ready(3)
+    assert pasted == [], "Pano kopyalama başarısızken eski pano yapıştırılmamalı"
+
+
+def test_concurrent_load_engine_loads_whisper_only_once():
+    gate = threading.Event()
+    entered = threading.Event()
+
+    class SlowLoadEngine(FakeEngine):
+        def load(self):
+            entered.set()
+            gate.wait(timeout=3)
+            return super().load()
+
+    engine = SlowLoadEngine()
+    controller = Controller(
+        engine=engine,
+        recorder=FakeRecorder(),
+        hotkey=FakeHotkey(),
+        clipper=lambda text: None,
+        beeper=lambda kind: None,
+        memory_provider=lambda use_gpu: None,
+        load_in_background=False,
+        paster=lambda: False,
+    )
+
+    t1 = threading.Thread(target=controller.load_engine)
+    t2 = threading.Thread(target=controller.load_engine)
+    t1.start()
+    assert entered.wait(timeout=1)
+    t2.start()
+    time.sleep(0.05)
+    gate.set()
+    t1.join(timeout=2)
+    t2.join(timeout=2)
+
+    assert len(engine.loaded_models) == 1, "Whisper modeli yalnız bir kez yüklenmeli"
+
+
+def test_hotkey_press_does_not_block_when_whisper_needs_reload():
+    load_gate = threading.Event()
+    load_started = threading.Event()
+
+    class BlockingLoadEngine(FakeEngine):
+        def load(self):
+            if not getattr(self, "block_now", False):
+                return super().load()
+            load_started.set()
+            load_gate.wait(timeout=3)
+            return super().load()
+
+    engine = BlockingLoadEngine()
+    controller = make_controller(engine=engine)
+    # Metin modeli yüklendiğinde Whisper boşaltılmış olur:
+    controller._unload_whisper()
+    engine.block_now = True
+
+    t0 = time.perf_counter()
+    controller.on_hotkey_press()
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 0.2, "on_hotkey_press motor yüklenirken bloke olmamalı"
+    assert load_started.wait(timeout=1)
+
+    # Kullanıcı motor yüklenirken tuşu bırakırsa kayıt takılı kalmamalı:
+    controller.on_hotkey_release()
+    load_gate.set()
+
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if controller._whisper_loaded and controller.snapshot()["state"] == READY:
+            break
+        time.sleep(0.02)
+
+    assert controller.snapshot()["state"] == READY
+
+
+def test_shutdown_joins_workers_and_cleans_kayit_wav():
+    gate = threading.Event()
+    controller = make_controller(engine=FakeEngine(gate=gate), model_manager=FakeModels())
+    orphan_wav = Path(config.TEMP_DIR) / "kayit-20261111-120000-123.wav"
+    orphan_wav.write_bytes(b"RIFF")
+
+    controller.toggle_record()
+    controller.toggle_record()
+    assert controller.snapshot()["state"] == PROCESSING
+
+    # Worker'ı kısa süre sonra serbest bırakacak yardımcı thread
+    threading.Timer(0.05, gate.set).start()
+    controller.shutdown()
+
+    assert controller._closed is True
+    assert controller._worker is None or not controller._worker.is_alive()
+    assert not orphan_wav.exists(), "Kapanışta kayit-*.wav dosyaları temizlenmeli"
+    assert controller.toggle_record()["ok"] is False
+
+

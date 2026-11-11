@@ -144,23 +144,26 @@ def strip_response(raw: str) -> str:
     """Modelin eklediği tırnak, başlık, açıklama ve kod bloğu işaretlerini temizler."""
     text = _strip_fences(raw or "")
     lowered = text.lower()
-    if any(marker in lowered for marker in META_MARKERS):
+    is_multiline = "\n" in text
+    if is_multiline and any(marker in lowered for marker in META_MARKERS):
         quoted = _first_quote(text)
         if quoted:
             return quoted
         cut = len(text)
-        for marker in ("changes made", "değişiklikler", "explanation:", "açıklama:"):
+        for marker in ("changes made", "değişiklikler", "explanation:", "açıklama:", "\nnote:", "\nnot:"):
             index = lowered.find(marker)
             if index != -1:
                 cut = min(cut, index)
         text = text[:cut].strip()
         lines = text.splitlines()
-        while lines and _is_meta_line(lines[0]):
+        while len(lines) > 1 and _is_meta_line(lines[0]):
             lines = lines[1:]
+        while len(lines) > 1 and _is_meta_line(lines[-1]):
+            lines = lines[:-1]
         text = "\n".join(lines).strip()
 
     lines = text.splitlines()
-    if lines and _strip_label(lines[0]):
+    if len(lines) > 1 and _strip_label(lines[0]):
         lines = lines[1:]
     text = "\n".join(lines).strip()
     for left, right in (('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’"), ("`", "`")):
@@ -199,16 +202,28 @@ def language_hint(text: str) -> str | None:
     return best if scores[best] >= 2 else None
 
 
+STRICT_META_MARKERS = (
+    "changes made", "here is the", "here's the", "here is your", "here's your",
+    "işte metin", "işte çeviri", "orijinal metin", "original:", "düzeltilmiş metin",
+    "corrected and translated",
+)
+
+
 def validate_output(source: str, output: str, translate: bool, target_language: str = "tr") -> None:
     """Modelin uydurduğu, çevirmediği veya yanlış dilde bıraktığı yanıtları yakalar."""
     if not output.strip():
         raise TextEngineError("empty_result")
     source_words = count_words(source)
     output_words = count_words(output)
-    if output_words > 3 + source_words * 2 and source_words <= 2:
+    if source_words <= 2 and output_words > 3 + source_words * 2:
         raise TextEngineError("hallucination")
+    if source_words >= 3 and output_words > source_words * 3 + 5:
+        raise TextEngineError("hallucination")
+    unique_source = len(set((source or "").lower().split()))
+    if source_words >= 5 and unique_source >= 4 and output_words < max(2, source_words // 4):
+        raise TextEngineError("bad_response")
     lowered = output.lower()
-    if any(marker in lowered for marker in META_MARKERS):
+    if any(marker in lowered for marker in STRICT_META_MARKERS):
         raise TextEngineError("bad_response")
     if translate and source_words >= 3:
         hint = language_hint(output)
@@ -298,6 +313,10 @@ def generate(
         content, last_finish = _extract(data)
         candidate = strip_response(content)
         try:
+            if last_finish == "length":
+                if not candidate.strip():
+                    raise TextEngineError("empty_result")
+                raise TextEngineError("bad_response", "Model yanıtı yarım kaldı; metin değişmedi.")
             validate_output(text, candidate, translate, target_language)
         except TextEngineError as exc:
             last_error = exc

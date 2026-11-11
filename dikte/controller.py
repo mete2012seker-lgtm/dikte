@@ -110,6 +110,7 @@ class Controller:
 
         self._machine = StateMachine(LOADING)
         self._lock = threading.RLock()
+        self._engine_lock = threading.RLock()
         self._info = None
         self._error: str | None = None
         self._activity: deque[dict] = deque(maxlen=7)
@@ -119,6 +120,8 @@ class Controller:
         self._latest = ""
         self._replace_last = False
         self._worker: threading.Thread | None = None
+        self._hotkey_events: deque[str] = deque()
+        self._hotkey_thread: threading.Thread | None = None
         self._closed = False
         self._memory_cache: tuple[float, dict | None] = (0.0, None)
         self._gpu_warning_shown = False
@@ -127,10 +130,12 @@ class Controller:
         self._download_thread: threading.Thread | None = None
         self._text_download: dict | None = None
         self._text_download_thread: threading.Thread | None = None
+        self._text_download_token = 0
         self._text_pause = threading.Event()
         self._text_cancel = threading.Event()
         self._text_runtime = LocalTextModel()
         self._whisper_loaded = False
+        self._last_ai_copy_ok = True
         self._last_recording: Path | None = None
         self._startup_notes: list[tuple[str, str, str]] = []
         self._key_cache: tuple[bool, str | None] | None = None
@@ -206,6 +211,9 @@ class Controller:
 
     def start(self) -> None:
         """Motoru arka planda yükler ve kısayolu başlatır."""
+        with self._lock:
+            if self._closed:
+                return
         if self._load_in_background:
             threading.Thread(target=self.load_engine, name="motor-yukle", daemon=True).start()
         try:
@@ -216,65 +224,84 @@ class Controller:
                 self._add_activity("Kısayol başlatılamadı", str(exc), "err")
 
     def load_engine(self) -> None:
-        with self._lock:
-            if self._whisper_loaded:
-                return
-        try:
-            info = self.engine.load()
-        except Exception as exc:
-            message = str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_MODEL_MISSING
-            logger.error("Motor yüklenemedi: %s", exc)
+        with self._engine_lock:
             with self._lock:
-                self._error = message
-                self._set_state(ERROR)
-                self._add_activity("Model yüklenemedi", message, "err")
-            return
+                if self._whisper_loaded or self._closed:
+                    return
+                if self._machine.state == READY:
+                    self._set_state(LOADING)
+            try:
+                info = self.engine.load()
+            except Exception as exc:
+                message = str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_MODEL_MISSING
+                logger.error("Motor yüklenemedi: %s", exc)
+                with self._lock:
+                    self._whisper_loaded = False
+                    self._error = message
+                    self._set_state(ERROR)
+                    self._add_activity("Model yüklenemedi", message, "err")
+                return
 
-        with self._lock:
-            self._info = info
-            self._whisper_loaded = True
-            self._error = None
-            self._set_state(READY)
-            self._add_activity(
-                "Model yüklendi",
-                f"{info.model_label} · {info.device} · {info.compute_type}",
-                "info",
-            )
-            for title, sub, kind in self._startup_notes:
-                self._add_activity(title, sub, kind)
-            self._startup_notes.clear()
-            warnings = list(getattr(self.engine, "warnings", []) or [])
-            if warnings and not self._gpu_warning_shown:
-                self._gpu_warning_shown = True
-                self._add_activity("GPU kullanılamadı", "CPU modu (small, int8)", "warn")
-        logger.info("Model hazır: %s (%s)", info.model_label, info.device)
+            with self._lock:
+                self._info = info
+                self._whisper_loaded = True
+                self._error = None
+                self._set_state(READY)
+                self._add_activity(
+                    "Model yüklendi",
+                    f"{info.model_label} · {info.device} · {info.compute_type}",
+                    "info",
+                )
+                for title, sub, kind in self._startup_notes:
+                    self._add_activity(title, sub, kind)
+                self._startup_notes.clear()
+                warnings = list(getattr(self.engine, "warnings", []) or [])
+                if warnings and not self._gpu_warning_shown:
+                    self._gpu_warning_shown = True
+                    self._add_activity("GPU kullanılamadı", "CPU modu (small, int8)", "warn")
+            logger.info("Model hazır: %s (%s)", info.model_label, info.device)
 
     def _unload_whisper(self) -> None:
-        if not self._whisper_loaded:
-            return
-        try:
-            self.engine.unload()
-        except Exception:
-            logger.warning("Ses modeli boşaltılamadı", exc_info=True)
-        self._whisper_loaded = False
+        with self._engine_lock:
+            with self._lock:
+                if not self._whisper_loaded:
+                    return
+                self._whisper_loaded = False
+            try:
+                self.engine.unload()
+            except Exception:
+                logger.warning("Ses modeli boşaltılamadı", exc_info=True)
 
     def _prepare_whisper(self) -> None:
         """Dikte başlamadan önce metin modelini boşaltıp ses modelini yükler."""
-        if self._text_runtime.model_name:
-            self._text_runtime.unload()
+        with self._engine_lock:
             with self._lock:
-                self._add_activity("Metin modeli bellekten boşaltıldı", "Dikte için yer açıldı.", "info")
-        if not self._whisper_loaded:
-            with self._lock:
-                if self._machine.state == READY:
-                    self._set_state(LOADING)
-            self.load_engine()
+                has_text = bool(self._text_runtime.model_name)
+                whisper_loaded = self._whisper_loaded
+            if has_text:
+                self._text_runtime.unload()
+                with self._lock:
+                    self._add_activity("Metin modeli bellekten boşaltıldı", "Dikte için yer açıldı.", "info")
+            if not whisper_loaded:
+                with self._lock:
+                    if self._machine.state == READY:
+                        self._set_state(LOADING)
+                self.load_engine()
 
     def shutdown(self) -> None:
         with self._lock:
             if self._closed:
                 return
             self._closed = True
+            self._hotkey_events.clear()
+            self._text_cancel.set()
+            self._text_pause.set()
+            threads = [
+                self._worker,
+                self._download_thread,
+                self._text_download_thread,
+                self._hotkey_thread,
+            ]
         try:
             self.hotkey.stop()
         except Exception:
@@ -283,24 +310,90 @@ class Controller:
             self.recorder.cancel()
         except Exception:
             pass
+        for thread in threads:
+            if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+                thread.join(timeout=2.0)
         try:
             self._text_runtime.unload()
         except Exception:
             pass
         self._remove_last_recording()
+        for temp_dir in {getattr(self.recorder, "temp_dir", None), Path(config.TEMP_DIR)}:
+            if temp_dir and Path(temp_dir).exists():
+                for wav in Path(temp_dir).glob("kayit-*.wav"):
+                    try:
+                        wav.unlink(missing_ok=True)
+                    except OSError:
+                        pass
         logger.info("Uygulama kapatıldı")
 
     # ---------- kısayol ve düğme ----------
 
     def on_hotkey_press(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            worker_alive = self._hotkey_thread is not None and self._hotkey_thread.is_alive()
+            needs_reload = not self._whisper_loaded or bool(self._text_runtime.model_name)
+            if worker_alive or needs_reload or self._hotkey_events:
+                self._hotkey_events.append("press")
+                if not worker_alive:
+                    self._hotkey_thread = threading.Thread(
+                        target=self._hotkey_worker, name="kisayol-isci", daemon=True
+                    )
+                    self._hotkey_thread.start()
+                return
         self.toggle_record()
 
     def on_hotkey_release(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            worker_alive = self._hotkey_thread is not None and self._hotkey_thread.is_alive()
+            if worker_alive or self._hotkey_events:
+                self._hotkey_events.append("release")
+                if not worker_alive:
+                    self._hotkey_thread = threading.Thread(
+                        target=self._hotkey_worker, name="kisayol-isci", daemon=True
+                    )
+                    self._hotkey_thread.start()
+                return
         self._stop_recording(trigger="kısayol")
+
+    def _hotkey_worker(self) -> None:
+        while True:
+            with self._lock:
+                if self._closed or not self._hotkey_events:
+                    return
+                event = self._hotkey_events.popleft()
+            if event == "press":
+                with self._lock:
+                    state = self._machine.state
+                    if state == RECORDING:
+                        self._stop_recording(trigger="kısayol")
+                        continue
+                    if state == ERROR and self._info is not None:
+                        self._error = None
+                        self._set_state(READY)
+                        state = READY
+                    if state != READY:
+                        continue
+                self._prepare_whisper()
+                with self._lock:
+                    if self._closed or self._machine.state != READY:
+                        continue
+                    if self._hotkey_events and self._hotkey_events[0] == "release":
+                        self._hotkey_events.popleft()
+                        continue
+                    self._start_recording()
+            elif event == "release":
+                self._stop_recording(trigger="kısayol")
 
     def toggle_record(self) -> dict:
         """Mikrofon düğmesi için başlat/durdur."""
         with self._lock:
+            if self._closed:
+                return {"ok": False, "state": self._machine.state, "message": "Uygulama kapatıldı."}
             state = self._machine.state
             if state == RECORDING:
                 return self._stop_recording(trigger="düğme")
@@ -438,10 +531,12 @@ class Controller:
 
             self._keep_last_recording(recording.path)
 
+            self._last_ai_copy_ok = copy_ok
             text = self._auto_ai_text(text)
+            copy_ok = self._last_ai_copy_ok
 
             pasted = False
-            if bool(self.settings.get("auto_paste", True)):
+            if copy_ok and bool(self.settings.get("auto_paste", True)):
                 try:
                     pasted = bool(self._paster())
                 except Exception as exc:
@@ -642,6 +737,7 @@ class Controller:
             return {"ok": False, "message": "Kayıt bulunamadı."}
         with self._lock:
             self._latest = record["text"]
+            self._last_history_id = record_id
             self._seq += 1
             self._replace_last = False
         return {"ok": True, "text": record["text"], "id": record_id}
@@ -651,6 +747,10 @@ class Controller:
             removed = self.history.delete(record_id)
         except Exception as exc:
             return {"ok": False, "message": str(exc)}
+        if removed:
+            with self._lock:
+                if self._last_history_id == record_id:
+                    self._last_history_id = None
         return {"ok": removed, "message": None if removed else "Kayıt bulunamadı."}
 
     def history_clear(self) -> dict:
@@ -658,6 +758,8 @@ class Controller:
             self.history.clear()
         except Exception as exc:
             return {"ok": False, "message": str(exc)}
+        with self._lock:
+            self._last_history_id = None
         return {"ok": True}
 
     # ---------- modeller ----------
@@ -908,13 +1010,13 @@ class Controller:
         if text_models.is_installed(name):
             return {"ok": False, "message": "Bu metin modeli zaten indirilmiş."}
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             if self._text_download and self._text_download.get("state") in ("downloading", "pausing"):
                 return {"ok": False, "message": "Başka bir metin modeli indiriliyor, lütfen bekle."}
         if self._disk_free() < spec.size_bytes + 200 * 1024**2:
             return {"ok": False, "message": "Diskte yeterli yer yok."}
 
-        self._text_pause.clear()
-        self._text_cancel.clear()
         with self._lock:
             self._text_download = {
                 "name": name,
@@ -929,14 +1031,40 @@ class Controller:
         return {"ok": True, "message": f"{spec.label} indiriliyor."}
 
     def _start_text_download(self, name: str) -> None:
+        prev = self._text_download_thread
+        if prev is not None and prev.is_alive() and prev is not threading.current_thread():
+            prev.join(timeout=2.0)
+        with self._lock:
+            self._text_download_token += 1
+            token = self._text_download_token
+            pause_event = threading.Event()
+            cancel_event = threading.Event()
+            self._text_pause = pause_event
+            self._text_cancel = cancel_event
         self._text_download_thread = threading.Thread(
-            target=self._text_download_worker, args=(name,), name="metin-indir", daemon=True
+            target=self._text_download_worker,
+            args=(name, token, pause_event, cancel_event),
+            name="metin-indir",
+            daemon=True,
         )
         self._text_download_thread.start()
 
-    def _text_download_worker(self, name: str) -> None:
+    def _text_download_worker(
+        self,
+        name: str,
+        token: int | None = None,
+        pause_event: threading.Event | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> None:
+        if token is None:
+            token = self._text_download_token
+        pause_ev = pause_event or self._text_pause
+        cancel_ev = cancel_event or self._text_cancel
+
         def on_progress(written: int) -> None:
             with self._lock:
+                if self._text_download_token != token:
+                    return
                 download = self._text_download
                 if not download or download.get("name") != name:
                     return
@@ -949,33 +1077,35 @@ class Controller:
             result = self._text_downloader.download(
                 name,
                 progress=on_progress,
-                pause_event=self._text_pause,
-                cancel_event=self._text_cancel,
+                pause_event=pause_ev,
+                cancel_event=cancel_ev,
             )
         except Exception as exc:
             logger.warning("Metin modeli indirilemedi: %s", exc)
             with self._lock:
-                if self._text_download and self._text_download.get("name") == name:
+                if self._text_download_token == token and self._text_download and self._text_download.get("name") == name:
                     self._text_download["state"] = "error"
                     self._text_download["error"] = str(exc)
-                self._add_activity("Metin modeli indirilemedi", f"{name}: {exc}", "err")
+                    self._add_activity("Metin modeli indirilemedi", f"{name}: {exc}", "err")
             self._models_cache = (0.0, None)
             return
 
+        cancelled = bool(result.get("cancelled") or cancel_ev.is_set())
         with self._lock:
-            download = self._text_download
+            is_current = self._text_download_token == token
+            download = self._text_download if is_current else None
             if download and download.get("name") == name:
                 download["bytes"] = result.get("size", download.get("bytes", 0))
-                if result.get("completed"):
+                if cancelled:
+                    download["state"] = "cancelled"
+                    download["percent"] = 0
+                elif result.get("completed"):
                     download["state"] = "done"
                     download["percent"] = 100
                     self._add_activity("Metin modeli indirildi", name, "ok")
                 elif result.get("paused"):
                     download["state"] = "paused"
-                elif result.get("cancelled"):
-                    download["state"] = "cancelled"
-                    download["percent"] = 0
-        if result.get("cancelled"):
+        if cancelled and is_current:
             try:
                 text_models.delete_part(name)
             except text_models.TextModelError:
@@ -988,20 +1118,28 @@ class Controller:
             if not download or download.get("name") != name or download.get("state") != "downloading":
                 return {"ok": False, "message": "Bu model indirilmiyor."}
             download["state"] = "pausing"
-        self._text_pause.set()
+            pause_ev = self._text_pause
+        pause_ev.set()
         return {"ok": True, "message": "Duraklatılıyor…"}
 
     def text_model_resume(self, name: str) -> dict:
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             download = self._text_download
-            if not download or download.get("name") != name or download.get("state") != "paused":
+            if not download or download.get("name") != name or download.get("state") not in ("paused", "pausing"):
+                return {"ok": False, "message": "Devam edecek bir indirme yok."}
+            prev = self._text_download_thread
+        if prev is not None and prev.is_alive() and prev is not threading.current_thread():
+            prev.join(timeout=2.0)
+        with self._lock:
+            download = self._text_download
+            if not download or download.get("name") != name or download.get("state") not in ("paused", "pausing"):
                 return {"ok": False, "message": "Devam edecek bir indirme yok."}
             download["state"] = "downloading"
             total = download.get("total") or 0
             if total:
                 download["percent"] = max(0, min(99, int(download.get("bytes", 0) / total * 100)))
-        self._text_pause.clear()
-        self._text_cancel.clear()
         self._start_text_download(name)
         return {"ok": True, "message": "İndirme devam ediyor."}
 
@@ -1012,17 +1150,19 @@ class Controller:
                 "downloading", "pausing", "paused"
             ):
                 return {"ok": False, "message": "İptal edilecek indirme yok."}
-            paused = download.get("state") == "paused"
             download["state"] = "cancelled"
             download["percent"] = 0
-        if paused:
-            try:
-                text_models.delete_part(name)
-            except text_models.TextModelError:
-                pass
-        else:
-            self._text_cancel.set()
-            self._text_pause.clear()
+            cancel_ev = self._text_cancel
+            pause_ev = self._text_pause
+            prev = self._text_download_thread
+        cancel_ev.set()
+        pause_ev.clear()
+        if prev is not None and prev.is_alive() and prev is not threading.current_thread():
+            prev.join(timeout=2.0)
+        try:
+            text_models.delete_part(name)
+        except text_models.TextModelError:
+            pass
         return {"ok": True, "message": "İndirme iptal edildi."}
 
     def text_model_activate(self, name: str) -> dict:
@@ -1575,8 +1715,9 @@ class Controller:
             return text
         try:
             self._clipper(result.text)
+            self._last_ai_copy_ok = True
         except ClipboardError:
-            pass
+            self._last_ai_copy_ok = False
         with self._lock:
             self._add_activity("Metin düzenlendi", "Temizlik ve çeviri uygulandı.", "ok")
         return result.text

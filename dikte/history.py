@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -67,23 +68,26 @@ class HistoryStore:
     # ---------- okuma/yazma ----------
 
     def load(self) -> list[dict]:
-        items: list[dict] = []
-        if self.path.exists():
-            try:
-                raw = json.loads(self.path.read_text(encoding="utf-8"))
-                if not isinstance(raw, list):
-                    raise ValueError("Geçmiş bir liste değil")
-                items = [self._clean(item) for item in raw]
-                items = [item for item in items if item is not None]
-            except Exception as exc:
-                logger.warning("Geçmiş okunamadı (%s), yedekleniyor", exc)
-                self._backup()
-                items = []
-        items.sort(key=lambda item: item["created_at"], reverse=True)
         with self._lock:
+            items: list[dict] = []
+            if self.path.exists():
+                try:
+                    raw = json.loads(self.path.read_text(encoding="utf-8"))
+                    if not isinstance(raw, list):
+                        raise ValueError("Geçmiş bir liste değil")
+                    items = [self._clean(item) for item in raw]
+                    items = [item for item in items if item is not None]
+                except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                    logger.warning("Geçmiş okunamadı (%s), yedekleniyor", exc)
+                    self._backup()
+                    items = []
+                except OSError as exc:
+                    logger.warning("Geçmiş dosyasına erişilemedi (%s), mevcut kayıtlar korunuyor", exc)
+                    return [dict(item) for item in self._items]
+            items.sort(key=lambda item: item["created_at"], reverse=True)
             self._items = items[: self.limit]
             self._counter = len(self._items)
-        return [dict(item) for item in self._items]
+            return [dict(item) for item in self._items]
 
     def _backup(self) -> None:
         try:
@@ -123,12 +127,15 @@ class HistoryStore:
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_name(self.path.name + ".tmp")
+        temp = self.path.with_name(
+            f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+        )
         try:
-            temp.write_text(
-                json.dumps(self._items, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            payload = json.dumps(self._items, ensure_ascii=False, indent=2)
+            with open(temp, "w", encoding="utf-8") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
             os.replace(temp, self.path)
         except Exception as exc:
             try:

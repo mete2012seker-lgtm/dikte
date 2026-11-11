@@ -273,3 +273,63 @@ def test_retry_uses_strict_prompt_after_bad_response():
     result = run(transport=transport)
     assert result.text == "Merhaba dünya."
     assert "DİKKAT" in prompts[1]
+
+
+def test_finish_reason_length_with_non_empty_content_is_rejected():
+    calls = []
+
+    def transport(url, payload, api_key, timeout):
+        calls.append(payload["max_tokens"])
+        return {
+            "choices": [
+                {
+                    "message": {"content": "Hello world today this is cut"},
+                    "finish_reason": "length",
+                }
+            ]
+        }
+
+    with pytest.raises(TextEngineError) as err:
+        run(text="Merhaba dünya bugün bu cümle yarım", transport=transport)
+    assert err.value.code == "bad_response"
+    assert len(calls) == 2
+    assert calls[1] > calls[0]
+
+
+def test_hallucination_and_omission_guards_for_three_or_more_words():
+    # 4 kelimelik girdiye 30 kelimelik uydurma yanıt -> hallucination
+    long_invented = " ".join(["word"] * 30)
+    with pytest.raises(TextEngineError) as err:
+        run(text="bugün hava çok güzel", transport=make_transport(long_invented))
+    assert err.value.code == "hallucination"
+
+    # 8 kelimelik gerçek cümleye 1 kelimelik aşırı kırpılmış yanıt -> bad_response
+    with pytest.raises(TextEngineError) as err2:
+        run(
+            text="yarın sabah saat dokuzda ekip ile toplantı yapacağız",
+            transport=make_transport("Tomorrow"),
+        )
+    assert err2.value.code == "bad_response"
+
+
+def test_strip_response_preserves_single_line_dictation_with_meta_words():
+    assert (
+        strip_response("I corrected the mistake in the report.")
+        == "I corrected the mistake in the report."
+    )
+    assert (
+        strip_response("Note: the meeting starts at nine.")
+        == "Note: the meeting starts at nine."
+    )
+    res = run(
+        text="rapordaki hatayı düzelttim",
+        target_language="en",
+        translate=True,
+        transport=make_transport("I corrected the mistake in the report."),
+    )
+    assert res.text == "I corrected the mistake in the report."
+
+    # Çok satırlı yanıtta ise meta satırlar temizlenmeye devam etmeli
+    multi = "I corrected the grammar:\nI fixed the report.\nNote: removed filler."
+    assert strip_response(multi) == "I fixed the report."
+

@@ -61,3 +61,32 @@ def test_short_key_is_rejected(tmp_path):
     with pytest.raises(SecretError):
         store.save_key("kısa")
     assert store.load_key() is None
+
+
+def test_secret_store_uses_lock_unique_tmp_and_fsync(tmp_path, monkeypatch):
+    import os
+    from pathlib import Path
+
+    store = SecretStore(tmp_path / "secrets.json")
+    assert hasattr(store, "_lock"), "SecretStore._lock olmalı"
+
+    fsync_calls = []
+    real_fsync = os.fsync
+    monkeypatch.setattr(os, "fsync", lambda fd: (fsync_calls.append(fd), real_fsync(fd))[1])
+
+    seen_temps = []
+    real_replace = os.replace
+
+    def track_replace(src, dst):
+        seen_temps.append(Path(src).name)
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", track_replace)
+    store.save_key("sk-or-v1-abcdef1234")
+    store.save_key("sk-or-v1-abcdef5678")
+
+    assert len(fsync_calls) >= 2
+    assert len(seen_temps) == 2
+    assert seen_temps[0] != "secrets.json.tmp"
+    assert seen_temps[0] != seen_temps[1]
+

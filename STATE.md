@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 1 (yayın blockerları) kodla tamamlandı (2026-11-09):** sürüm 1.6.0 tek kaynak, güncelleme `sha256` akışı düzeltildi, `UPDATE_URL` GitHub Releases'e bağlandı, kaldırma "Modelleri koru" bayrağı ile veri ve HKCU Run kaydını temizliyor, `build.ps1` ile `dist\Dikte` ve `installer\Output\Dikte-Setup-1.6.0.exe` (172.888.124 bayt) üretildi. **Kullanıcı onayı bekleniyor:** kur/kaldır (UAC), gerçek Release güncellemesi, model/mikrofon/kısayol testi. **245 pytest + 1 skip geçiyor.** Sıradaki aşama: Faz 2 (veri kaybı ve çökme hataları). Ayrıntı: `uygulanacak plan.md`.
+**Faz 2 (veri kaybı ve çökme hataları — 11 madde) tamamlandı (2026-11-11):** pano hatasında yapıştırma iptali, bloklamayan kısayol kuyruğu, tekil Whisper yükleme kilidi (`_engine_lock`), `history_open` geçmiş kimliği senkronu, yarışsız GGUF indirme jetonu, GGUF sihirli bayt + Whisper snapshot bütünlük doğrulaması, `finish_reason == "length"` ve ≥3 kelime halüsinasyon/eksiltme koruması, tek satırlı diktelerde `strip_response` koruması, `audio.stop()` hata sarmalama, `SettingsStore`/`HistoryStore`/`SecretStore` için `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve `shutdown()` içinde thread `join` + `kayit-*.wav` temizliği uygulandı ve `Model: "flash"` alt ajanıyla denetlendi. Masaüstüne `Dikte.lnk` kısayolu eklendi. **263 pytest + 1 skip geçiyor.** Sıradaki aşama: **Faz 3 (karşılama sihirbazı, sistem tepsisi/arka plan, ürün eksikleri, güncelleme/kaldırma iyileştirmeleri)**. Ayrıntı: `uygulanacak plan.md`.
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -28,6 +28,8 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Gözden geçirme düzeltmeleri (2026-11-01):** tema ayarı AI yükünde döndürülüyor (Ayarlar'da sıfırlanmıyor), `refresh_last` ses modelini geri yüklüyor, ses modeli değiştirilirken yüklü metin modeli boşaltılıyor, OpenRouter'da model seçilmemişse açık hata, `.part` boyutu büyükse baştan indirme, `Content-Range` başlangıcı doğrulanıyor, açık tema sekme seçicisi düzeltildi.
 - **Uygulama açılışı doğrulandı (2026-11-01):** `python -m dikte` penceresi açıldı (başlık `Dikte — VoxNote AI`), log: `Model hazır: Whisper Large | GPU | float16`; kapatınca süreç kapandı.
 - **Denetim + doküman senkronu (2026-11-07):** `Dikte-Denetim-Raporu.md` kod satırlarıyla doğrulandı; testler **220 passed, 1 skipped** (41,08 sn); `uygulanacak plan.md` yeniden yazıldı; STATE/PLAN/AGENTS/architecture gerçek duruma çekildi. Kod değişmedi.
+- **Faz 1 yayın hazırlığı tamamlandı (2026-11-09):** `config.APP_VERSION = "1.6.0"`, `sha256` akışı, `UPDATE_URL`, kaldırma temizliği ve `installer\Output\Dikte-Setup-1.6.0.exe` (172 MB) üretildi; 245 pytest geçti.
+- **Faz 2 veri kaybı ve çökme hataları tamamlandı (2026-11-11):** `uygulanacak plan.md` §4'teki 11 maddenin tamamı TDD ile uygulandı; 18 yeni regresyon testi eklendi (**263 passed, 1 skipped**); `Model: "flash"` alt ajanıyla kod ve testler satır satır denetlendi. Masaüstüne `C:\Users\aksek\Desktop\Dikte.lnk` kısayolu oluşturuldu.
 
 ## Yarım kalan
 - **v1.3 / 7c:** Bellek takası + Metin/Ses sekmeleri var; "⋯" model menüsü yok. PLAN'da işaretsiz.
@@ -53,15 +55,15 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Karşılama sihirbazı (blocker):** 5 ekranlı akış hiç yok; `setup_done` ayarı yok.
 - **Inno AppId:** `Dikte.iss:11` geçersiz GUID (`DIKTE` onaltılık değil).
 - **Kurulum yeri:** **Program Files** seçildi (2026-11-07); `Dikte.iss` hâlâ `%LOCALAPPDATA%` + `lowest`, Faz 1'de güncellenecek. Kurulum/güncelleme UAC onayı ister.
-- **Veri kaybı riski:** Panoya yazma başarısızsa eski pano yapıştırılıyor; Temizle/Çevir yanlış geçmiş kaydını ezebiliyor; GGUF indirmede iptal/duraklat yarışı `.part` dosyasını bozabiliyor; kırpılan yanıt tam sanılıyor.
-- **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; kod hazır, gerçek GGUF ile ölçüm yapılmadı.
-- **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora bağlanmadı.
+- **Veri kaybı riski (Faz 2'de giderildi 2026-11-11):** Pano hatasında yapıştırma iptali, `history_open` kimlik senkronu, GGUF indirme jetonu, `finish_reason == "length"` ve `strip_response` tek satır koruması, `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve temiz `shutdown()` eklendi.
+- **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; kod hazır, gerçek GGUF ile ölçüm Faz 4'te yapılacak.
+- **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora Faz 3.2'de bağlanacak.
 - **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn; sonraki çağrılar ~60 tok/s.
 - **OpenRouter:** ücret ve gizlilik riski; yalnız ucuz modeller önerilir, harcama STATE.md'de izlenir.
-- **İndirme duraklatma anlık değil:** açık dosya parçası bitince durur; iptal Windows kilidi yüzünden gecikebilir. Ses modelinde duraklat/iptal yok.
+- **İndirme duraklatma anlık değil:** açık dosya parçası bitince durur; ses modelinde iptal butonu Faz 3.2'de eklenecek.
 - **Otomatik yapıştırma:** yönetici pencerelerine sentetik tuş gitmeyebilir; panodaki eski içerik geri yüklenmez.
 - **Kaldırma geri alınamaz:** modeller, geçmiş ve ayarlar silinecek; ikinci onayda boyut gösterilecek.
-- **Tepsi yok:** pencere kapanınca uygulama çıkar, kısayol da durur.
+- **Sistem tepsisi (System Tray):** şu an pencere kapanınca uygulama çıkar; Faz 3.2'de sistem tepsisine küçültme ve pencere kapalıyken arka planda çalışma eklenecek.
 
 ## Bu oturumda alınan kararlar (kullanıcı onaylı)
 - Çıktı dili Türkçe/İngilizce/Almanca; "Otomatik çevir" kutusu dil seçicisinin yanında.
@@ -99,11 +101,13 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - 2026-11-11: **Ses modeli indirme:** faster-whisper için yalnız "İptal" butonu eklenecek.
 - 2026-11-11: **Selftest sesi:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
 - 2026-11-11: **Alt ajan (sub-agent) kuralı:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılacak. Kolay ama uzun kodlama görevlerinde ve test koşumlarında kullanılacak; aşama bitiminde modellerin yaptıklarını/yapmadıklarını denetleyip ana ajana raporlayacak.
+- 2026-11-11: **Faz 2 tamamlandı:** 11 veri kaybı ve çökme maddesi TDD ile tek seferde uygulandı ve `Model: "flash"` alt ajanıyla denetlendi (**263 passed, 1 skipped**).
+- 2026-11-11: **Masaüstü kısayolu ve sistem tepsisi:** Masaüstüne `Dikte.lnk` kısayolu eklendi; uygulamanın sistem tepsisine (System Tray) küçültülmesi ve pencere kapalıyken arka planda çalışması Faz 3.2 kapsamına alındı.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **245 passed, 1 skipped** (2026-11-09, 31,5 sn) |
+| `pytest -q` | **263 passed, 1 skipped** (2026-11-11, Faz 2 regresyon testleri dahil) |
 | Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 172.888.124 bayt, SHA-256 65a0fa042eb7eba25b70d179d346f11a366b6eb51f415c76cc2ed460177da44d |
 | Paketli açılış | dist\Dikte\Dikte.exe 25 sn çalıştı; güncelleme denetimi 404 (yayın henüz yok), model yok (beklenen) |
 | `--selftest` | **Çalıştırılamıyor:** `tests/data/test.wav` ve `test.txt` yok |

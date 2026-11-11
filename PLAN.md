@@ -130,10 +130,25 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §3.
 - Kanıt: pytest 245 passed / 1 skipped; `dist\Dikte\Dikte.exe` 25 sn açık kaldı; kurucu 172.888.124 bayt, SHA-256 `65a0fa04…da44d`.
 - **Faz 1 kullanıcı onayı bekleniyor:** kur/kaldır (UAC), gerçek Release güncellemesi ve model/mikrofon testi.
 
+### Aşama 13 — Faz 2: Veri kaybı ve çökme hatalarını düzeltme (2026-11-11 tamamlandı)
+Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §4.
+- [x] Pano hatasında otomatik yapıştırmanın iptali (`_process` ve `_auto_ai_text`).
+- [x] Kısayol (`on_hotkey_press` / `on_hotkey_release`) olay kuyruğu ve bloklamayan Whisper yüklemesi.
+- [x] `_engine_lock` ile iki Whisper modelinin aynı anda yüklenmesinin engellenmesi.
+- [x] `history_open` içinde `_last_history_id` güncellemesi; Temizle/Çevir'in doğru kaydı güncellemesi.
+- [x] GGUF indirmede jeton kimliği (`_text_download_token`), worker `join` ve güvenli `delete_part`.
+- [x] GGUF sihirli bayt (`b"GGUF"`) ve Whisper snapshot (`model.bin` + `config.json` + tokenizer) bütünlük doğrulaması.
+- [x] `finish_reason == "length"` kırpılan yanıtların reddi ve ≥3 kelimede halüsinasyon/eksiltme koruması.
+- [x] `strip_response` içinde tek satırlı diktelerin meta etiket yüzünden silinmemesi.
+- [x] `audio.stop()` içinde `_write_wav` hatalarının `AudioError`'a sarılması.
+- [x] `SettingsStore`, `HistoryStore` ve `SecretStore` için `RLock` + `uuid` benzersiz `.tmp` + `os.fsync` + `OSError` koruması.
+- [x] `shutdown()` içinde `_closed` kontrolü, tüm worker thread'lerinin `join` edilmesi ve yetim `kayit-*.wav` temizliği.
+- Kanıt: **263 passed, 1 skipped** (`pytest -q`); `Model: "flash"` alt ajan denetim raporu.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (220 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (263 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

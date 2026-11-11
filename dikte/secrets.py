@@ -12,6 +12,8 @@ import json
 import logging
 import os
 import sys
+import threading
+import uuid
 from ctypes import wintypes
 from pathlib import Path
 
@@ -124,71 +126,85 @@ class SecretStore:
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = Path(path or config.SECRETS_FILE)
+        self._lock = threading.RLock()
 
     def _read(self) -> dict:
-        if not self.path.exists():
-            return {}
-        try:
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            logger.warning("Sır dosyası okunamadı: %s", exc)
-            return {}
+        with self._lock:
+            if not self.path.exists():
+                return {}
+            try:
+                raw = json.loads(self.path.read_text(encoding="utf-8"))
+                return raw if isinstance(raw, dict) else {}
+            except Exception as exc:
+                logger.warning("Sır dosyası okunamadı: %s", exc)
+                return {}
 
     def _write(self, data: dict) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_name(self.path.name + ".tmp")
-        try:
-            temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            os.replace(temp, self.path)
-        except Exception as exc:
+        with self._lock:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            temp = self.path.with_name(
+                f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+            )
             try:
-                temp.unlink(missing_ok=True)
-            except Exception:
-                pass
-            raise SecretError("Anahtar kaydedilemedi.") from exc
+                payload = json.dumps(data, ensure_ascii=False, indent=2)
+                with open(temp, "w", encoding="utf-8") as handle:
+                    handle.write(payload)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temp, self.path)
+            except Exception as exc:
+                try:
+                    temp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                raise SecretError("Anahtar kaydedilemedi.") from exc
 
     def has_key(self) -> bool:
-        return bool(self.load_key())
+        with self._lock:
+            return bool(self.load_key())
 
     def save_key(self, key: str) -> str:
-        key = (key or "").strip()
-        if len(key) < 8:
-            raise SecretError("Geçerli bir OpenRouter anahtarı gir.")
-        encrypted = protect(key.encode("utf-8"))
-        data = self._read()
-        data["openrouter"] = {"blob": base64.b64encode(encrypted).decode("ascii")}
-        self._write(data)
-        return mask(key)
+        with self._lock:
+            key = (key or "").strip()
+            if len(key) < 8:
+                raise SecretError("Geçerli bir OpenRouter anahtarı gir.")
+            encrypted = protect(key.encode("utf-8"))
+            data = self._read()
+            data["openrouter"] = {"blob": base64.b64encode(encrypted).decode("ascii")}
+            self._write(data)
+            return mask(key)
 
     def load_key(self) -> str | None:
-        entry = self._read().get("openrouter")
-        if not isinstance(entry, dict):
-            return None
-        blob = entry.get("blob")
-        if not isinstance(blob, str) or not blob:
-            return None
-        try:
-            raw = unprotect(base64.b64decode(blob, validate=True))
-            return raw.decode("utf-8")
-        except Exception as exc:
-            logger.warning("Anahtar çözülemedi: %s", exc)
-            return None
+        with self._lock:
+            entry = self._read().get("openrouter")
+            if not isinstance(entry, dict):
+                return None
+            blob = entry.get("blob")
+            if not isinstance(blob, str) or not blob:
+                return None
+            try:
+                raw = unprotect(base64.b64decode(blob, validate=True))
+                return raw.decode("utf-8")
+            except Exception as exc:
+                logger.warning("Anahtar çözülemedi: %s", exc)
+                return None
 
     def masked(self) -> str | None:
-        key = self.load_key()
-        return mask(key) if key else None
+        with self._lock:
+            key = self.load_key()
+            return mask(key) if key else None
 
     def delete_key(self) -> bool:
-        data = self._read()
-        if "openrouter" not in data:
-            return False
-        data.pop("openrouter", None)
-        if data:
-            self._write(data)
-        else:
-            try:
-                self.path.unlink(missing_ok=True)
-            except Exception as exc:
-                raise SecretError("Anahtar silinemedi.") from exc
-        return True
+        with self._lock:
+            data = self._read()
+            if "openrouter" not in data:
+                return False
+            data.pop("openrouter", None)
+            if data:
+                self._write(data)
+            else:
+                try:
+                    self.path.unlink(missing_ok=True)
+                except Exception as exc:
+                    raise SecretError("Anahtar silinemedi.") from exc
+            return True

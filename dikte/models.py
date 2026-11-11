@@ -121,13 +121,30 @@ def folder_size(path: Path) -> int:
     return total
 
 
+_TOKENIZER_FILES = ("tokenizer.json", "vocabulary.txt", "vocabulary.json")
+
+
+def _snapshot_complete(snap_dir: Path) -> bool:
+    config_file = snap_dir / "config.json"
+    if not (config_file.is_file() and config_file.stat().st_size > 0):
+        return False
+    return any(
+        (snap_dir / tok).is_file() and (snap_dir / tok).stat().st_size > 0
+        for tok in _TOKENIZER_FILES
+    )
+
+
 def model_file(models_dir: Path, name: str) -> Path | None:
     snapshots = model_folder(models_dir, name) / "snapshots"
     if not snapshots.exists():
         return None
     try:
         for candidate in snapshots.rglob("model.bin"):
-            if candidate.is_file() and candidate.stat().st_size > 0:
+            if (
+                candidate.is_file()
+                and candidate.stat().st_size > 0
+                and _snapshot_complete(candidate.parent)
+            ):
                 return candidate
     except OSError:
         return None

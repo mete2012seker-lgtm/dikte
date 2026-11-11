@@ -56,3 +56,12 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Kaldırmada veri ayrımı:** Program dosyaları (Program Files) ile kullanıcı verisi (%LOCALAPPDATA%) ayrı tutulur. Kaldırıcı programı siler; "Modelleri koru" bayrağı büyük modelleri (GB'lar) boşuna yeniden indirmeyi önler.
 5. **Admin kurulum ve HKCU:** Yönetici izniyle kurulan programın kullanıcı kayıt defteri alanına (HKCU) yazması, kurulumu yapan hesapla aynı kişi değilse beklenmeyen yere düşer. Bu yüzden kayıt temizliği de kurulumu yapan kullanıcıyla test edilmeli.
 
+## 2026-11-11 — Faz 2: veri kaybı, yarış durumları ve sağlamlaştırma
+
+1. **Yarış durumu (race condition):** İki iş parçacığının (thread) aynı anda aynı veriye veya dosyaya dokunmasıdır. Örneğin aynı anda iki Whisper modelinin yüklenmesini ayrı bir motor kilidi (`_engine_lock`) ile, indirme çakışmalarını ise her indirmeye verilen sıra numarası (jeton) ile önledik.
+2. **Bloklamayan kısayol kuyruğu:** Klavye dinleyicisi (`pynput`) içinde model yüklemek gibi saniyeler süren bir iş yapılırsa klavye kancası donar. Kısayol olaylarını (`press`/`release`) küçük bir kuyruğa alıp arka plan işçisinde çalıştırmak donmayı önler.
+3. **Sihirli bayt (magic bytes) ve bütünlük:** Bir dosyanın sadece boyutunun tutması sağlam olduğu anlamına gelmez; GGUF model dosyalarının ilk 4 baytının `GGUF` olduğunu ve Whisper klasöründe `config.json` + `tokenizer` dosyalarının bulunduğunu kontrol ederek bozuk indirmeleri yakaladık.
+4. **Atomik yazma ve `fsync`:** Dosyayı doğrudan ezmek yerine önce benzersiz adlı bir `.tmp` dosyasına yazıp `os.fsync` ile diske fiziksel olarak kaydedilmesini beklemek ve sonra `os.replace` ile yer değiştirmek, elektrik kesintisinde bile ayar/geçmiş dosyasının bozulmasını engeller.
+5. **Kırpılan yanıt (`finish_reason == "length"`):** Yapay zeka modeli token sınırına çarpıp cümleyi yarıda kestiğinde yanıt boş olmasa bile eksiktir; bunu hata sayıp token bütçesini iki katına çıkararak yeniden denemek yarım cümlelerin metin kutusuna yazılmasını önler.
+
+

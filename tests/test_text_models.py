@@ -17,7 +17,7 @@ from dikte.text_models import (
     text_model_path,
 )
 
-PAYLOAD = bytes(range(256)) * 4096  # 1 MiB
+PAYLOAD = b"GGUF" + (bytes(range(256)) * 4096)[4:]  # 1 MiB, GGUF sihirli baytlı
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -184,3 +184,22 @@ def test_friendly_http_errors():
     assert "bulunamadı" in text_models._friendly_http_error(error(404))
     assert "geçersiz" in text_models._friendly_http_error(error(416))
     assert "Sunucu hatası (500)" in text_models._friendly_http_error(error(500))
+
+
+def test_corrupt_non_gguf_file_is_not_considered_installed(tiny_model):
+    path = text_model_path("test-1b")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"HTML" + PAYLOAD[4:])
+    assert is_installed("test-1b") is False
+
+
+def test_corrupt_complete_part_is_redownloaded(tiny_model):
+    part = partial_path("test-1b")
+    part.parent.mkdir(parents=True, exist_ok=True)
+    part.write_bytes(b"NOPE" + PAYLOAD[4:])
+
+    result = Downloader(chunk_size=64 * 1024).download("test-1b")
+    assert result["completed"] is True
+    assert text_model_path("test-1b").read_bytes()[:4] == b"GGUF"
+    assert is_installed("test-1b") is True
+

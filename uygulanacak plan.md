@@ -66,6 +66,7 @@ Bu plan `calisma-duzeni.md` sırasıyla hazırlandı; aşamalar atlanmadı:
 17. **Ses modeli indirme kontrolleri:** faster-whisper yapısının kararlılığı için yalnızca "İptal" butonu sunulacaktır.
 18. **Selftest ses fixture'ı:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecektir.
 19. **Alt ajan (sub-agent) modeli ve görevleri:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve test koşumlarında bu alt ajan kullanılır. Aşama sonunda her şey bittiğinde yine aynı alt ajan çağrılarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir ve ana ajana raporlanır.
+20. **Masaüstü kısayolu ve sistem tepsisi (2026-11-11):** Masaüstüne `Dikte.lnk` kısayolu oluşturuldu; uygulamanın sistem tepsisine (System Tray) küçültülmesi ve pencere açık olmasa bile arka planda çalışmaya devam etmesi Faz 3.2 kapsamına eklendi.
 
 ---
 
@@ -141,21 +142,21 @@ Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme ak�
 
 ---
 
-## 4. Faz 2 — Veri kaybı ve çökme hataları (2–3 oturum)
+## 4. Faz 2 — Veri kaybı ve çökme hataları (2026-11-11 tamamlandı)
 
-- [ ] **Pano hatasında yapıştırma iptal:** `_process` ve otomatik çeviri akışında `if copy_ok and auto_paste` (`controller.py:432-448`, `:1570-1573`).
-- [ ] **Kısayol thread'i bloke olmasın:** `on_hotkey_press → toggle_record → load_engine` zincirini worker'a al; bas-bırak olayları kuyruklansın (`controller.py:295-335`, `:218-250`).
-- [ ] **İki Whisper modeli yüklenmesin:** `_whisper_loaded` kontrolü ve set'i aynı kilit altında; `_prepare_whisper` bayrağı kilit içinde okusun (`:218-235`, `:261-271`).
-- [ ] **Geçmiş kimliği:** `history_open` `_last_history_id`'yi güncellesin; Temizle/Çevir yanlış kaydı ezmesin (`:637-647`, `:1466`, `:1578-1584`).
-- [ ] **GGUF indirme yarışı:** indirme başına jeton/thread kimliği; eski worker bitmeden yeni thread başlamasın; `delete_part` yalnız açık iptalde ve worker durduktan sonra çalışsın (`controller.py:978-1026`).
-- [ ] **Bütünlük doğrulaması:** GGUF için SHA-256 veya GGUF sihirli baytları; Whisper snapshot için `model.bin` + `config.json` + tokenizer kontrolü (`text_models.py:104-106, 197-200`; `models.py:124-134`).
-- [ ] **Kırpılan yanıt:** `finish_reason == "length"` başarı yolunda da hata sayılsın; ≥3 kelimede eksiltme/halüsinasyon koruması (`text_engine.py:202-216, 290-329`).
-- [ ] **`strip_response`:** `"i corrected"`, `"note:"` gibi etiketler yalnız çok satırlı meta yanıtlarda temizlensin; gerçek dikte cümlesi silinmesin (`text_engine.py:102-160`).
-- [ ] **`audio.stop()`:** `_write_wav` istisnası `AudioError`'a sarılsın; durum `RECORDING`'de kilitlenmesin (`audio.py:92, 101-106`; `controller.py:356-362`).
-- [ ] **Ayar/geçmiş kilitleri:** `SettingsStore.save`, `HistoryStore`, `SecretStore` yazımlarına kilit + benzersiz temp + `fsync`; `history.load` yalnız `JSONDecodeError`'da sıfırlasın (`settings.py:178-199`, `history.py:78-82`).
-- [ ] **Kapanış:** `_closed` gerçekten okunsun; worker/download thread'leri join edilsin; çıkışta `kayit-*.wav` kalmasın (`controller.py:122, 273-291`).
+- [x] **Pano hatasında yapıştırma iptal:** `_process` ve otomatik çeviri akışında `if copy_ok and auto_paste` (`controller.py:525-544`, `:1716-1721`).
+- [x] **Kısayol thread'i bloke olmasın:** `on_hotkey_press → toggle_record → load_engine` zincirini worker'a al; bas-bırak olayları kuyruklansın (`controller.py:332-391`).
+- [x] **İki Whisper modeli yüklenmesin:** `_whisper_loaded` kontrolü ve set'i `_engine_lock` + `_lock` altında; `_prepare_whisper` bayrağı kilit içinde okuyor (`controller.py:226-290`).
+- [x] **Geçmiş kimliği:** `history_open` `_last_history_id`'yi güncelliyor; `history_delete` ve `history_clear` sıfırlıyor; Temizle/Çevir yanlış kaydı ezmiyor (`controller.py:732-763`).
+- [x] **GGUF indirme yarışı:** indirme başına jeton kimliği (`_text_download_token`); eski worker bitmeden yeni thread başlamıyor; `delete_part` yalnız açık iptalde ve worker durduktan sonra çalışıyor (`controller.py:1033-1166`).
+- [x] **Bütünlük doğrulaması:** GGUF için `b"GGUF"` sihirli baytları; Whisper snapshot için `model.bin` + `config.json` + tokenizer kontrolü (`text_models.py:104-127, 217-228, 281-287`; `models.py:124-152`).
+- [x] **Kırpılan yanıt:** `finish_reason == "length"` başarı yolunda da hata sayılıyor; ≥3 kelimede eksiltme/halüsinasyon koruması (`text_engine.py:214-222, 316-326`).
+- [x] **`strip_response`:** `"i corrected"`, `"note:"` gibi etiketler yalnız çok satırlı meta yanıtlarda temizleniyor; gerçek dikte cümlesi silinmiyor (`text_engine.py:143-173, 205-225`).
+- [x] **`audio.stop()`:** `_write_wav` istisnası `AudioError`'a sarıldı; durum `RECORDING`'de kilitlenmiyor (`audio.py:91-98`; `controller.py:451-455`).
+- [x] **Ayar/geçmiş kilitleri:** `SettingsStore.save`, `HistoryStore`, `SecretStore` yazımlarına `RLock` + `uuid` benzersiz temp + `fsync`; `history.load` ve `settings.load` `OSError`'da veriyi sıfırlamıyor (`settings.py:108-207`, `history.py:70-141`, `secrets.py:129-208`).
+- [x] **Kapanış:** `_closed` tüm giriş noktalarında okunuyor; worker/download/hotkey thread'leri join ediliyor; çıkışta `kayit-*.wav` kalmıyor (`controller.py:291-329`).
 
-**Faz 2 bitti tanımı:** Her madde için hata üreten test önce yazılır (kırmızı), düzeltme sonrası yeşil; pano hatasında eski pano yapıştırılmıyor; iki model aynı anda yüklenmiyor.
+**Faz 2 bitti tanımı (tamamlandı 2026-11-11):** Her madde için hata üreten test önce yazıldı (kırmızı), düzeltme sonrası **263 passed, 1 skipped** yeşil; `Model: "flash"` alt ajanıyla 11 madde satır satır denetlenip onaylandı.
 
 ---
 
@@ -170,6 +171,7 @@ Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme ak�
 - [ ] Playwright: 5 ekran, atlama, karanlık mod, `setup_done` kalıcılığı.
 
 ### 3.2 Diğer ürün eksikleri
+- [ ] Sistem tepsisine (System Tray) küçültme ve pencere açık olmasa bile arka planda çalışmaya devam etme (2026-11-11 kullanıcı isteği).
 - [ ] `input_language` motora bağlansın: `auto` → `language=None`, `tr` → `"tr"` (`engine.py:157`).
 - [ ] `snapshot.ai` içine `state` eklensin; Temizle/Çevir düğmeleri loading/recording durumunda doğru kapansın (`controller.py:613`, `:1181-1208`; `app.js:1122`).
 - [ ] 7c "⋯" model menüsü ekle (eylemler kart üstünde dağınık kalmasın).

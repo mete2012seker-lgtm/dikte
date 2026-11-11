@@ -470,3 +470,111 @@ def test_auto_paste_failure_does_not_break_dictation():
     dictation(controller)
     assert controller.snapshot()["latest_text"] == "Merhaba dünya bugün güzel"
     assert controller.snapshot()["state"] == READY
+
+
+def test_auto_translate_clipboard_error_skips_auto_paste():
+    from dikte.clipboard import ClipboardError
+
+    pasted = []
+    calls = []
+
+    def fail_on_second_copy(text):
+        calls.append(text)
+        if len(calls) >= 2:
+            raise ClipboardError("ikinci kopya başarısız")
+
+    processor = FakeProcessor(result="Hello world today nice")
+    controller = make_controller(
+        processor=processor,
+        clipper=fail_on_second_copy,
+        paster=lambda: (pasted.append(1), True)[1],
+    )
+    controller.settings.save(
+        text_provider="openrouter",
+        openrouter_model="test/model",
+        auto_translate=True,
+        output_language="en",
+    )
+    dictation(controller)
+    assert pasted == [], "Çevrilen metin panoya yazılamadıysa eski pano yapıştırılmamalı"
+
+
+def test_history_open_updates_last_history_id_for_clean_text():
+    processor = FakeProcessor(result="Birinci kayıt temizlendi.")
+    controller = make_controller(processor=processor)
+    controller.settings.save(text_provider="openrouter", openrouter_model="test/model")
+
+    controller.engine.text = "Birinci ham kayıt"
+    dictation(controller)
+    first_id = controller.history_list()["items"][0]["id"]
+
+    controller.engine.text = "İkinci ham kayıt"
+    dictation(controller)
+    second_id = controller.history_list()["items"][0]["id"]
+
+    controller.history_open(first_id)
+    res = controller.clean_text("Birinci ham kayıt")
+    assert res["ok"] is True
+
+    items = {item["id"]: item["text"] for item in controller.history_list()["items"]}
+    assert items[first_id] == "Birinci kayıt temizlendi."
+    assert items[second_id] == "İkinci ham kayıt"
+
+
+def test_gguf_download_pause_resume_and_cancel_do_not_race(tmp_path, monkeypatch):
+    import threading
+    from dikte import text_models
+
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path / "models")
+    part = text_models.partial_path("qwen3-1.7b")
+    part.parent.mkdir(parents=True, exist_ok=True)
+    part.write_bytes(b"GGUF" + b"\x00" * 100)
+
+    active_workers = 0
+    max_concurrent = 0
+    lock = threading.Lock()
+    first_entered = threading.Event()
+    allow_exit = threading.Event()
+
+    class SlowDownloader:
+        def download(self, name, progress=None, pause_event=None, cancel_event=None):
+            nonlocal active_workers, max_concurrent
+            with lock:
+                active_workers += 1
+                max_concurrent = max(max_concurrent, active_workers)
+            first_entered.set()
+            try:
+                while not (
+                    (pause_event and pause_event.is_set())
+                    or (cancel_event and cancel_event.is_set())
+                ):
+                    time.sleep(0.01)
+                allow_exit.wait(timeout=1.0)
+                if cancel_event and cancel_event.is_set():
+                    return {"completed": False, "paused": False, "cancelled": True, "size": 104}
+                return {"completed": False, "paused": True, "cancelled": False, "size": 104}
+            finally:
+                with lock:
+                    active_workers -= 1
+
+    controller = make_controller()
+    controller._text_downloader = SlowDownloader()
+    monkeypatch.setattr(controller, "_disk_free", lambda: 10 * 1024**3)
+
+    assert controller.text_model_download("qwen3-1.7b")["ok"] is True
+    assert first_entered.wait(timeout=1.0)
+
+    # Duraklat -> eski worker henüz çıkmadan devam et denendiğinde yarış olmamalı
+    assert controller.text_model_pause("qwen3-1.7b")["ok"] is True
+    threading.Timer(0.05, allow_exit.set).start()
+    time.sleep(0.08)
+    assert part.exists(), "Duraklatmada .part silinmemeli"
+
+    assert controller.text_model_resume("qwen3-1.7b")["ok"] is True
+    time.sleep(0.05)
+    assert max_concurrent == 1, "İki indirme worker'ı aynı anda çalışmamalı"
+
+    # İptal -> worker durduktan sonra .part silinmeli
+    assert controller.text_model_cancel("qwen3-1.7b")["ok"] is True
+    assert not part.exists(), "Açık iptalde .part silinmeli"
+

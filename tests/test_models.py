@@ -3,11 +3,14 @@ import pytest
 from dikte import models
 
 
-def make_snapshot(models_dir, name, size=1024):
+def make_snapshot(models_dir, name, size=1024, with_metadata=True):
     folder = models.model_folder(models_dir, name) / "snapshots" / "abc"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "model.bin"
     path.write_bytes(b"x" * size)
+    if with_metadata:
+        (folder / "config.json").write_text("{}", encoding="utf-8")
+        (folder / "tokenizer.json").write_text("{}", encoding="utf-8")
     return folder
 
 
@@ -96,3 +99,11 @@ def test_unknown_model_is_rejected(tmp_path):
         models.get_model("bilinmeyen")
     with pytest.raises(models.ModelError):
         models.download("bilinmeyen", tmp_path)
+
+
+def test_snapshot_missing_config_or_tokenizer_is_not_installed(tmp_path):
+    make_snapshot(tmp_path, "small", size=2048, with_metadata=False)
+    result = models.scan(tmp_path)
+    assert result["small"]["installed"] is False
+    assert result["small"]["partial"] is True
+

@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
+import uuid
 from pathlib import Path
 
 from . import config
@@ -103,22 +105,27 @@ class SettingsStore:
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = Path(path or config.SETTINGS_FILE)
+        self._lock = threading.RLock()
         self._data = dict(DEFAULTS)
         self.load()
 
     def load(self) -> dict:
-        data = dict(DEFAULTS)
-        if self.path.exists():
-            try:
-                raw = json.loads(self.path.read_text(encoding="utf-8"))
-                if not isinstance(raw, dict):
-                    raise ValueError("Ayarlar bir nesne değil")
-                data.update(raw)
-            except Exception as exc:
-                logger.warning("Ayarlar okunamadı (%s), yedekleniyor", exc)
-                self._backup()
-        self._data = self._validate(data)
-        return dict(self._data)
+        with self._lock:
+            data = dict(DEFAULTS)
+            if self.path.exists():
+                try:
+                    raw = json.loads(self.path.read_text(encoding="utf-8"))
+                    if not isinstance(raw, dict):
+                        raise ValueError("Ayarlar bir nesne değil")
+                    data.update(raw)
+                except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                    logger.warning("Ayarlar okunamadı (%s), yedekleniyor", exc)
+                    self._backup()
+                except OSError as exc:
+                    logger.warning("Ayarlar dosyasına erişilemedi (%s)", exc)
+                    return dict(self._data)
+            self._data = self._validate(data)
+            return dict(self._data)
 
     def _backup(self) -> None:
         try:
@@ -170,27 +177,33 @@ class SettingsStore:
         return result
 
     def get(self, key: str, default=None):
-        return self._data.get(key, default)
+        with self._lock:
+            return self._data.get(key, default)
 
     def as_dict(self) -> dict:
-        return dict(self._data)
+        with self._lock:
+            return dict(self._data)
 
     def save(self, **changes) -> dict:
-        merged = dict(self._data)
-        merged.update(changes)
-        data = self._validate(merged)
-        self._write(data)
-        self._data = data
-        return dict(data)
+        with self._lock:
+            merged = dict(self._data)
+            merged.update(changes)
+            data = self._validate(merged)
+            self._write(data)
+            self._data = data
+            return dict(data)
 
     def _write(self, data: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_name(self.path.name + ".tmp")
+        temp = self.path.with_name(
+            f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+        )
         try:
-            temp.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            payload = json.dumps(data, ensure_ascii=False, indent=2)
+            with open(temp, "w", encoding="utf-8") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
             os.replace(temp, self.path)
         except Exception as exc:
             try:

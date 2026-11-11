@@ -134,10 +134,11 @@ Akış:
 - **Test yan etkisi:** `tests/test_ui.py` ekran görüntülerini `design/v2/` altına yazıyor; her test koşusu `design/v2/v2-*-dikte.png` gibi referans dosyalarını değiştirebilir. Commit'e girmemeli; `git restore` ile geri alınır (Faz 4'te test çıktısı `artifacts/`'a taşınacak).
 - **HKCU Run kaydı:** Kurucu admin modda çalışır; kayıt, kurulumu yapan kullanıcının HKCU'suna yazılır. Farklı bir yönetici hesabıyla kurulursa kayıt beklenen yerde olmayabilir.
 - **`bin\` klasörü** (`%LOCALAPPDATA%\Dikte\bin`, 27 Ağustos) Dikte kodunun oluşturmadığı bir klasör; kaldırma kapsamı dışında bırakıldı.
-- **Veri kaybı riskleri:** panoya yazma başarısızsa eski pano yapıştırılıyor; Temizle/Çevir yanlış geçmiş kaydını ezebiliyor; GGUF indirmede iptal/duraklat yarışı `.part` dosyasını bozabiliyor; `finish_reason == "length"` kırpılan yanıt tam sanılıyor.
-- **7c "⋯" model menüsü yok; eylemler kart üstünde.**
-- **Karşılama sihirbazı (5 ekran) ve CUDA bileşeni indirme akışı hiç yazılmadı.**
-- **`tests/data/test.wav` yok; `--selftest` çalıştırılamıyor.**
+- **Veri kaybı riskleri (2026-11-11 Faz 2'de giderildi):** pano hatasında yapıştırma iptali, `history_open` kimlik güncellemesi, GGUF indirme jetonu + worker `join`, `finish_reason == "length"` ve `strip_response` tek satır koruması, `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve temiz `shutdown()` eklendi.
+- **7c "⋯" model menüsü yok; eylemler kart üstünde (Faz 3.2).**
+- **Karşılama sihirbazı (5 ekran) ve CUDA bileşeni indirme akışı hiç yazılmadı (Faz 3.1).**
+- **Sistem tepsisi (System Tray) ve pencere kapalıyken arka planda çalışma Faz 3.2'de eklenecek.**
+- **`tests/data/test.wav` yok; `--selftest` çalıştırılamıyor (Faz 4).**
 
 ## Karar geçmişi
 - 2026-10-22: Proje başlatıldı. Python, faster-whisper, deepseek-v4-flash.
@@ -167,3 +168,4 @@ Akış:
 - 2026-11-07: Plan/denetim düzeni zorunlu: `calisma-duzeni.md` (keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama); bulgular `dosya:satır` kanıtıyla yazılır. Denetim dışında tek ajan.
 - 2026-11-07: Kurulum Program Files + admin; sürüm 1.6.0; kaldırmada "Modelleri koru" seçeneği (Inno); PyInstaller + Inno kurulacak; GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tam; `web/` notla; MIT; basit `.ico`; eski `data/` taşınmaz.
 - 2026-11-09: Faz 1 uygulandı: sürüm 1.6.0 tek kaynak; sha256 akışı; `UPDATE_URL` GitHub Releases; kaldırma bayrağı + HKCU temizliği; `run_dikte.py` + spec + `build.ps1`; kurucu üretildi (172.888.124 bayt); docs boş dosyaları ve `mevcut tasarım/` silindi. Kullanıcı testi bekleniyor.
+- 2026-11-11: Faz 2 (11 veri kaybı ve çökme hatası) TDD ile uygulandı ve `Model: "flash"` alt ajanıyla denetlendi (**263 passed, 1 skipped**). Masaüstüne `Dikte.lnk` kısayolu eklendi; sistem tepsisi ve pencere kapalıyken arka planda çalışma Faz 3.2 kapsamına alındı.

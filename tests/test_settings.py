@@ -152,3 +152,32 @@ def test_unknown_v13_fields_survive_save(tmp_path):
     store.save(output_language="de")
     assert SettingsStore(path).get("future_v2") == {"a": 1}
     assert SettingsStore(path).get("output_language") == "de"
+
+
+def test_settings_write_uses_lock_unique_tmp_and_fsync(tmp_path, monkeypatch):
+    import os
+
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    assert hasattr(store, "_lock"), "SettingsStore._lock olmalı"
+
+    fsync_calls = []
+    real_fsync = os.fsync
+    monkeypatch.setattr(os, "fsync", lambda fd: (fsync_calls.append(fd), real_fsync(fd))[1])
+
+    seen_temps = []
+    real_replace = os.replace
+
+    def track_replace(src, dst):
+        seen_temps.append(Path(src).name)
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", track_replace)
+    store.save(hotkey="f8")
+    store.save(hotkey="f9")
+
+    assert len(fsync_calls) >= 2
+    assert len(seen_temps) == 2
+    assert seen_temps[0] != "settings.json.tmp"
+    assert seen_temps[0] != seen_temps[1]
+

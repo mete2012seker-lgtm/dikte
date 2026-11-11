@@ -101,9 +101,29 @@ def partial_path(name: str) -> Path:
     return path.with_name(path.name + ".part")
 
 
+GGUF_MAGIC = b"GGUF"
+
+
+def _has_gguf_magic(path: Path) -> bool:
+    try:
+        if not path.is_file() or path.stat().st_size < 4:
+            return False
+        with open(path, "rb") as handle:
+            return handle.read(4) == GGUF_MAGIC
+    except OSError:
+        return False
+
+
 def is_installed(name: str) -> bool:
     path = text_model_path(name)
-    return path.exists() and path.stat().st_size == get_text_model(name).size_bytes
+    try:
+        return (
+            path.exists()
+            and path.stat().st_size == get_text_model(name).size_bytes
+            and _has_gguf_magic(path)
+        )
+    except OSError:
+        return False
 
 
 def installed_bytes(name: str) -> int:
@@ -196,9 +216,15 @@ class Downloader:
 
         existing = part.stat().st_size if part.exists() else 0
         if existing == spec.size_bytes:
-            os.replace(part, final)
-            return {"completed": True, "paused": False, "cancelled": False, "size": existing}
-        if existing > spec.size_bytes:
+            if _has_gguf_magic(part):
+                os.replace(part, final)
+                return {"completed": True, "paused": False, "cancelled": False, "size": existing}
+            try:
+                part.unlink(missing_ok=True)
+            except OSError:
+                pass
+            existing = 0
+        if existing > spec.size_bytes or (existing >= 4 and not _has_gguf_magic(part)):
             # Bozuk/fazla baytlı yarım dosya: baştan indir.
             try:
                 part.unlink(missing_ok=True)
@@ -252,6 +278,12 @@ class Downloader:
             raise TextModelError(
                 f"İndirme tamamlanmadı ({human_size(written)} / {human_size(spec.size_bytes)})."
             )
+        if not _has_gguf_magic(part):
+            try:
+                part.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise TextModelError("İndirilen dosya geçerli bir GGUF modeli değil.")
         try:
             os.replace(part, final)
         except OSError as exc:

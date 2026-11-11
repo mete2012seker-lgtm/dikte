@@ -4,7 +4,7 @@ Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat
 
 ## Proje
 Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3/7a-7d, v1.4 ve v1.5/v1.6 kodları yazıldı; ancak **yayın zinciri çalışmıyor** (2026-11-06 denetimi): güncelleme `sha256` akışı bozuk, `UPDATE_URL` boş, sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Faz 1 kodla tamamlandı (2026-11-09): sürüm 1.6.0, sha256 akışı, UPDATE_URL, kaldırma temizliği, kurucu üretildi; kullanıcı kur/kaldır ve gerçek Release testi bekliyor. Sıra: `uygulanacak plan.md` Faz 2–4.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 (Dikte + Geçmiş + Modeller + Ayarlar + Yenile) tamamlandı. v1.3/7a-7d, v1.4 ve v1.5/v1.6 kodları yazıldı; ancak **yayın zinciri çalışmıyor** (2026-11-06 denetimi): güncelleme `sha256` akışı bozuk, `UPDATE_URL` boş, sürüm 1.3.0, kaldırma veriyi/autostart kaydını silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Faz 1 kodla tamamlandı (2026-11-09): sürüm 1.6.0, sha256 akışı, UPDATE_URL, kaldırma temizliği, kurucu üretildi. Faz 2 (11 veri kaybı ve çökme hatası) 2026-11-11'de tamamlandı ve `Model: "flash"` alt ajanıyla denetlendi (**263 passed, 1 skipped**). Sıra: `uygulanacak plan.md` Faz 3–4.
 
 ## Dosyalar
 | Dosya              | Ne için                                                                                                                        |
@@ -123,6 +123,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - Ses modeli indirme: faster-whisper yapısı için yalnız "İptal" butonu sunulacak.
   - Selftest sesi: 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
   - Alt ajan (sub-agent) kuralı: Alt ajanlar her zaman `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve çeşitli test koşumlarında bu alt ajan kullanılır. Aşama sonunda tüm işler bitince yine aynı alt ajan çağrılarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir ve ana ajana raporlanır.
+  - Faz 2 tamamlandı (2026-11-11): 11 veri kaybı ve çökme maddesi TDD ile uygulandı (**263 passed, 1 skipped**) ve `Model: "flash"` alt ajanıyla denetlendi.
+  - Masaüstü kısayolu ve sistem tepsisi (2026-11-11): Masaüstüne `Dikte.lnk` kısayolu eklendi; uygulamanın sistem tepsisine (System Tray) küçültülmesi ve pencere kapalıyken arka planda çalışmaya devam etmesi Faz 3.2 kapsamına alındı.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.

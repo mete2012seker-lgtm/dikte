@@ -120,3 +120,48 @@ def test_empty_text_is_rejected(tmp_path):
     store = make_store(tmp_path)
     with pytest.raises(Exception):
         store.add("   ", 1.0, 0)
+
+
+def test_history_load_oserror_does_not_backup_or_wipe(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    path = tmp_path / "history.json"
+    store = make_store(tmp_path)
+    rec = store.add("Korunacak kayıt.", 1.5, 2)
+
+    def broken_read_text(self, *args, **kwargs):
+        raise PermissionError("Dosya kilitli")
+
+    monkeypatch.setattr(Path, "read_text", broken_read_text)
+    items = store.load()
+    assert len(items) == 1
+    assert items[0]["id"] == rec["id"]
+    assert path.exists()
+    assert not list(tmp_path.glob("history.bozuk-*.json"))
+
+
+def test_history_save_uses_unique_tmp_and_fsync(tmp_path, monkeypatch):
+    import os
+    from pathlib import Path
+
+    store = make_store(tmp_path)
+    fsync_calls = []
+    real_fsync = os.fsync
+    monkeypatch.setattr(os, "fsync", lambda fd: (fsync_calls.append(fd), real_fsync(fd))[1])
+
+    seen_temps = []
+    real_replace = os.replace
+
+    def track_replace(src, dst):
+        seen_temps.append(Path(src).name)
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", track_replace)
+    store.add("Bir.", 1.0, 1)
+    store.add("İki.", 1.0, 1)
+
+    assert len(fsync_calls) >= 2
+    assert len(seen_temps) == 2
+    assert seen_temps[0] != "history.json.tmp"
+    assert seen_temps[0] != seen_temps[1]
+

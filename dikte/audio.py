@@ -89,7 +89,13 @@ class AudioRecorder:
             return Recording(path=None, duration=0.0, frames=0)
 
         path = self.temp_dir / f"kayit-{time.strftime('%Y%m%d-%H%M%S')}-{time.time_ns() % 1_000_000}.wav"
-        self._write_wav(path, data)
+        try:
+            self.temp_dir.mkdir(parents=True, exist_ok=True)
+            self._write_wav(path, data)
+        except Exception as exc:
+            self.cleanup(path)
+            logger.exception("Ses kaydı diske yazılamadı")
+            raise AudioError("Ses kaydı diske yazılamadı.") from exc
         return Recording(path=path, duration=round(duration, 2), frames=frame_count)
 
     def cancel(self) -> None:
