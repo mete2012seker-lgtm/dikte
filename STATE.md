@@ -93,6 +93,11 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - 2026-11-07: Bu oturumda **yalnız doküman/plan** yapıldı; eski `uygulanacak plan.md` silinip denetim + doğrulanmış kod durumuna göre yeniden yazıldı. Kod değişmedi.
 - 2026-11-07: **Kurulum:** Program Files + `PrivilegesRequired=admin`; **sürüm 1.6.0**; kaldırmada kullanıcı seçer (Inno `[UninstallDelete]` + "Modelleri koru" bayrağı); PyInstaller + Inno Setup kurulacak.
 - 2026-11-07: **Yayın:** GitHub Releases; `latest.json` + kurucu yüklemeyi kullanıcı yapar; `UPDATE_URL` Releases `latest/download` yolu. **Sihirbaz:** CUDA yalnız GPU varsa. **Selftest:** sentetik TTS. **7e:** tamamlanacak. **web/:** notla tutulur. **Lisans:** MIT. **İkon:** basit `.ico` üretilir. **Eski `data/`:** taşınmaz, temiz başlangıç.
+- 2026-11-11: **Faz 1 testi:** Kullanıcı önce `installer\Output\Dikte-Setup-1.6.0.exe` ile kurulum ve kaldırma testini yapacak. Yeni sekmede `/asama-baslat` ile başlanacak; model ne yapacağını/yapmayacağını, testleri ve alt ajan kurallarını detaylı listeleyecek, kullanıcı onay vermeden kod yazmayacak.
+- 2026-11-11: **Faz 2 düzeni:** 11 veri kaybı ve çökme maddesi tek seferde arka arkaya uygulanacak.
+- 2026-11-11: **Karşılama sihirbazı CUDA:** İsteğe bağlı olacak ("İndir" veya "CPU ile devam et / Atla").
+- 2026-11-11: **Ses modeli indirme:** faster-whisper için yalnız "İptal" butonu eklenecek.
+- 2026-11-11: **Selftest sesi:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
 
 ## Test durumu
 | Test | Sonuç |

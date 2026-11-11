@@ -34,11 +34,14 @@ STATE.md ile çelişki varsa (commit edilmemiş değişiklik, STATE'te yazmayan 
 - Varsayımın ya da eksik bilgin varsa sor. Tahminle doldurma.
 
 ## 4. Aşamayı başlat
-Kullanıcı bir aşama seçtiyse (ya da STATE.md'deki sıradaki adım onaylandıysa):
-1. PLAN.md'deki bitti tanımını ve kanıtı kendi cümlenle tekrar et.
-2. Kısa bir plan çıkar. Sonra planı sorgula: hangi varsayım yanlışsa plan çöker, nerede çöpe dönebilir?
-3. Kullanıcının yapması gerekenleri "SENİN YAPACAĞIN ŞEY:" başlığıyla listele.
-4. Kaba maliyet beklentisini tek cümleyle yaz (küçük, orta, büyük iş).
+Kullanıcı bir aşama seçtiyse (ya da "sıradaki aşama başlat", "devam", STATE.md'deki sıradaki adım onaylandıysa):
+1. **Neler Yapılacak / Neler Yapılmayacak:** Bu aşamada ajanın tam olarak neleri yapacağını ve neleri kesinlikle yapmayacağını (kapsam dışı dosyalar, dokunulmayacak mantık) madde madde listele.
+2. **Kullanılacak ve Kullanılmayacak Testler:** Bu aşamada hangi testlerin çalıştırılacağını (hangi pytest dosyaları, Playwright, manuel testler) ve hangilerinin neden çalıştırılmayacağını açıkça belirt.
+3. **Alt Ajan (Sub-agent) Kullanım Durumu:** Kodlama sırasında alt ajan kullanılmayacağını (tek ajan çalışacağını), yalnızca gerekirse ve hangi şartta salt-okunur alt ajan çağrılacağını açıkça yaz.
+4. PLAN.md veya uygulanacak plan.md'deki bitti tanımını ve kanıtını kendi cümlenle tekrar et.
+5. Kısa bir uygulama planı çıkar (varsayımlar, TDD sırası).
+6. Kullanıcının yapması gerekenleri "SENİN YAPACAĞIN ŞEY:" başlığıyla listele.
+7. Kaba maliyet beklentisini tek cümleyle yaz (küçük, orta, büyük iş).
 
 ## 5. Onay bekle
 Kullanıcı "devam" ya da "başla" demeden kod yazma, dosya değiştirme. Sadece okuma ve plan.

@@ -115,6 +115,12 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **Uygulama kararları (2026-11-07 onaylı):** Kurulum `C:\Program Files\Dikte` + admin; sürüm **1.6.0**; kaldırmada "Modelleri koru" seçeneği (Inno `[UninstallDelete]` + bayrak); PyInstaller + Inno Setup kurulacak; güncelleme GitHub Releases (yüklemeyi kullanıcı yapar); CUDA yalnız GPU varsa; selftest sentetik TTS; 7e tamamlanacak; `web/` notla tutulur; lisans MIT; basit `.ico` üretilir; eski `data/` taşınmaz.
 - **Faz 1 uygulama onayı (2026-11-09):** `uygulanacak plan.md` Faz 1 kullanıcı tarafından onaylanıp uygulandı.
 - **belirsizleri-sor skill'i (2026-11-07):** Uygulamadan önce plan/dokümanlardaki tüm açık kararlar tek turda kullanıcıya sorulur; doğrulanabilir bilgiler ajan kendin doğrular; cevaplar plana işlenir.
+- **2026-11-11 kararları (kullanıcı onaylı):**
+  - Faz 1 testi: Kullanıcı önce `installer\Output\Dikte-Setup-1.6.0.exe` kurulum/kaldırma testini yapacak. Yeni oturumda `/asama-baslat` ile başlanacak; model ne yapacağını/yapmayacağını, testleri ve alt ajan kurallarını detaylı listeleyecek, kullanıcı onay vermeden kod yazmayacak.
+  - Faz 2 düzeni: 11 veri kaybı ve çökme maddesi tek seferde arka arkaya uygulanacak.
+  - Karşılama sihirbazı CUDA: İsteğe bağlı olacak ("İndir" veya "CPU ile devam et / Atla").
+  - Ses modeli indirme: faster-whisper yapısı için yalnız "İptal" butonu sunulacak.
+  - Selftest sesi: 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.

@@ -59,6 +59,13 @@ Bu plan `calisma-duzeni.md` sırasıyla hazırlandı; aşamalar atlanmadı:
 12. **İkon:** basit bir `.ico` üretilip `Dikte.spec` ve `Dikte.iss`'e bağlanacak.
 13. **Eski `data/` taşıma:** **yapılmayacak**; kurulu sürüm temiz başlayacak.
 
+### 1.3 2026-11-11'de verilen kararlar (kullanıcı onaylı)
+14. **Sıradaki aşama ve kod başlangıcı:** Kodlama doğrudan başlamayacak; kullanıcı önce `installer\Output\Dikte-Setup-1.6.0.exe` ile kurulum/kaldırma testini yapacak. Yeni oturumda `/asama-baslat` komutuyla model neyi yapacağını/yapmayacağını, hangi testleri koşturacağını ve alt ajan kurallarını madde madde listeleyecek, kullanıcı onay verene kadar kod yazmayacaktır.
+15. **Faz 2 uygulama düzeni:** Faz 2'deki 11 veri kaybı ve çökme maddesi tek seferde arka arkaya uygulanacaktır.
+16. **Karşılama sihirbazında CUDA:** İsteğe bağlı sunulacak; "İndir" yanında "CPU ile devam et (Atla)" seçeneği bulunacaktır.
+17. **Ses modeli indirme kontrolleri:** faster-whisper yapısının kararlılığı için yalnızca "İptal" butonu sunulacaktır.
+18. **Selftest ses fixture'ı:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecektir.
+
 ---
 
 ## 2. Faz 0 — Doküman senkronu (bu oturumda yapıldı)
@@ -156,7 +163,7 @@ Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme ak�
 ### 3.1 Karşılama sihirbazı (5 ekran)
 - [ ] `settings.json`'a `setup_done` ekle; ilk açılışta göster, bir kez çalıştır.
 - [ ] `#sayfa-kurulum` + adım göstergesi + ileri/geri/atla.
-- [ ] Ekranlar: hoş geldin, ses modeli seçimi/indirme, GPU/CUDA bileşeni, metin sağlayıcısı, bitiş.
+- [ ] Ekranlar: hoş geldin, ses modeli seçimi/indirme, GPU/CUDA bileşeni (isteğe bağlı ve atlanabilir, karar 1.3/16), metin sağlayıcısı, bitiş.
 - [ ] Sihirbaz sırasında kısayol dinleyicisi başlamasın; bitişte başlasın.
 - [ ] Magic UI efektleri (MagicCard, ShineBorder, DotPattern) ve `prefers-reduced-motion` uyumu.
 - [ ] Playwright: 5 ekran, atlama, karanlık mod, `setup_done` kalıcılığı.
@@ -165,7 +172,7 @@ Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme ak�
 - [ ] `input_language` motora bağlansın: `auto` → `language=None`, `tr` → `"tr"` (`engine.py:157`).
 - [ ] `snapshot.ai` içine `state` eklensin; Temizle/Çevir düğmeleri loading/recording durumunda doğru kapansın (`controller.py:613`, `:1181-1208`; `app.js:1122`).
 - [ ] 7c "⋯" model menüsü ekle (eylemler kart üstünde dağınık kalmasın).
-- [ ] Ses modeli indirmesinde duraklat/devam/iptal ekle (metin modelindeki `.part` + Range düzeniyle).
+- [ ] Ses modeli indirmesinde iptal butonu ekle (karar 1.3/17).
 - [ ] Temizle/Çevir'i arka plan thread'ine al; ilerleme/iptal; otomatik çeviride `CLEANING` durumunu kullan (`state.py:15-21`).
 - [ ] `refresh_last` otomatik çeviriyi de uygulasın; ham Whisper metni çevrilmiş metnin üzerine yazılmasın (`controller.py:530-573`).
 - [ ] UI yarışları: kaydedilmemiş ayar koruması, `outputLang`/`autoTranslate` poll ezmesi, async jetonlar, düğme toparlanması, `updateNotes` gösterimi (`app.js:255, 1123-1124, 1373-1414, 1811-1829`).
@@ -180,7 +187,7 @@ Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme ak�
 
 ## 6. Faz 4 — Test, hijyen ve kapanış (1 oturum)
 
-- [ ] `tests/data/test.wav` + `test.txt` ekle; `--selftest` gerçekten çalışsın.
+- [ ] `tests/data/test.wav` + `test.txt` ekle (3 sn sentetik Türkçe TTS, karar 1.3/18); `--selftest` gerçekten çalışsın.
 - [ ] Test boşlukları: gerçek `update_check` + `update_apply`, kaldırma, autostart, `snapshot.ai.state`, geçmiş dönem filtresi.
 - [ ] Playwright'ı gerçek tarayıcıda koştur; ekran görüntülerini `design/v2/` ile karşılaştır.
 - [ ] `reports/2026-11-04-7e-kalite-tablosu.md` tamamlanacaksa 10 girdi/çıktı çifti + VRAM takas ölçümü ekle; yoksa PLAN'da "kısmen" olarak kalsın.
