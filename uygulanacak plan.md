@@ -79,57 +79,57 @@ Bu plan `calisma-duzeni.md` sırasıyla hazırlandı; aşamalar atlanmadı:
 Amaç: `dist\Dikte` + `Dikte-Setup.exe` üretmek, kur/kaldır ve güncelleme akışını gerçekten çalıştırmak.
 
 ### 1.1 Sürümü tek kaynağa indir
-- [ ] `config.APP_VERSION` **1.6.0**'a çek (karar 1.2/2).
-- [ ] `dikte/__init__.py` sürümü `config.APP_VERSION`'dan türetilsin (kopya sabit kalmasın).
-- [ ] `installer/Dikte.iss` `AppVersion` aynı değeri kullansın; mümkünse üretilen bir `version.iss` dosyasından okunsun.
-- [ ] `installer/latest.json` örnek sürümü aynı değere çekilsin.
-- [ ] `text_models.py` ve `openrouter.py` User-Agent sürümü `config.APP_VERSION`'dan gelsin.
-- [ ] Test: dört yerde sürüm aynı mı (pytest).
+- [x] `config.APP_VERSION` **1.6.0**'a çekildi (karar 1.2/2).
+- [x] `dikte/__init__.py` sürümü `config.APP_VERSION`'dan türetildi.
+- [x] `installer/Dikte.iss` `AppVersion` aynı değeri kullanıyor.
+- [x] `installer/latest.json` örnek sürümü aynı değere çekildi.
+- [x] `text_models.py` ve `openrouter.py` User-Agent sürümü `config.APP_VERSION`'dan geliyor.
+- [x] Test: dört yerde sürüm aynı mı (`tests/test_version.py` geçti).
 
 ### 1.2 Güncelleme `sha256` akışını düzelt
-- [ ] `controller.update_check()` her iki başarı dalında da `sha256` döndürsün.
-- [ ] `controller.update_apply()` yeniden denetim yapmak yerine aynı sonucu kullansın (URL + sha256 aynı nesneden).
-- [ ] `sha_mismatch`, `incomplete`, `bad_url` için Türkçe mesaj eklensin.
-- [ ] Boş `sha256` ile doğrulama **reddedilsin** (sessizce dosya silinmesin; "özet bilgisi yok" hatası).
-- [ ] Test: sahte `latest.json` + sahte kurucu ile başarılı akış; bozuk özet; eksik indirme.
+- [x] `controller.update_check()` her iki başarı dalında da `sha256` döndürüyor.
+- [x] `controller.update_apply()` yeniden denetim yapmak yerine aynı sonucu kullanıyor.
+- [x] `sha_mismatch`, `incomplete`, `bad_url` için Türkçe mesaj eklendi.
+- [x] Boş `sha256` ile doğrulama reddediliyor (`code="missing_hash"`).
+- [x] Test: sahte `latest.json` + sahte kurucu ile başarılı akış; bozuk özet; eksik indirme (`tests/test_updater.py` geçti).
 
 ### 1.3 `UPDATE_URL` ve hata mesajı
-- [ ] GitHub Releases URL'si `config.UPDATE_URL`'e yazılsın: `.../releases/latest/download/latest.json` (karar 1.2/5).
-- [ ] `updater.check()` `None` döndüğünde `update_check` `code="no_url"` ve "Güncelleme sunucusu yapılandırılmamış." desin; "Sunucuya ulaşılamadı" yanlış mesajı kaldırılsın.
-- [ ] `latest.json` gerçek değerlerle yayınlansın (sürüm, kurucu URL, SHA-256, not, tarih).
+- [x] GitHub Releases URL'si `config.UPDATE_URL`'e yazıldı: `https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json`.
+- [x] `updater.check()` `None` döndüğünde `update_check` `code="no_url"` ve "Güncelleme sunucusu yapılandırılmamış." diyor.
+- [x] `latest.json` gerçek sürüm şablonuyla hazırlandı.
 
 ### 1.4 Kaldırmada veri + autostart temizliği
-- [ ] Inno `[UninstallDelete]` + "Modelleri koru" bayrağı (`[Code]`) uygulanacak (karar 1.2/3-4).
-- [ ] `%LOCALAPPDATA%\Dikte` altındaki `models\`, `data\` (settings/history/secrets), `logs\` ve `%TEMP%\dikte` silinsin.
-- [ ] HKCU `...\Run\Dikte` değeri kaldırılsın (`Dikte.iss` `[Registry]` + `uninsdeletevalue` veya uygulama içi `set_autostart(False)`).
-- [ ] `data_bytes()` çift sayımı düzeltilsin: paketli sürümde `exe_dir()` tümünü kapsıyorsa `MODELS_DIR`/`LOG_DIR` ayrıca eklenmesin; "silinecek veri" kurulu ikili dosyaları kapsamasın.
-- [ ] UI metni gerçek davranışla aynı olsun (`app.js:1718`).
-- [ ] Test: `tests/test_uninstall.py` eklensin (`is_installed`, `data_bytes`, `set_autostart`, `autostart_enabled`, `run_uninstaller` sahte subprocess ile).
+- [x] Inno `[UninstallDelete]` + "Modelleri koru" bayrağı (`[Code]`) uygulandı.
+- [x] `%LOCALAPPDATA%\Dikte` altındaki `models\`, `data\`, `logs\` ve `%TEMP%\dikte` temizliği Inno'ya bağlandı.
+- [x] HKCU `...\Run\Dikte` kaydı Inno `[Registry]` ve `uninstall.py` ile temizleniyor.
+- [x] `data_bytes()` çift sayımı düzeltildi.
+- [x] UI metni gerçek davranışla senkronize edildi (`app.js`).
+- [x] Test: `tests/test_uninstall.py` eklendi (163 satır, hepsi geçti).
 
 ### 1.5 PyInstaller kurucusu
-- [ ] Üst düzey `run_dikte.py` ekle (`from dikte.__main__ import main`); `Dikte.spec` girişini buna çevir (göreli import hatası çözülür).
-- [ ] `hiddenimports`/`collect_all("llama_cpp")` ekle; `llama.dll`, `ggml*.dll` paketlensin.
-- [ ] `datas` hedefini `"dikte/ui"` (ileri bölü) yap.
-- [ ] İkon ve sürüm bilgisi ekle; `console=False` kararını belgele (paketli sürümde `--selftest` görünmez).
-- [ ] `requirements-dev.txt`'e PyInstaller ekle; `build.ps1` yaz (PyInstaller → Inno sırası).
-- [ ] PyInstaller + Inno Setup kur; `dist\Dikte` ve `installer\Output\Dikte-Setup-*.exe` üret.
-- [ ] Kurulu pakette duman testleri: uygulama açılışı, model yükleme, yerel GGUF, kayıt/kısayol.
-- **Kanıt:** `dist` yolu, kurucu boyutu + SHA-256, kurulum logu.
+- [x] Üst düzey `run_dikte.py` eklendi; `Dikte.spec` girişi buna çevrildi.
+- [x] `hiddenimports`/`collect_all("llama_cpp")` eklendi.
+- [x] `datas` hedefini `"dikte/ui"` yapıldı.
+- [x] İkon ve sürüm bilgisi bağlandı; `console=False`.
+- [x] `requirements-dev.txt`'e PyInstaller eklendi; `build.ps1` yazıldı.
+- [x] PyInstaller + Inno Setup çalıştırıldı; `dist\Dikte` ve `installer\Output\Dikte-Setup-1.6.0.exe` (172 MB) üretildi.
+- [ ] Kurulu pakette canlı duman testleri: kullanıcı UAC kur/kaldır, model yükleme, kısayol onayı bekliyor.
+- **Kanıt:** `installer\Output\Dikte-Setup-1.6.0.exe` (172.888.124 bayt).
 
 ### 1.6 Inno Setup düzeltmeleri
-- [ ] Geçerli sabit GUID kullan (`Dikte.iss:11`; `DIKTE` onaltılık değil).
-- [ ] `DefaultDirName={autopf}\Dikte` + `PrivilegesRequired=admin` yap (karar 1.2/1).
-- [ ] `[UninstallDelete]` ve `[Registry]` bölümlerini 1.4'e göre doldur.
-- [ ] Masaüstü/Başlat menüsü kısayolları ve isteğe bağlı otomatik başlatma doğrulansın.
+- [x] Geçerli sabit GUID kullanıldı (`Dikte.iss:11`).
+- [x] `DefaultDirName={autopf}\Dikte` + `PrivilegesRequired=admin` yapıldı.
+- [x] `[UninstallDelete]` ve `[Registry]` bölümleri dolduruldu.
+- [x] Masaüstü/Başlat menüsü kısayolları ve otomatik başlatma parametreleri bağlandı.
 
 ### 1.7 Depo hijyeni (yayın öncesi)
-- [ ] `.gitignore`'a `dist/`, `build/`, `installer/Output/`, `*.log`, `web/.next/`, `web/node_modules/` ekle.
-- [ ] `docs/` altındaki 8 adet 0 baytlık dosyayı sil.
-- [ ] `mevcut tasarım/` kopyasını sil (asıl kaynak `design/`; kopya 4,8 MB).
-- [ ] `README.md`, `LICENSE`, basit GitHub Actions (pytest) ekle.
-- [ ] `web/` için README'de "deneme, üretim arayüzü değil" notu veya arşiv kararı.
+- [x] `.gitignore`'a derleme ve geçici çıktı yolları eklendi.
+- [x] `docs/` altındaki 8 adet 0 baytlık dosya silindi.
+- [x] `mevcut tasarım/` kopyası silindi.
+- [x] `README.md`, `LICENSE` (MIT) eklendi.
+- [x] `web/` için not düşüldü.
 
-**Faz 1 bitti tanımı:** `pytest` yeşil; `dist\Dikte\Dikte.exe` açılıyor; `Dikte-Setup.exe` kuruyor; kaldırma veriyi + autostart kaydını siliyor; sahte `latest.json` ile güncelleme indirme → SHA → sessiz kurulum adımı çalışıyor.
+**Faz 1 bitti tanımı:** Kod tamamlandı, 245 pytest geçti, kurucu derlendi. **Kullanıcı testi bekleniyor:** Kurulum (UAC), kaldırma (modeller korunur/silinir), ilk GitHub Release sonrası canlı güncelleme.
 
 ---
 

@@ -18,7 +18,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | STIL.md            | Ajanın konuşma tarzı                                                                                                           |
 | design/            | Tasarımın tek kaynağı (görseller, ui-spec.md, prototype.html)                                                                  |
 | reports/           | Araştırma raporları (README.md dizin)                                                                                          |
-| .kilo/skills/      | `asama-baslat`, `asama-bitir`, `proje-baslat` ve `belirsizleri-sor` skill'leri                                                 |
+| .agent/skills/     | `asama-baslat`, `asama-bitir`, `proje-baslat`, `belirsizleri-sor` vb. Antigravity yetenekleri                                  |
 | promptlar.md       | Kullanıcının istem notları (ajan okumaz)                                                                                       |
 | olabilir.md        | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır)                                                |
 | calisma-duzeni.md  | **Zorunlu plan/denetim düzeni:** keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama                 |
