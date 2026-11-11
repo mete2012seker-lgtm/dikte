@@ -49,6 +49,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Doküman iddiası kanıt sayılmaz. En kritik 3 iddia kod satırından bizzat doğrulanır; test sahtesi bir hatayı gizliyorsa bu ayrıca "test maskesi" olarak yazılır.
 - Çıktı sırası: blocker → yüksek → orta → düşük; sonunda fazlı düzeltme planı, kabul ölçütleri ve doğrulanamayanlar bölümü.
 - Denetim alt ajanları **yalnız salt okunur** çalışır: dosya oluşturmaz/değiştirmez/silmez, uygulamayı çalıştırmaz. Bu düzen dışında aynı anda en fazla 2 alt ajan çalıştırılır.
+- **Alt ajan modeli ve yetkisi:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve test koşumlarında çalıştırılabilir. Aşama sonunda yine aynı modelle çağrılarak yapılanları ve yapılmayanları denetleyip ana ajana raporlar.
 - Plan dosyası, bu düzeni kullandığını ve hangi kanıtlara dayandığını başında yazar.
 
 ## Soru sorma
@@ -121,6 +122,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - Karşılama sihirbazı CUDA: İsteğe bağlı olacak ("İndir" veya "CPU ile devam et / Atla").
   - Ses modeli indirme: faster-whisper yapısı için yalnız "İptal" butonu sunulacak.
   - Selftest sesi: 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
+  - Alt ajan (sub-agent) kuralı: Alt ajanlar her zaman `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve çeşitli test koşumlarında bu alt ajan kullanılır. Aşama sonunda tüm işler bitince yine aynı alt ajan çağrılarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir ve ana ajana raporlanır.
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.

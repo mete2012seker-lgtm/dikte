@@ -98,6 +98,7 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - 2026-11-11: **Karşılama sihirbazı CUDA:** İsteğe bağlı olacak ("İndir" veya "CPU ile devam et / Atla").
 - 2026-11-11: **Ses modeli indirme:** faster-whisper için yalnız "İptal" butonu eklenecek.
 - 2026-11-11: **Selftest sesi:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecek.
+- 2026-11-11: **Alt ajan (sub-agent) kuralı:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılacak. Kolay ama uzun kodlama görevlerinde ve test koşumlarında kullanılacak; aşama bitiminde modellerin yaptıklarını/yapmadıklarını denetleyip ana ajana raporlayacak.
 
 ## Test durumu
 | Test | Sonuç |

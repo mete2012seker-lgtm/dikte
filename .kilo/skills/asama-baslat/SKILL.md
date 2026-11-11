@@ -37,7 +37,7 @@ STATE.md ile çelişki varsa (commit edilmemiş değişiklik, STATE'te yazmayan 
 Kullanıcı bir aşama seçtiyse (ya da "sıradaki aşama başlat", "devam", STATE.md'deki sıradaki adım onaylandıysa):
 1. **Neler Yapılacak / Neler Yapılmayacak:** Bu aşamada ajanın tam olarak neleri yapacağını ve neleri kesinlikle yapmayacağını (kapsam dışı dosyalar, dokunulmayacak mantık) madde madde listele.
 2. **Kullanılacak ve Kullanılmayacak Testler:** Bu aşamada hangi testlerin çalıştırılacağını (hangi pytest dosyaları, Playwright, manuel testler) ve hangilerinin neden çalıştırılmayacağını açıkça belirt.
-3. **Alt Ajan (Sub-agent) Kullanım Durumu:** Kodlama sırasında alt ajan kullanılmayacağını (tek ajan çalışacağını), yalnızca gerekirse ve hangi şartta salt-okunur alt ajan çağrılacağını açıkça yaz.
+3. **Alt Ajan (Sub-agent) Kullanım Durumu:** Alt ajan çağrılacaksa her zaman `gemini-3.8-flash-medium` (`Model: "flash"`) kullanılacaktır. Kolay ama uzun kodlama görevlerinde ve test koşumlarında bu alt ajan kullanılacak; aşama bittiğinde yine aynı alt ajan modellerin/kodun neleri yapıp neleri yapmadığını denetleyip raporlayacaktır.
 4. PLAN.md veya uygulanacak plan.md'deki bitti tanımını ve kanıtını kendi cümlenle tekrar et.
 5. Kısa bir uygulama planı çıkar (varsayımlar, TDD sırası).
 6. Kullanıcının yapması gerekenleri "SENİN YAPACAĞIN ŞEY:" başlığıyla listele.

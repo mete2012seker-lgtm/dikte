@@ -65,6 +65,7 @@ Bu plan `calisma-duzeni.md` sırasıyla hazırlandı; aşamalar atlanmadı:
 16. **Karşılama sihirbazında CUDA:** İsteğe bağlı sunulacak; "İndir" yanında "CPU ile devam et (Atla)" seçeneği bulunacaktır.
 17. **Ses modeli indirme kontrolleri:** faster-whisper yapısının kararlılığı için yalnızca "İptal" butonu sunulacaktır.
 18. **Selftest ses fixture'ı:** 3 saniyelik sentetik Türkçe ses ("Dikte test kaydı başarılı.") ve `test.txt` üretilecektir.
+19. **Alt ajan (sub-agent) modeli ve görevleri:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve test koşumlarında bu alt ajan kullanılır. Aşama sonunda her şey bittiğinde yine aynı alt ajan çağrılarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir ve ana ajana raporlanır.
 
 ---
 

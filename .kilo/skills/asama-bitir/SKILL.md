@@ -39,7 +39,10 @@ Kullanıcının bugün öğrendiklerini sade Türkçe, 3-5 madde yaz. Teknik ter
 Kullanıcı konuşma tarzında bir değişiklik istediyse güncelle. İstemediyse dokunma.
 
 ## 7. Gözden geçirme
-`.kilo/agents/gozden-gecirici.md` varsa @gozden-gecirici'yi çağır (PLAN.md bitti tanımına ve design/ klasörüne göre denetlesin, kod değiştirmesin). Yoksa bunu rapora yaz.
+Aşama sonunda tüm işlemler tamamlandığında `gemini-3.8-flash-medium` (`Model: "flash"`) modeliyle alt ajan çağrılır. Alt ajan:
+1. Plandaki maddeleri ve bitti tanımını kodla karşılaştırarak modellerin/kodun neleri yapıp neleri yapmadığını kontrol eder.
+2. Testleri koşturup sonuçları doğrular.
+3. Bulgularını ana ajana raporlar. Bu rapor olmadan oturum kapatılmaz.
 
 ## 8. Maliyet günlüğü
 STATE.md'deki Maliyet günlüğünü kendin doldurma. Kullanıcıdan OpenRouter Activity sayfasındaki toplam harcamayı iste. Verirse tarih ve aşamayla yaz, vermezse boş bırak.
