@@ -133,6 +133,11 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - **Sistem Tepsisi & Gizli Başlangıç:** Windows ile başladığında sessizce tepside başlar; `X` butonuna basıldığında tepsiye küçülür.
   - **Hugging Face Desteği:** Modeller sayfasına hem ses hem metin için harici Hugging Face modeli ekleme/indirme alanı eklenir.
   - **Ayarları Otomatik Kaydetme & Rollback:** Ayarlar menüsündeki tüm değişiklikler anında kaydedilir; Güncelleme kartında eski sürümlere tek tıkla geri dönülebilir.
+  - **belirsizleri-sor Nihai Kararları:**
+    - **Varsayılan Tasarım Modeli:** Varsayılan arayüz tasarım modeli `Sade Dikte.AI + Mikrofon Morph` (`design_style = "dikte_ai"` varsayılan; Ayarlar → Görünüm'den `"classic"` Magic UI v1.4 seçilebilir; her iki modda da Dikte ana mikrofon alanında `design/mikrofon_morph_animasyonu.html` canvas dalga + morphing mikrofon yer alır).
+    - **Hugging Face Özel Modeller Saklama ve Yönetimi:** Eklenen özel modeller `data/custom_models.json` dosyasında kalıcı saklanır; model kartında "Sil" dendiğinde diskteki dosya silinir ama kart listede kalır; kartın "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği bulunur.
+    - **Faz 5.2 Kapsamı, Selftest ve Dağıtım Sınırları:** Bu oturumda Faz 3, Faz 4 ve Faz 5.1 kodlarının tamamı yazılıp `build.ps1` ile güncel `Dikte-Setup-1.6.0.exe` derlenecek; sentetik test sesi (`tests/data/test.wav` + `test.txt`) ile otomatik selftest ve paketli açılış testi doğrulanacak. Gerçek VM testi ve GitHub Release yüklemesi kullanıcıya bırakılacak.
+    - **Logo, Sistem Tepsisi ve Menü Yapısı (Ajan Kararları):** Yeni logo kaynağı `design/download` (ses dalgalı mavi ikon) alınarak `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
 
 
 ## Öneriler (onaylanmadı)

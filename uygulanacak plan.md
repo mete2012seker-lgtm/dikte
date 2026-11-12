@@ -23,17 +23,19 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 1. **Model ve Rol Dağılımı (Swarm):**
    - **Ana Model:** Yalnızca en zor mimari kararlar, kritik kilitler/algoritmalar ve üst düzey koordinasyon için kullanılır.
    - **Alt Ajanlar (`/swarm` & Sub-agents):** Kolay/uzun kodlama işleri, arayüz/CSS uyarlamaları, belge güncellemeleri, test koşturma ve denetim görevleri için daima `gemini-3.8-flash-medium` (`Model: "flash"`) kullanılır. Çoklu işlerde paralel 2 veya daha fazla alt ajan devreye alınır.
-2. **Tasarım / Görünüm Dili Seçimi:**
-   - Ayarlar → Görünüm alanında kullanıcının tasarım modelini seçebilmesi sağlanır:
-     - **Klasik / Magic UI (v1.4)**
-     - **Sade Dikte.AI Modeli (`design/dikte-ai.html`)**
-   - Dikte ana alanında `design/mikrofon_morph_animasyonu.html`'deki canvas ses dalgası ve morflayan mikrofon animasyonu yer alır.
-3. **Kısayol ve Sistem Tepsisi (Tray):**
+2. **Tasarım / Görünüm Dili Seçimi (belirsizleri-sor Kararı):**
+   - Varsayılan arayüz tasarım modeli **Sade Dikte.AI + Mikrofon Morph** (`design_style = "dikte_ai"` varsayılan olarak gelir; Ayarlar → Görünüm'den `"classic"` Magic UI v1.4 seçilebilir).
+   - Her iki modda da Dikte ana mikrofon alanında `design/mikrofon_morph_animasyonu.html`'deki canvas ses dalgası ve morflayan mikrofon animasyonu yer alır.
+3. **Kısayol ve Sistem Tepsisi (Tray & Ajan Kararları):**
+   - Sistem tepsisi entegrasyonu `pystray + Pillow` ile sağlanır; tepsi sağ tık menüsünde `Göster/Gizle | Durum | Çıkış` seçenekleri yer alır.
    - 1, 2 veya 3 tuşlu serbest kısayol kombinasyonu (ör. `Ctrl+Shift+D`, `Alt+Space`, `F8`).
    - Sistem tepsisinde arka planda çalışırken dahi kısayol dinlenir ve dikte yapılır.
    - Windows ile otomatik başlatıldığında pencere açılmaz, doğrudan tepside başlar.
-4. **Hugging Face Model Ekleyebilme:**
-   - Modeller sayfasına (hem Ses hem Metin) kullanıcının harici Hugging Face repo kimliği (repo ID / model adı / GGUF linki) girerek doğrudan yeni model ekleyip indirebilmesi imkanı.
+4. **Hugging Face Model Ekleyebilme (belirsizleri-sor Kararı):**
+   - Eklenen modeller `data/custom_models.json` dosyasında kalıcı saklanır.
+   - Model kartında "Sil" dendiğinde diskteki model dosyası silinir ama kart listede kalır.
+   - Kartın "⋯" menüsünde ayrıca modeli listeden tamamen kaldıran "Listeden Kaldır" seçeneği bulunur.
+   - Modeller sayfasına (hem Ses hem Metin) kullanıcının harici Hugging Face repo kimliği (repo ID / model adı / GGUF linki) girerek doğrudan yeni model ekleyip indirebilmesi imkanı sağlanır.
 5. **Otomatik Kaydetme & Geri Dönüş (Rollback):**
    - Ayarlar sayfasında herhangi bir girdi (kısayol, dil, model, tema vb.) değiştiği anda otomatik kaydetme.
    - Güncelleme kartında eski kararlı sürümlere tek tıkla geri dönebilme (downgrade).
@@ -43,7 +45,7 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 ## 2. Faz 3 — Tasarım, Kullanıcı Deneyimi ve Arayüz (Parti 1)
 
 ### 3.1 Yeni Logo & Görev Çubuğu & Kısayol Entegrasyonu
-- [ ] Kullanıcının gönderdiği ses dalgalı logoyu `assets/icon.ico` (16x16 ... 256x256) ve `dikte/ui/assets/icon.png` olarak işle.
+- [ ] Kaynak olarak `design/download` (ses dalgalı mavi ikon) görselini al, `Pillow` ile `assets/icon.ico` (16x16 ... 256x256) ve `dikte/ui/assets/icon.png` olarak işle.
 - [ ] Windows görev çubuğunda Python logosu yerine uygulamanın kendi logosunun görünmesi için `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID` tanıt.
 - [ ] Masaüstündeki `Dikte.lnk` ve Inno Setup kurucu simgelerini yeni logo ile güncelle.
 
@@ -59,8 +61,8 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 - [ ] Modeller sayfasındaki *"Konuşmayı yazıya çeviren yerel Whisper modellerini yönet."* alt yazısı silinecek.
 
 ### 3.4 Görünüm / Tasarım Dili Seçimi & Mikrofon Morfizmi
-- [ ] Ayarlar → Görünüm altına "Arayüz Tasarım Modeli" seçimi ekle (`Klasik v1.4` vs `Sade Dikte.AI`).
-- [ ] Dikte sayfasına `design/mikrofon_morph_animasyonu.html`'deki ses dalgası (wave canvas) ve durum geçişli (idle/recording/processing) buton morfizmini entegre et.
+- [ ] Ayarlar → Görünüm altına "Arayüz Tasarım Modeli" seçimi ekle: varsayılan **Sade Dikte.AI** (`design_style = "dikte_ai"`), alternatif **Klasik Magic UI v1.4** (`design_style = "classic"`).
+- [ ] Dikte sayfasına her iki modda da çalışacak şekilde `design/mikrofon_morph_animasyonu.html`'deki ses dalgası (wave canvas) ve durum geçişli (idle/recording/processing) buton morfizmini entegre et.
 
 ### 3.5 Ayarlar Menüsünde Anında / Otomatik Kaydetme
 - [ ] Ayarlar sayfasındaki tüm kontrollere `input`/`change` dinleyicileri bağlanarak anında `save_settings` çalıştırılsın.
@@ -74,14 +76,17 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 - [ ] Ayarlar sayfasında tuş yakalama (Key Recorder) kutusu yapılacak.
 
 ### 4.2 Sistem Tepsisi (System Tray) ve Gizli Başlatma
-- [ ] `pystray` / Windows Shell bildirim alanı entegrasyonu.
+- [ ] `pystray + Pillow` ile Windows bildirim alanı (System Tray) entegrasyonu.
+- [ ] Tepsi sağ tık menüsünde `Göster/Gizle | Durum | Çıkış` seçenekleri.
 - [ ] Windows açılışında başlatıldığında doğrudan sistem tepsisine küçültülmüş başlama (`--minimized` / `--tray`).
 - [ ] Pencere `X` ile kapatıldığında uygulamadan çıkmak yerine sistem tepsisine gizlenme.
 - [ ] Sistem tepsisindeyken dahi global kısayolun çalışması ve metni yapıştırması.
 
 ### 4.3 Hugging Face'ten Özel Model Ekleme
 - [ ] Modeller sayfasına "Özel Model Ekle" (Hugging Face) butonu ve modalı.
+- [ ] Eklenen özel modellerin `data/custom_models.json` dosyasında kalıcı olarak saklanması.
 - [ ] Ses modelleri için uyumlu Whisper HF repo ID'si, metin modelleri için GGUF URL/HF repo ID'si girilip listeye dinamik eklenebilmesi.
+- [ ] Model kartında "Sil" tıklandığında diskteki ağırlık dosyalarının silinmesi ancak kartın listede kalması; "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği sunulması.
 
 ### 4.4 Kalan Arayüz / Motor Eksikleri
 - [ ] Karşılama sihirbazı (5 ekran - `#sayfa-kurulum`).
@@ -100,10 +105,11 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 - [ ] Ayarlar → Güncelleme alanından istenen önceki sürüme tek tıkla geri dönüş (downgrade) butonu.
 - [ ] Güncellemenin indirilip sessizce Inno Setup ile uygulanması ve uygulamanın yeniden başlatılması.
 
-### 5.2 Sanal Makinede Temiz Kurulum ve Dağıtım Doğrulaması
-- [ ] Sentetik test sesi (`tests/data/test.wav` ve `test.txt`) ile selftest'in yeşile çekilmesi.
-- [ ] Kurucu exe'nin temiz Windows VM ortamında test edilmesi (UAC, kurulum, kısayol, kaldırma, modelleri koruma).
-- [ ] GitHub Releases üzerine ilk resmi v1.6.0 sürümünün yayınlanması.
+### 5.2 Sanal Makinede Temiz Kurulum ve Dağıtım Doğrulaması (İş Bölümü)
+- [ ] Sentetik test sesi (`tests/data/test.wav` ve `test.txt`) üretilerek `python -m dikte --selftest`'in yeşile çekilmesi.
+- [ ] `build.ps1` çalıştırılarak güncel `installer\Output\Dikte-Setup-1.6.0.exe` paketinin derlenmesi ve paketli açılış testi yapılması.
+- [ ] Kurucu exe'nin temiz Windows VM ortamında test edilmesi (UAC, kurulum, kısayol, kaldırma, modelleri koruma) — *Kullanıcı tarafından yapılacak*.
+- [ ] GitHub Releases üzerine ilk resmi v1.6.0 sürümünün yayınlanması — *Kullanıcı tarafından yapılacak*.
 
 ---
 

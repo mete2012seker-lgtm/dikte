@@ -7,6 +7,8 @@ pynput>=1.7.6,<2
 pyperclip>=1.8.2,<2
 nvidia-ml-py>=12.535
 psutil>=5.9,<8
+Pillow>=10.0
+pystray>=0.19
 
 # GPU çalışma kütüphaneleri (Windows). CPU modunda kullanılmaz.
 nvidia-cublas-cu12>=12.4,<13; sys_platform == "win32"

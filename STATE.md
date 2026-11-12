@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 2 tamamlandı (2026-11-11), Faz 3 hazırlığı ve plan senkronu yapıldı (2026-11-12):** 263 pytest (+1 skip) geçiyor. 2026-11-12 kararları doğrultusunda `uygulanacak plan.md`, `calisma-duzeni.md` ve `AGENTS.md` güncellendi. Yeni aşamada kodlama ayrı oturumda; ana model sadece zor görevlerde çalışacak, diğer işler `/swarm` ve `gemini-3.8-flash-medium` alt ajanlarıyla yürütülecek. Sıradaki adım: `uygulanacak plan.md` Faz 3 (yeni logo, arayüz sadeleştirme, mikrofon animasyonu, tasarım dili seçimi, serbest kısayol, sistem tepsisi ve HF model ekleme).
+**Faz 2 tamamlandı (2026-11-11), Faz 3-5 belirsizleri-sor kararları onaylandı (2026-11-12):** 263 pytest (+1 skip) geçiyor. Varsayılan tasarım `Sade Dikte.AI + Mikrofon Morph`, HF özel modeller `custom_models.json`, tepsi `pystray+Pillow`, logo `design/download` ve Faz 5.2 otomatik test/derleme kapsamı onaylandı. Pillow ve pystray bağımlılıkları kuruldu. Sıradaki adım: Faz 3 (Tasarım, Yeni Logo, Sidebar toggle, Sadeleştirme, Mikrofon animasyonu, Tasarım dili ve Ayarlar otomatik kayıt).
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
@@ -103,6 +103,11 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - 2026-11-11: **Alt ajan (sub-agent) kuralı:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılacak. Kolay ama uzun kodlama görevlerinde ve test koşumlarında kullanılacak; aşama bitiminde modellerin yaptıklarını/yapmadıklarını denetleyip ana ajana raporlayacak.
 - 2026-11-11: **Faz 2 tamamlandı:** 11 veri kaybı ve çökme maddesi TDD ile tek seferde uygulandı ve `Model: "flash"` alt ajanıyla denetlendi (**263 passed, 1 skipped**).
 - 2026-11-11: **Masaüstü kısayolu ve sistem tepsisi:** Masaüstüne `Dikte.lnk` kısayolu eklendi; uygulamanın sistem tepsisine (System Tray) küçültülmesi ve pencere kapalıyken arka planda çalışması Faz 3.2 kapsamına alındı.
+- 2026-11-12: **belirsizleri-sor Nihai Kararları:**
+  - **Varsayılan Tasarım:** Varsayılan arayüz modeli `Sade Dikte.AI + Mikrofon Morph` (`design_style = "dikte_ai"` varsayılan; Ayarlar → Görünüm'den `"classic"` Magic UI v1.4 seçilebilir; her iki modda da mikrofon alanında `design/mikrofon_morph_animasyonu.html` canvas dalga + morphing mikrofon yer alır).
+  - **Hugging Face Özel Modeller:** `data/custom_models.json` dosyasında kalıcı saklanır; model kartında "Sil" denildiğinde diskteki model dosyası silinir ama kart listede kalır, kartın "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği bulunur.
+  - **Faz 5.2 Kapsamı ve Dağıtım:** Bu oturumda tüm kodlar yazılıp `build.ps1` ile güncel `Dikte-Setup-1.6.0.exe` derlenecek; sentetik test sesi (`tests/data/test.wav` + `test.txt`) ile selftest ve paketli açılış testi otomatik doğrulanacak; gerçek VM testi ve GitHub Release yüklemesi kullanıcıya bırakılacak.
+  - **Ajan Kararları (İkon & Tepsi):** Logo kaynağı `design/download` (ses dalgalı mavi ikon) alınıp `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
 
 ## Test durumu
 | Test | Sonuç |
