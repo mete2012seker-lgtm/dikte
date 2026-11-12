@@ -125,6 +125,15 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - Alt ajan (sub-agent) kuralı: Alt ajanlar her zaman `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve çeşitli test koşumlarında bu alt ajan kullanılır. Aşama sonunda tüm işler bitince yine aynı alt ajan çağrılarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir ve ana ajana raporlanır.
   - Faz 2 tamamlandı (2026-11-11): 11 veri kaybı ve çökme maddesi TDD ile uygulandı (**263 passed, 1 skipped**) ve `Model: "flash"` alt ajanıyla denetlendi.
   - Masaüstü kısayolu ve sistem tepsisi (2026-11-11): Masaüstüne `Dikte.lnk` kısayolu eklendi; uygulamanın sistem tepsisine (System Tray) küçültülmesi ve pencere kapalıyken arka planda çalışmaya devam etmesi Faz 3.2 kapsamına alındı.
+- **2026-11-12 kararları (kullanıcı onaylı):**
+  - **Model/Ajan İş Bölümü:** Ana model yalnızca en zor mimari kararlar, kritik kilitler/algoritmalar ve üst düzey koordinasyon için çalışır; kolay ama uzun kodlar ve doküman özetleme/değiştirme işleri daima `/swarm` veya alt ajanlar (`gemini-3.8-flash-medium` / `Model: "flash"`) ile yürütülür. Gerekli durumlarda çoklu alt ajan aynı anda paralel çağrılır.
+  - **Tasarım Dili Seçimi:** Ayarlar → Görünüm'de kullanıcının Klasik Magic UI (v1.4) veya Sade Dikte.AI (`design/dikte-ai.html`) tasarım dilini seçebilmesi sağlanır.
+  - **Animasyon & Morfizm:** Dikte alanına `design/mikrofon_morph_animasyonu.html`'deki ses dalgası ve morflayan mikrofon animasyonu entegre edilir.
+  - **Serbest Kısayol:** Bas-konuş için 1, 2 veya 3 tuşlu serbest kombinasyon (ör. `Ctrl+Shift+D`, `Alt+Space`) atanabilir; uygulama sistem tepsisindeyken de global olarak çalışır.
+  - **Sistem Tepsisi & Gizli Başlangıç:** Windows ile başladığında sessizce tepside başlar; `X` butonuna basıldığında tepsiye küçülür.
+  - **Hugging Face Desteği:** Modeller sayfasına hem ses hem metin için harici Hugging Face modeli ekleme/indirme alanı eklenir.
+  - **Ayarları Otomatik Kaydetme & Rollback:** Ayarlar menüsündeki tüm değişiklikler anında kaydedilir; Güncelleme kartında eski sürümlere tek tıkla geri dönülebilir.
+
 
 ## Öneriler (onaylanmadı)
 - Metin modelleri: LM Studio/Ollama yerel sunucusuna bağlanmak, uygulama içi GGUF'a alternatif olarak değerlendirildi; 2026-11-01'de seçilmedi.

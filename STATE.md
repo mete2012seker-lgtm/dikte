@@ -3,7 +3,7 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 2 (veri kaybı ve çökme hataları — 11 madde) tamamlandı (2026-11-11):** pano hatasında yapıştırma iptali, bloklamayan kısayol kuyruğu, tekil Whisper yükleme kilidi (`_engine_lock`), `history_open` geçmiş kimliği senkronu, yarışsız GGUF indirme jetonu, GGUF sihirli bayt + Whisper snapshot bütünlük doğrulaması, `finish_reason == "length"` ve ≥3 kelime halüsinasyon/eksiltme koruması, tek satırlı diktelerde `strip_response` koruması, `audio.stop()` hata sarmalama, `SettingsStore`/`HistoryStore`/`SecretStore` için `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve `shutdown()` içinde thread `join` + `kayit-*.wav` temizliği uygulandı ve `Model: "flash"` alt ajanıyla denetlendi. Masaüstüne `Dikte.lnk` kısayolu eklendi. **263 pytest + 1 skip geçiyor.** Sıradaki aşama: **Faz 3 (karşılama sihirbazı, sistem tepsisi/arka plan, ürün eksikleri, güncelleme/kaldırma iyileştirmeleri)**. Ayrıntı: `uygulanacak plan.md`.
+**Faz 2 tamamlandı (2026-11-11), Faz 3 hazırlığı ve plan senkronu yapıldı (2026-11-12):** 263 pytest (+1 skip) geçiyor. 2026-11-12 kararları doğrultusunda `uygulanacak plan.md`, `calisma-duzeni.md` ve `AGENTS.md` güncellendi. Yeni aşamada kodlama ayrı oturumda; ana model sadece zor görevlerde çalışacak, diğer işler `/swarm` ve `gemini-3.8-flash-medium` alt ajanlarıyla yürütülecek. Sıradaki adım: `uygulanacak plan.md` Faz 3 (yeni logo, arayüz sadeleştirme, mikrofon animasyonu, tasarım dili seçimi, serbest kısayol, sistem tepsisi ve HF model ekleme).
 
 ## Biten (kanıtla)
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.

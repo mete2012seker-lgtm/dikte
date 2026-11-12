@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mikrofon Morph Animasyonu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #050811;
+      --bg-glow: #0c142a;
+      --morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --morph-duration: 0.85s;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e2e8f0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 48%, var(--bg-glow) 0%, #070b17 45%, var(--bg-deep) 85%);
+    }
+
+    /* Responsive stage that keeps exact proportions from the reference image */
+    .stage {
+      position: relative;
+      width: min(920px, 96vw);
+      height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Canvas for the soundwaves (idle separated <-> active merged real-time) */
+    #waveCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Concentric outer halo rings behind the button */
+    .halo-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 280px;
+      height: 280px;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: none;
+      z-index: 2;
+      transition:
+        transform var(--morph-duration) var(--morph-ease),
+        opacity var(--morph-duration) var(--morph-ease);
+    }
+
+    .scene.is-recording .halo-wrapper {
+      transform: translate(-50%, calc(-50% + 132px)) scale(0.32);
+      opacity: 0;
+    }
+
+    .halo-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .halo-ring--outer {
+      width: 264px;
+      height: 264px;
+      border: 1px solid rgba(100, 140, 255, 0.10);
+      box-shadow: 0 0 40px rgba(48, 86, 211, 0.08);
+    }
+
+    .halo-ring--inner {
+      width: 208px;
+      height: 208px;
+      border: 1px solid rgba(110, 150, 255, 0.18);
+      box-shadow: 0 0 30px rgba(64, 108, 255, 0.12);
+    }
+
+    /* Main Morphing Microphone / Stop Button */
+    .mic-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 156px;
+      height: 156px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(132, 168, 255, 0.88);
+      background: radial-gradient(circle at 50% 42%, #243b85 0%, #13204a 58%, #0a1026 100%);
+      box-shadow:
+        0 0 38px rgba(74, 118, 255, 0.28),
+        0 0 14px rgba(120, 160, 255, 0.22),
+        inset 0 0 26px rgba(100, 145, 255, 0.18);
+      transform: translate(-50%, -50%) scale(1);
+      cursor: pointer;
+      outline: none;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        transform var(--morph-duration) var(--morph-ease),
+        border-color var(--morph-duration) var(--morph-ease),
+        background var(--morph-duration) var(--morph-ease),
+        box-shadow var(--morph-duration) var(--morph-ease);
+    }
+
+    .mic-btn:hover {
+      border-color: rgba(162, 190, 255, 1);
+      box-shadow:
+        0 0 48px rgba(84, 130, 255, 0.42),
+        0 0 18px rgba(140, 175, 255, 0.3),
+        inset 0 0 30px rgba(120, 165, 255, 0.25);
+    }
+
+    .mic-btn:active {
+      transform: translate(-50%, -50%) scale(0.96);
+    }
+
+    /* Morphed Recording State: slides down, shrinks, becomes dark circle with red square */
+    .scene.is-recording .mic-btn {
+      transform: translate(-50%, calc(-50% + 132px)) scale(0.41);
+      border-color: rgba(239, 68, 68, 0.65);
+      background: radial-gradient(circle at 50% 45%, #2a121b 0%, #170a12 65%, #0c070c 100%);
+      box-shadow:
+        0 0 42px rgba(239, 68, 68, 0.34),
+        0 0 16px rgba(239, 68, 68, 0.22),
+        inset 0 0 24px rgba(239, 68, 68, 0.16);
+    }
+
+    .scene.is-recording .mic-btn:hover {
+      border-color: rgba(248, 113, 113, 0.95);
+      box-shadow:
+        0 0 54px rgba(239, 68, 68, 0.5),
+        0 0 20px rgba(248, 113, 113, 0.32),
+        inset 0 0 28px rgba(239, 68, 68, 0.24);
+    }
+
+    .scene.is-recording .mic-btn:active {
+      transform: translate(-50%, calc(-50% + 132px)) scale(0.38);
+    }
+
+    /* Inner Icon Morph Container */
+    .icon-morph {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    /* Microphone SVG */
+    .mic-svg {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      color: #c8d6f4;
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+      transition:
+        opacity calc(var(--morph-duration) * 0.55) var(--morph-ease),
+        transform var(--morph-duration) var(--morph-ease);
+    }
+
+    .scene.is-recording .mic-svg {
+      opacity: 0;
+      transform: scale(0.35) rotate(-18deg);
+    }
+
+    /* Red Stop Square (scales inversely to button so it stays crisp and proportional) */
+    .stop-square {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ff4d5a, #dc2626);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.75);
+      opacity: 0;
+      transform: scale(0.25) rotate(18deg);
+      transition:
+        opacity calc(var(--morph-duration) * 0.65) var(--morph-ease),
+        transform var(--morph-duration) var(--morph-ease),
+        border-radius var(--morph-duration) var(--morph-ease);
+    }
+
+    .scene.is-recording .stop-square {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+
+    /* Subtle bottom control bar */
+    .controls-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .pill-btn {
+      appearance: none;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.55);
+      color: #cbd5e1;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .pill-btn:hover {
+      background: rgba(51, 65, 85, 0.7);
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #f8fafc;
+    }
+
+    .pill-btn.is-live {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: background 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .pill-btn.is-live .status-dot {
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .hint-text {
+      padding: 0 6px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .stage {
+        height: 360px;
+      }
+      .mic-btn {
+        width: 124px;
+        height: 124px;
+      }
+      .halo-ring--outer {
+        width: 210px;
+        height: 210px;
+      }
+      .halo-ring--inner {
+        width: 166px;
+        height: 166px;
+      }
+      .scene.is-recording .mic-btn {
+        transform: translate(-50%, calc(-50% + 114px)) scale(0.45);
+      }
+      .scene.is-recording .halo-wrapper {
+        transform: translate(-50%, calc(-50% + 114px)) scale(0.35);
+      }
+      .controls-bar {
+        bottom: 16px;
+        max-width: 92vw;
+      }
+      .hint-text {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="scene" id="scene">
+    <div class="stage" id="stage">
+      <canvas id="waveCanvas"></canvas>
+
+      <div class="halo-wrapper" aria-hidden="true">
+        <div class="halo-ring halo-ring--outer"></div>
+        <div class="halo-ring halo-ring--inner"></div>
+      </div>
+
+      <button
+        class="mic-btn"
+        id="micBtn"
+        type="button"
+        aria-label="Ses kaydını başlat"
+        aria-pressed="false"
+      >
+        <span class="icon-morph">
+          <svg class="mic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2.5" width="6" height="11" rx="3" />
+            <path d="M5 10.5a7 7 0 0 0 14 0" />
+            <line x1="12" y1="17.5" x2="12" y2="21" />
+            <line x1="8.5" y1="21" x2="15.5" y2="21" />
+          </svg>
+          <span class="stop-square"></span>
+        </span>
+      </button>
+    </div>
+
+    <div class="controls-bar">
+      <button class="pill-btn" id="liveMicToggle" type="button">
+        <span class="status-dot"></span>
+        <span id="liveMicLabel">Gerçek Mikrofon: Kapalı</span>
+      </button>
+      <span class="hint-text" id="hintText">Başlatmak için mikrofona tıklayın (Boşluk)</span>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const scene = document.getElementById('scene');
+      const stage = document.getElementById('stage');
+      const micBtn = document.getElementById('micBtn');
+      const canvas = document.getElementById('waveCanvas');
+      const ctx = canvas.getContext('2d');
+      const liveMicToggle = document.getElementById('liveMicToggle');
+      const liveMicLabel = document.getElementById('liveMicLabel');
+      const hintText = document.getElementById('hintText');
+
+      let isRecording = false;
+      let morphValue = 0; // current eased 0..1
+      let morphFrom = 0;
+      let morphTo = 0;
+      let morphStartTime = 0;
+      const MORPH_DURATION_MS = 850;
+
+      // Web Audio API state for optional real-time microphone input
+      let audioCtx = null;
+      let analyser = null;
+      let micStream = null;
+      let freqData = null;
+      let useLiveMic = false;
+
+      // 24 bars on the left + 24 bars on the right = 48 unified bars
+      const BARS_PER_SIDE = 24;
+      const TOTAL_BARS = BARS_PER_SIDE * 2;
+
+      // Normalized idle profile matching the uploaded image silhouette (0..1)
+      const leftProfile = [
+        0.07, 0.08, 0.08, 0.11, 0.15, 0.12, 0.20, 0.25,
+        0.18, 0.30, 0.38, 0.44, 0.32, 0.56, 0.68, 0.50,
+        0.74, 0.88, 0.62, 0.94, 0.82, 0.72, 0.58, 0.48
+      ];
+      // Right side is mirrored with subtle organic variation like the reference image
+      const rightProfile = [
+        0.52, 0.64, 0.78, 0.88, 0.95, 0.68, 0.82, 0.72,
+        0.54, 0.62, 0.44, 0.36, 0.48, 0.34, 0.26, 0.22,
+        0.28, 0.18, 0.14, 0.12, 0.09, 0.08, 0.08, 0.06
+      ];
+
+      const idleHeights = [...leftProfile, ...rightProfile];
+      const currentHeights = idleHeights.map((h) => h * 64);
+
+      function resizeCanvas() {
+        const rect = stage.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // Exact cubic-bezier(0.22, 1, 0.36, 1) matching CSS --morph-ease so button and waves move in 100% lockstep
+      function sampleCurveX(t, x1, x2) {
+        return ((1 - 3 * x2 + 3 * x1) * t * t * t) + ((3 * x2 - 6 * x1) * t * t) + (3 * x1 * t);
+      }
+      function sampleCurveY(t, y1, y2) {
+        return ((1 - 3 * y2 + 3 * y1) * t * t * t) + ((3 * y2 - 6 * y1) * t * t) + (3 * y1 * t);
+      }
+      function sampleCurveDerivativeX(t, x1, x2) {
+        return (3 * (1 - 3 * x2 + 3 * x1) * t * t) + (2 * (3 * x2 - 6 * x1) * t) + (3 * x1);
+      }
+      function easeMorph(x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        const x1 = 0.22, y1 = 1, x2 = 0.36, y2 = 1;
+        let t = x;
+        for (let i = 0; i < 6; i++) {
+          const err = sampleCurveX(t, x1, x2) - x;
+          const d = sampleCurveDerivativeX(t, x1, x2);
+          if (Math.abs(err) < 1e-5 || Math.abs(d) < 1e-6) break;
+          t -= err / d;
+        }
+        return sampleCurveY(Math.max(0, Math.min(1, t)), y1, y2);
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      async function enableLiveMic() {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            liveMicLabel.textContent = 'Tarayıcı Mikrofonu Desteklemiyor';
+            return false;
+          }
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+          const source = audioCtx.createMediaStreamSource(micStream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 128;
+          analyser.smoothingTimeConstant = 0.78;
+          source.connect(analyser);
+          freqData = new Uint8Array(analyser.frequencyBinCount);
+          useLiveMic = true;
+          liveMicToggle.classList.add('is-live');
+          liveMicLabel.textContent = 'Gerçek Mikrofon: Açık';
+          return true;
+        } catch (err) {
+          useLiveMic = false;
+          liveMicToggle.classList.remove('is-live');
+          liveMicLabel.textContent = 'Mikrofon İzni Yok (Simülasyon)';
+          return false;
+        }
+      }
+
+      function disableLiveMic() {
+        useLiveMic = false;
+        if (micStream) {
+          micStream.getTracks().forEach((t) => t.stop());
+          micStream = null;
+        }
+        if (audioCtx) {
+          audioCtx.close().catch(() => {});
+          audioCtx = null;
+        }
+        analyser = null;
+        freqData = null;
+        liveMicToggle.classList.remove('is-live');
+        liveMicLabel.textContent = 'Gerçek Mikrofon: Kapalı';
+      }
+
+      liveMicToggle.addEventListener('click', async () => {
+        if (useLiveMic) {
+          disableLiveMic();
+        } else {
+          await enableLiveMic();
+        }
+      });
+
+      function toggleRecording() {
+        isRecording = !isRecording;
+        morphFrom = morphValue;
+        morphTo = isRecording ? 1 : 0;
+        morphStartTime = performance.now();
+        scene.classList.toggle('is-recording', isRecording);
+        micBtn.setAttribute('aria-pressed', String(isRecording));
+        micBtn.setAttribute(
+          'aria-label',
+          isRecording ? 'Ses kaydını durdur' : 'Ses kaydını başlat'
+        );
+        hintText.textContent = isRecording
+          ? 'Durdurmak için kırmızı kareye tıklayın (Boşluk)'
+          : 'Başlatmak için mikrofona tıklayın (Boşluk)';
+
+        if (isRecording && audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+      }
+
+      micBtn.addEventListener('click', toggleRecording);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement !== liveMicToggle) {
+          e.preventDefault();
+          toggleRecording();
+        }
+      });
+
+      function drawRoundedBar(x, centerY, width, height, alpha, glowStrength) {
+        const radius = width / 2;
+        const top = centerY - height / 2;
+
+        const grad = ctx.createLinearGradient(0, top, 0, top + height);
+        grad.addColorStop(0, `rgba(74, 108, 247, ${0.75 * alpha})`);
+        grad.addColorStop(0.5, `rgba(116, 152, 255, ${1 * alpha})`);
+        grad.addColorStop(1, `rgba(59, 89, 212, ${0.75 * alpha})`);
+
+        ctx.save();
+        ctx.fillStyle = grad;
+        ctx.shadowColor = `rgba(88, 130, 255, ${0.55 * glowStrength})`;
+        ctx.shadowBlur = 10 * glowStrength;
+
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(x - width / 2, top, width, height, radius);
+        } else {
+          ctx.rect(x - width / 2, top, width, height);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function render(now) {
+        if (morphValue !== morphTo) {
+          const elapsed = Math.max(0, now - morphStartTime);
+          const rawT = Math.min(1, elapsed / MORPH_DURATION_MS);
+          const easedT = easeMorph(rawT);
+          morphValue = lerp(morphFrom, morphTo, easedT);
+          if (rawT >= 1) morphValue = morphTo;
+        }
+
+        const m = morphValue;
+        const w = stage.clientWidth;
+        const h = stage.clientHeight;
+        const centerX = w / 2;
+        const centerY = h / 2;
+
+        // Responsive scale factor so bars fit any screen width cleanly
+        const scale = Math.min(1, w / 860);
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Read real-time mic frequencies whenever live mic is active (both idle and recording)
+        let hasLiveAudio = false;
+        if (useLiveMic && analyser && freqData) {
+          analyser.getByteFrequencyData(freqData);
+          hasLiveAudio = true;
+        }
+
+        const timeSec = now * 0.001;
+        const barWidth = lerp(3.6, 4.2, m) * Math.max(0.72, scale);
+
+        // Idle layout: 24 bars left, 24 bars right around center button
+        const idleStep = 9.8 * scale;
+        const idleInnerGap = 132 * scale;
+
+        // Merged active layout: 48 bars centered seamlessly with no gap
+        const activeStep = 9.4 * scale;
+        const activeStartX = centerX - ((TOTAL_BARS - 1) * activeStep) / 2;
+
+        for (let i = 0; i < TOTAL_BARS; i++) {
+          const isLeft = i < BARS_PER_SIDE;
+
+          // 1. Compute Idle X
+          let idleX;
+          if (isLeft) {
+            const distFromInner = (BARS_PER_SIDE - 1) - i;
+            idleX = centerX - idleInnerGap - distFromInner * idleStep;
+          } else {
+            const distFromInner = i - BARS_PER_SIDE;
+            idleX = centerX + idleInnerGap + distFromInner * idleStep;
+          }
+
+          // 2. Compute Active Merged X
+          const activeX = activeStartX + i * activeStep;
+
+          // Smooth Morph X interpolation
+          const x = lerp(idleX, activeX, m);
+
+          // 3. Compute Idle Height (smooth ambient wave even in total silence + live voice boost)
+          const sideDist = isLeft
+            ? (BARS_PER_SIDE - 1 - i) / (BARS_PER_SIDE - 1)
+            : (i - BARS_PER_SIDE) / (BARS_PER_SIDE - 1);
+          const ambientWave1 = Math.sin(timeSec * 2.4 - sideDist * 5.2);
+          const ambientWave2 = Math.cos(timeSec * 1.5 + sideDist * 3.1) * 0.5;
+          const ambientFactor = 0.82 + 0.34 * ((ambientWave1 + ambientWave2 + 1.5) / 3.0);
+          const ambientFloor = (1 - sideDist * 0.75) * (4 + 4 * Math.sin(timeSec * 2.8 - sideDist * 4.5));
+          let idleH = Math.max(4, (idleHeights[i] * 72 * ambientFactor + ambientFloor) * scale);
+          if (hasLiveAudio) {
+            const idleBin = Math.min(
+              freqData.length - 1,
+              Math.floor(sideDist * (freqData.length * 0.55))
+            );
+            const voiceVal = Math.pow(freqData[idleBin] / 255, 1.1);
+            const shapeWeight = 0.35 + idleHeights[i] * 0.65;
+            idleH = Math.max(4, idleH + voiceVal * 95 * shapeWeight * scale);
+          }
+
+          // 4. Compute Active Real-Time Soundwave Height
+          // Normalized distance from center (0 at middle, 1 at outer edges)
+          const normCenter = Math.abs(i - (TOTAL_BARS - 1) / 2) / ((TOTAL_BARS - 1) / 2);
+          const centerEnvelope = Math.pow(1 - normCenter * 0.78, 1.35);
+
+          let activeH;
+          if (hasLiveAudio) {
+            // Map symmetric frequency bins from center outward + gentle ambient floor in silence
+            const binIndex = Math.min(
+              freqData.length - 1,
+              Math.floor(normCenter * (freqData.length * 0.65))
+            );
+            const rawVal = freqData[binIndex] / 255;
+            const boosted = Math.pow(rawVal, 1.15);
+            const quietWave = 0.5 + 0.5 * Math.sin(timeSec * 3.2 - normCenter * 5.0);
+            activeH = (12 + (quietWave * 18 + boosted * 135) * centerEnvelope) * scale;
+          } else {
+            // Realistic multi-harmonic voice-like real-time wave simulation
+            const wave1 = Math.sin(timeSec * 5.2 - i * 0.34);
+            const wave2 = Math.sin(timeSec * 8.7 + i * 0.52) * 0.6;
+            const wave3 = Math.cos(timeSec * 3.1 - i * 0.18) * 0.5;
+            const syllablePulse = 0.55 + 0.45 * Math.sin(timeSec * 2.6 + Math.sin(timeSec * 1.3));
+            const combined = (wave1 + wave2 + wave3 + 2.1) / 4.2;
+            activeH = (12 + combined * 118 * centerEnvelope * syllablePulse) * scale;
+          }
+
+          // Smooth Morph Height interpolation
+          const targetH = lerp(idleH, activeH, m);
+          currentHeights[i] = lerp(currentHeights[i], targetH, 0.24);
+
+          const alpha = lerp(0.88, 1.0, m);
+          const glow = lerp(0.45, 0.95, m);
+
+          drawRoundedBar(x, centerY, barWidth, Math.max(4, currentHeights[i]), alpha, glow);
+        }
+
+        requestAnimationFrame(render);
+      }
+
+      // Automatically enable live microphone on load so side waves react to voice immediately
+      enableLiveMic();
+
+      // Resume AudioContext on first user gesture if browser suspended it
+      const resumeAudioOnGesture = () => {
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+      };
+      window.addEventListener('pointerdown', resumeAudioOnGesture, { passive: true });
+      window.addEventListener('keydown', resumeAudioOnGesture, { passive: true });
+
+      requestAnimationFrame(render);
+    })();
+  </script>
+</body>
+</html>

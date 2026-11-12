@@ -248,9 +248,15 @@ python -c "import ast,pathlib,sys; [ast.parse(p.read_text(encoding='utf-8')) for
 
 ---
 
-## 9. Bu Düzenin Bu Oturumdaki Karşılığı (referans)
+## 10. Model ve Görev Bölüşümü (Ana Model vs Swarm Alt Ajanları)
 
-- Proje: `C:\Users\aksek\Desktop\dikte projesi` (VoxNote AI / Dikte)
-- 4 alt ajan: backend, veri, arayüz, paketleme — hepsi salt okunur
-- Çıktı: `Dikte-Denetim-Raporu.md` (8 blocker, ~16 yüksek, ~22 orta bulgu)
-- Süre: keşif + doküman ~10 dk, paralel denetim ~15 dk, sentez + rapor ~15 dk
+2026-11-12 kuralı uyarınca:
+1. **Ana Model Rolü:** Ana model sadece en zor mimari kararlar, karmaşık kilitleme/algoritmalar, kritik köprü protokolleri ve genel koordinatörlük görevlerinde çalışır. Kolay/uzun kodları kendisi yazmaz, uzun belgeleri tek başına özetleyip vakit kaybetmez.
+2. **Alt Ajanlar (`/swarm` & Sub-agents):**
+   - Kolay ama uzun kodlama görevlerinde,
+   - CSS/HTML arayüz uyarlamalarında (`design/dikte-ai.html`, `mikrofon_morph_animasyonu.html`),
+   - Uzun belgelerin incelenmesi, özetlenmesi ve güncellenmesinde,
+   - Test koşturma, hata denetimi ve doğrulama süreçlerinde
+   **daima `gemini-3.8-flash-medium` (`Model: "flash"`)** ile çalıştırılır.
+3. **Paralel Çalışma (`/swarm`):** Aynı anda yapılabilecek bağımsız işlerde (örneğin bir ajan arayüz animasyonunu entegre ederken diğerinin kısayol tuş dinleyicisini yazması gibi) 2 veya daha fazla alt ajan aynı anda çağrılarak işler paralel bitirilir.
+
