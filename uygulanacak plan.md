@@ -11,10 +11,13 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 
 | Konu | Durum | Kanıt |
 | :--- | :--- | :--- |
-| Testler | **263 passed, 1 skipped** (42.5 sn) | `pytest -q` |
-| Faz 1 (Yayın) | Tamamlandı | `config.APP_VERSION = "1.6.0"`, sha256 akışı, Inno kurucu `Dikte-Setup-1.6.0.exe` (172 MB) |
+| Testler | **303 passed, 1 skipped** (40.68 sn) | `pytest -q` |
+| Faz 1 (Yayın) | Tamamlandı | `config.APP_VERSION = "1.6.0"`, sha256 akışı, Inno kurucu `Dikte-Setup-1.6.0.exe` |
 | Faz 2 (11 Hata) | Tamamlandı | Pano koruması, GGUF/Whisper bütünlük kontrolü, RLock/fsync, yetim dosya temizliği |
-| Çalışma Ağacı | Temiz | `git status` clean |
+| Faz 3 (Tasarım/UX) | Tamamlandı | Yeni logo, sade Dikte.AI ve klasik tasarım dili, mikrofon morfizmi, sidebar aç/kapa, anında ayar kaydı |
+| Faz 4 (Sistem/HF) | Tamamlandı | 1-3 tuşlu serbest kısayol, sistem tepsisi (pystray), Hugging Face model modalı ve "⋯" menüsü, Karşılama Sihirbazı |
+| Faz 5 (Güncelleme/Kurucu) | Tamamlandı | Rollback desteği, sentetik test sesi (`test.wav`), güncel Inno kurucu (177.4 MB, SHA256 güncel) |
+| Çalışma Ağacı | Temiz | `design/v2/` temiz, tüm testler yeşil |
 
 ---
 
@@ -45,69 +48,69 @@ Bu dosya **uygulama yol haritası**dır. Kodlama ayrı oturumda TDD ve Swarm kur
 ## 2. Faz 3 — Tasarım, Kullanıcı Deneyimi ve Arayüz (Parti 1)
 
 ### 3.1 Yeni Logo & Görev Çubuğu & Kısayol Entegrasyonu
-- [ ] Kaynak olarak `design/download` (ses dalgalı mavi ikon) görselini al, `Pillow` ile `assets/icon.ico` (16x16 ... 256x256) ve `dikte/ui/assets/icon.png` olarak işle.
-- [ ] Windows görev çubuğunda Python logosu yerine uygulamanın kendi logosunun görünmesi için `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID` tanıt.
-- [ ] Masaüstündeki `Dikte.lnk` ve Inno Setup kurucu simgelerini yeni logo ile güncelle.
+- [x] Kaynak olarak `design/download` (ses dalgalı mavi ikon) görselini al, `Pillow` ile `assets/icon.ico` (16x16 ... 256x256) ve `dikte/ui/assets/icon.png` olarak işle.
+- [x] Windows görev çubuğunda Python logosu yerine uygulamanın kendi logosunun görünmesi için `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID` tanıt.
+- [x] Masaüstündeki `Dikte.lnk` ve Inno Setup kurucu simgelerini yeni logo ile güncelle.
 
 ### 3.2 Yan Menü (Sidebar) Katlama / Açma Özelliği
-- [ ] Sol üstteki **VoxNote AI logosuna tıklandığında** yan menü (Dikte, Geçmiş, Modeller, Ayarlar) daralsın/açılsın (collapse/expand).
-- [ ] Kapatıldığında ana çalışma alanı genişlesin; logoya tekrar tıklandığında menü geri gelsin.
+- [x] Sol üstteki **VoxNote AI logosuna tıklandığında** yan menü (Dikte, Geçmiş, Modeller, Ayarlar) daralsın/açılsın (collapse/expand).
+- [x] Kapatıldığında ana çalışma alanı genişlesin; logoya tekrar tıklandığında menü geri gelsin.
 
 ### 3.3 Arayüz Metin Temizliği (Minimalist Görünüm)
-- [ ] Sol üstteki *"Daha iyi fikirler, daha hızlı."* sloganı kaldırılacak.
-- [ ] Sol alttaki *"Yerel sistem hazır"* rozeti ve yazısı tamamen kaldırılacak.
-- [ ] Dikte sayfası başlığı yalnızca **"Dikte"** yapılacak; altındaki *"Konuşun, yapay zeka sizin için yazsın."* cümlesi silinecek.
-- [ ] Dikte Geçmişi sayfasındaki *"Kaydedilen dikte metinlerini görüntüle ve yönet."* alt yazısı silinecek.
-- [ ] Modeller sayfasındaki *"Konuşmayı yazıya çeviren yerel Whisper modellerini yönet."* alt yazısı silinecek.
+- [x] Sol üstteki *"Daha iyi fikirler, daha hızlı."* sloganı kaldırılacak.
+- [x] Sol alttaki *"Yerel sistem hazır"* rozeti ve yazısı tamamen kaldırılacak.
+- [x] Dikte sayfası başlığı yalnızca **"Dikte"** yapılacak; altındaki *"Konuşun, yapay zeka sizin için yazsın."* cümlesi silinecek.
+- [x] Dikte Geçmişi sayfasındaki *"Kaydedilen dikte metinlerini görüntüle ve yönet."* alt yazısı silinecek.
+- [x] Modeller sayfasındaki *"Konuşmayı yazıya çeviren yerel Whisper modellerini yönet."* alt yazısı silinecek.
 
 ### 3.4 Görünüm / Tasarım Dili Seçimi & Mikrofon Morfizmi
-- [ ] Ayarlar → Görünüm altına "Arayüz Tasarım Modeli" seçimi ekle: varsayılan **Sade Dikte.AI** (`design_style = "dikte_ai"`), alternatif **Klasik Magic UI v1.4** (`design_style = "classic"`).
-- [ ] Dikte sayfasına her iki modda da çalışacak şekilde `design/mikrofon_morph_animasyonu.html`'deki ses dalgası (wave canvas) ve durum geçişli (idle/recording/processing) buton morfizmini entegre et.
+- [x] Ayarlar → Görünüm altına "Arayüz Tasarım Modeli" seçimi ekle: varsayılan **Sade Dikte.AI** (`design_style = "dikte_ai"`), alternatif **Klasik Magic UI v1.4** (`design_style = "classic"`).
+- [x] Dikte sayfasına her iki modda da çalışacak şekilde `design/mikrofon_morph_animasyonu.html`'deki ses dalgası (wave canvas) ve durum geçişli (idle/recording/processing) buton morfizmini entegre et.
 
 ### 3.5 Ayarlar Menüsünde Anında / Otomatik Kaydetme
-- [ ] Ayarlar sayfasındaki tüm kontrollere `input`/`change` dinleyicileri bağlanarak anında `save_settings` çalıştırılsın.
+- [x] Ayarlar sayfasındaki tüm kontrollere `input`/`change` dinleyicileri bağlanarak anında `save_settings` çalıştırılsın.
 
 ---
 
 ## 3. Faz 4 — Sistem Entegrasyonu, Kısayollar ve Hugging Face (Parti 2)
 
 ### 4.1 Serbest Çoklu Tuş Kısayol Sistemi (1, 2 veya 3 Tuş)
-- [ ] Tek tuş sınırlaması kaldırılacak; kullanıcının klavyeden basacağı herhangi 1, 2 veya 3 tuş (`Ctrl + Shift + D`, `Alt + Space` vb.) pynput dinleyicisine kaydedilecek.
-- [ ] Ayarlar sayfasında tuş yakalama (Key Recorder) kutusu yapılacak.
+- [x] Tek tuş sınırlaması kaldırılacak; kullanıcının klavyeden basacağı herhangi 1, 2 veya 3 tuş (`Ctrl + Shift + D`, `Alt + Space` vb.) pynput dinleyicisine kaydedilecek.
+- [x] Ayarlar sayfasında tuş yakalama (Key Recorder) kutusu yapılacak.
 
 ### 4.2 Sistem Tepsisi (System Tray) ve Gizli Başlatma
-- [ ] `pystray + Pillow` ile Windows bildirim alanı (System Tray) entegrasyonu.
-- [ ] Tepsi sağ tık menüsünde `Göster/Gizle | Durum | Çıkış` seçenekleri.
-- [ ] Windows açılışında başlatıldığında doğrudan sistem tepsisine küçültülmüş başlama (`--minimized` / `--tray`).
-- [ ] Pencere `X` ile kapatıldığında uygulamadan çıkmak yerine sistem tepsisine gizlenme.
-- [ ] Sistem tepsisindeyken dahi global kısayolun çalışması ve metni yapıştırması.
+- [x] `pystray + Pillow` ile Windows bildirim alanı (System Tray) entegrasyonu.
+- [x] Tepsi sağ tık menüsünde `Göster/Gizle | Durum | Çıkış` seçenekleri.
+- [x] Windows açılışında başlatıldığında doğrudan sistem tepsisine küçültülmüş başlama (`--minimized` / `--tray`).
+- [x] Pencere `X` ile kapatıldığında uygulamadan çıkmak yerine sistem tepsisine gizlenme.
+- [x] Sistem tepsisindeyken dahi global kısayolun çalışması ve metni yapıştırması.
 
 ### 4.3 Hugging Face'ten Özel Model Ekleme
-- [ ] Modeller sayfasına "Özel Model Ekle" (Hugging Face) butonu ve modalı.
-- [ ] Eklenen özel modellerin `data/custom_models.json` dosyasında kalıcı olarak saklanması.
-- [ ] Ses modelleri için uyumlu Whisper HF repo ID'si, metin modelleri için GGUF URL/HF repo ID'si girilip listeye dinamik eklenebilmesi.
-- [ ] Model kartında "Sil" tıklandığında diskteki ağırlık dosyalarının silinmesi ancak kartın listede kalması; "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği sunulması.
+- [x] Modeller sayfasına "Özel Model Ekle" (Hugging Face) butonu ve modalı.
+- [x] Eklenen özel modellerin `data/custom_models.json` dosyasında kalıcı olarak saklanması.
+- [x] Ses modelleri için uyumlu Whisper HF repo ID'si, metin modelleri için GGUF URL/HF repo ID'si girilip listeye dinamik eklenebilmesi.
+- [x] Model kartında "Sil" tıklandığında diskteki ağırlık dosyalarının silinmesi ancak kartın listede kalması; "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği sunulması.
 
 ### 4.4 Kalan Arayüz / Motor Eksikleri
-- [ ] Karşılama sihirbazı (5 ekran - `#sayfa-kurulum`).
-- [ ] Modeller sayfasında "⋯" (üç nokta) işlem menüsü.
-- [ ] Ses modeli indirmesi için "İptal" butonu.
-- [ ] Girdi dili seçimi (`input_language` = TR / Auto) Whisper motoruna bağlanacak.
-- [ ] Temizle / Çevir işlemlerinin arka plan thread'ine alınıp iptal edilebilir yapılması.
-- [ ] Transkripsiyonu Yenile işleminde otomatik çeviri varsa çevrilmiş metnin üretilmesi.
+- [x] Karşılama sihirbazı (5 ekran - `#sayfa-kurulum`).
+- [x] Modeller sayfasında "⋯" (üç nokta) işlem menüsü.
+- [x] Ses modeli indirmesi için "İptal" butonu.
+- [x] Girdi dili seçimi (`input_language` = TR / Auto) Whisper motoruna bağlanacak.
+- [x] Temizle / Çevir işlemlerinin arka plan thread'ine alınıp iptal edilebilir yapılması.
+- [x] Transkripsiyonu Yenile işleminde otomatik çeviri varsa çevrilmiş metnin üretilmesi.
 
 ---
 
 ## 4. Faz 5 — Güncelleme, Geri Dönüş (Rollback) ve Sanal Makine Testi (Parti 3)
 
 ### 5.1 Arka Planda Güncelleme ve Eski Sürüme Geri Dönüş (Rollback)
-- [ ] GitHub Releases API'den önceki sürümlerin çekilmesi.
-- [ ] Ayarlar → Güncelleme alanından istenen önceki sürüme tek tıkla geri dönüş (downgrade) butonu.
-- [ ] Güncellemenin indirilip sessizce Inno Setup ile uygulanması ve uygulamanın yeniden başlatılması.
+- [x] GitHub Releases API'den önceki sürümlerin çekilmesi.
+- [x] Ayarlar → Güncelleme alanından istenen önceki sürüme tek tıkla geri dönüş (downgrade) butonu.
+- [x] Güncellemenin indirilip sessizce Inno Setup ile uygulanması ve uygulamanın yeniden başlatılması.
 
 ### 5.2 Sanal Makinede Temiz Kurulum ve Dağıtım Doğrulaması (İş Bölümü)
-- [ ] Sentetik test sesi (`tests/data/test.wav` ve `test.txt`) üretilerek `python -m dikte --selftest`'in yeşile çekilmesi.
-- [ ] `build.ps1` çalıştırılarak güncel `installer\Output\Dikte-Setup-1.6.0.exe` paketinin derlenmesi ve paketli açılış testi yapılması.
+- [x] Sentetik test sesi (`tests/data/test.wav` ve `test.txt`) üretilerek `python -m dikte --selftest`'in yeşile çekilmesi.
+- [x] `build.ps1` çalıştırılarak güncel `installer\Output\Dikte-Setup-1.6.0.exe` paketinin derlenmesi ve paketli açılış testi yapılması.
 - [ ] Kurucu exe'nin temiz Windows VM ortamında test edilmesi (UAC, kurulum, kısayol, kaldırma, modelleri koruma) — *Kullanıcı tarafından yapılacak*.
 - [ ] GitHub Releases üzerine ilk resmi v1.6.0 sürümünün yayınlanması — *Kullanıcı tarafından yapılacak*.
 

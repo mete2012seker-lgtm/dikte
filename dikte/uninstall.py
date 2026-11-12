@@ -82,7 +82,7 @@ def set_autostart(enabled: bool) -> None:
         raise UninstallError("Kayıt defterine yazılamadı.") from exc
     with run_key:
         if enabled:
-            target = f'"{sys.executable}"'
+            target = f'"{sys.executable}" --tray'
             winreg.SetValueEx(run_key, config.AUTOSTART_VALUE, 0, winreg.REG_SZ, target)
         else:
             try:

@@ -203,3 +203,49 @@ def test_corrupt_complete_part_is_redownloaded(tiny_model):
     assert text_model_path("test-1b").read_bytes()[:4] == b"GGUF"
     assert is_installed("test-1b") is True
 
+
+def test_custom_text_model_lifecycle_and_manager(tmp_path, monkeypatch):
+    custom_file = tmp_path / "custom_models.json"
+    models_dir = tmp_path / "models"
+    monkeypatch.setattr(config, "CUSTOM_MODELS_FILE", custom_file)
+    monkeypatch.setattr(config, "MODELS_DIR", models_dir)
+
+    mgr = text_models.TextModelManager(models_dir=models_dir)
+
+    # 1. Hugging Face URL'si ile ekle
+    url = "https://huggingface.co/bartowski/Qwen2.5-3B-GGUF/resolve/main/Qwen2.5-3B-Q4_K_M.gguf"
+    added = mgr.add_custom_text_model(url, label="Qwen 2.5 3B")
+    m_id = added["name"]
+    assert added["repo"] == "bartowski/Qwen2.5-3B-GGUF"
+    assert added["filename"] == "Qwen2.5-3B-Q4_K_M.gguf"
+    assert added["custom"] is True
+
+    # 2. scan() içinde listelenmeli, başlangıçta installed=False
+    scanned = {item["name"]: item for item in mgr.scan()}
+    assert m_id in scanned
+    assert scanned[m_id]["installed"] is False
+    assert mgr.is_installed(m_id) is False
+    assert mgr.is_downloaded(m_id) is False
+
+    # 3. Sahte GGUF dosyası yazalım (> 1024 bayt ve b"GGUF" magic)
+    target_path = mgr.path(m_id)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_bytes(PAYLOAD)  # 1 MiB GGUF
+
+    # is_downloaded kontrolü b"GGUF" ve > 1024 bayt ile True olmalı
+    assert mgr.is_installed(m_id) is True
+    assert mgr.is_downloaded(m_id) is True
+
+    # 4. delete() yalnız diskteki dosyayı silmeli, kart listede kalmalı
+    mgr.delete(m_id)
+    assert not target_path.exists()
+    scanned_after_delete = {item["name"]: item for item in mgr.scan()}
+    assert m_id in scanned_after_delete
+    assert scanned_after_delete[m_id]["installed"] is False
+
+    # 5. remove_custom_text_model() hem diskten hem de custom_models.json'dan silmeli
+    mgr.remove_custom_text_model(m_id)
+    scanned_after_remove = {item["name"]: item for item in mgr.scan()}
+    assert m_id not in scanned_after_remove
+
+

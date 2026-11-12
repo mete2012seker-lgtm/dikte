@@ -47,6 +47,9 @@ window.__settings = {
   hotkey_label: "Sağ Ctrl",
   active_model: "large-v3",
   state: "ready",
+  design_style: "dikte_ai",
+  setup_done: true,
+  sidebar_collapsed: false,
   choices: [
     { id: "right_ctrl", label: "Sağ Ctrl" },
     { id: "left_ctrl", label: "Sol Ctrl" },
@@ -120,7 +123,10 @@ window.__settings.ai = window.__ai;
 window.pywebview = {
   api: {
     snapshot: async () => snapshotCopy(),
-    toggle_record: async () => ({ ok: true, state: window.__snap.state }),
+    toggle_record: async () => {
+      window.__snap.state = window.__snap.state === "recording" ? "ready" : "recording";
+      return { ok: true, state: window.__snap.state };
+    },
     copy: async (text) => { window.__copied = text; return { ok: true }; },
     refresh_last: async () => { window.__calls.push("refresh_last"); return { ok: true, state: "processing" }; },
     history_list: async (query, period) => {
@@ -199,6 +205,67 @@ window.pywebview = {
       window.__ai.key_masked = null;
       Object.assign(window.__snap.ai, window.__ai);
       return { ok: true, message: "Anahtar silindi.", ai: JSON.parse(JSON.stringify(window.__ai)) };
+    },
+    models_add_custom: async (repo, label) => {
+      window.__calls.push("models_add_custom:" + repo);
+      window.__models.items.push({
+        name: "custom-" + repo.replace(/[^a-zA-Z0-9]/g, "-"),
+        label: label || repo,
+        desc: "Özel Whisper modeli",
+        tags: ["Özel HF"],
+        approx_label: "~ 1 GB",
+        installed: false, partial: false, size_label: "—", size_bytes: 0,
+        active: false, downloading: false, custom: true
+      });
+      return { ok: true, message: "Özel model eklendi." };
+    },
+    models_remove_custom: async (name) => {
+      window.__calls.push("models_remove_custom:" + name);
+      window.__models.items = window.__models.items.filter(i => i.name !== name);
+      return { ok: true, message: "Özel model kaldırıldı." };
+    },
+    models_cancel_download: async () => {
+      window.__calls.push("models_cancel_download");
+      return { ok: true, message: "İndirme iptal edildi." };
+    },
+    text_models_add_custom: async (repo, filename, label) => {
+      window.__calls.push("text_models_add_custom:" + repo);
+      window.__models.text_items.push({
+        name: "custom-text-" + repo.replace(/[^a-zA-Z0-9]/g, "-"),
+        kind: "text",
+        label: label || repo,
+        desc: "Özel GGUF metin modeli",
+        tags: ["Özel HF"],
+        approx_label: "~ 2 GB",
+        installed: false, partial: false, size_label: "—", size_bytes: 0,
+        active: false, loaded: false, downloading: false, paused: false, bytes: 0,
+        custom: true
+      });
+      return { ok: true, message: "Özel metin modeli eklendi." };
+    },
+    text_models_remove_custom: async (name) => {
+      window.__calls.push("text_models_remove_custom:" + name);
+      window.__models.text_items = window.__models.text_items.filter(i => i.name !== name);
+      return { ok: true, message: "Özel metin modeli kaldırıldı." };
+    },
+    update_list_releases: async () => {
+      window.__calls.push("update_list_releases");
+      return [
+        { tag_name: "v1.6.0", version: "1.6.0", name: "Dikte v1.6.0", is_current: true },
+        { tag_name: "v1.5.0", version: "1.5.0", name: "Dikte v1.5.0", is_current: false },
+        { tag_name: "v1.4.0", version: "1.4.0", name: "Dikte v1.4.0", is_current: false }
+      ];
+    },
+    update_rollback: async (target) => {
+      window.__calls.push("update_rollback:" + target);
+      return { ok: true, message: "Rollback başlatıldı: " + target };
+    },
+    wizard_status: async () => ({ ok: true, setup_done: window.__settings.setup_done }),
+    wizard_complete: async (payload) => {
+      window.__calls.push("wizard_complete:" + JSON.stringify(payload));
+      window.__settings.setup_done = true;
+      if (payload) Object.assign(window.__settings, payload);
+      return { ok: true, message: "Kurulum tamamlandı." };
     },
     openrouter_key_test: async () => ({ ok: true, message: "Bağlantı çalışıyor (3 model)." }),
     openrouter_models: async (refresh, all_models, query) => {
@@ -759,20 +826,20 @@ def _v14_tema_ekran_goruntuleri(page, ad, renk):
         page.locator(f'.nav-btn[data-page="{sayfa}"]').click()
         page.wait_for_function("(s) => document.getElementById(s).classList.contains('is-active')", arg=sayfa)
         page.wait_for_timeout(500)
-        page.screenshot(path=str(ROOT / "design" / "v2" / dosya))
+        page.screenshot(path=str(ARTIFACTS / dosya))
         if sayfa == "page-modeller":
             page.locator("#tabAudio").click()
             page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 3")
             page.wait_for_timeout(500)
-            page.screenshot(path=str(ROOT / "design" / "v2" / f"v2-{ad}-modeller-ses.png"))
+            page.screenshot(path=str(ARTIFACTS / f"v2-{ad}-modeller-ses.png"))
     page.emulate_media(color_scheme="light")
 
 
 def test_v14_tema_ekran_goruntuleri(page):
-    (ROOT / "design" / "v2").mkdir(exist_ok=True)
+    ARTIFACTS.mkdir(exist_ok=True)
     _v14_tema_ekran_goruntuleri(page, "koyu", "dark")
     _v14_tema_ekran_goruntuleri(page, "acik", "light")
-    assert len(list((ROOT / "design" / "v2").glob("v2-*.png"))) >= 10
+    assert len(list(ARTIFACTS.glob("v2-*.png"))) >= 10
 
 
 def test_guncelleme_karti_durumu(page):
@@ -795,3 +862,123 @@ def test_guncelleme_denetle_ve_uygula(page):
     assert not page.locator("#updateApplyBtn").is_disabled()
     page.locator("#updateApplyBtn").click()
     page.wait_for_function("() => document.querySelector('#updateStatus').textContent.includes('Kurulum')")
+
+
+def test_sidebar_collapse(page):
+    fresh(page)
+    assert not page.locator("body").evaluate("el => el.classList.contains('sidebar-collapsed')")
+    page.locator("#brandToggle").click()
+    page.wait_for_function("() => document.body.classList.contains('sidebar-collapsed')")
+    assert page.evaluate("() => window.__calls.some(c => c.includes('\"sidebar_collapsed\":true'))")
+    page.locator("#brandToggle").click()
+    page.wait_for_function("() => !document.body.classList.contains('sidebar-collapsed')")
+
+
+def test_minimalist_text_clean(page):
+    fresh(page)
+    # 1. Sol alt yerel sistem hazır gizli
+    assert page.locator(".sidebar-foot").is_hidden()
+    # 2. Dikte başlığı yalnız Dikte, sayfa alt yazısı yok
+    assert page.locator("#page-dikte .page-title").inner_text().strip() == "Dikte"
+    assert page.locator("#page-dikte .page-sub").count() == 0
+    # 3. Dikte Geçmişi alt yazısı yok
+    page.locator('.nav-btn[data-page="page-gecmis"]').click()
+    assert page.locator("#page-gecmis .page-sub").count() == 0
+    # 4. Modeller alt yazısı yok
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    assert page.locator("#page-modeller .page-sub").count() == 0
+
+
+def test_design_style_toggle(page):
+    fresh(page)
+    # Varsayılan dikte_ai
+    assert page.evaluate("() => document.documentElement.getAttribute('data-design')") == "dikte_ai"
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    # Klasik Magic UI seç
+    page.locator('#designStyleGroup button[data-design-choice="classic"]').click()
+    page.wait_for_function("() => document.documentElement.getAttribute('data-design') === 'classic'")
+    assert page.evaluate("() => window.__calls.some(c => c.includes('\"design_style\":\"classic\"'))")
+    # Tekrar dikte_ai seç
+    page.locator('#designStyleGroup button[data-design-choice="dikte_ai"]').click()
+    page.wait_for_function("() => document.documentElement.getAttribute('data-design') === 'dikte_ai'")
+
+
+def test_wave_canvas_mic_morph(page):
+    fresh(page)
+    # Canvas ve halo öğeleri mevcut
+    assert page.locator("#waveCanvas").count() == 1
+    assert page.locator(".halo-wrapper").count() == 1
+    assert page.locator(".icon-morph .stop-square").count() == 1
+    # Kayıt başlayınca stage.is-recording olur
+    page.locator("#micBtn").click()
+    page.wait_for_function("() => document.querySelector('#stage').classList.contains('is-recording')")
+    # Tekrar basınca durur
+    page.locator("#micBtn").click()
+    page.wait_for_function("() => !document.querySelector('#stage').classList.contains('is-recording')")
+
+
+def test_hotkey_recorder(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.locator("#hotkeyRecorderBtn").click()
+    assert not page.locator("#hotkeyRecorderStatus").is_hidden()
+    # Tuş kombinasyonu gönder: Ctrl+Shift+D
+    page.keyboard.down("Control")
+    page.keyboard.down("Shift")
+    page.keyboard.press("KeyD")
+    page.keyboard.up("Shift")
+    page.keyboard.up("Control")
+    page.wait_for_function("() => window.__calls.some(c => c.includes('ctrl+shift+d'))")
+
+
+def test_instant_settings_save(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.locator("#historySwitch").click()
+    page.wait_for_function("() => window.__calls.some(c => c.includes('\"save_history\":false'))")
+
+
+def test_custom_model_modal_and_menu(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    # 1. Özel model modalını aç
+    page.locator("#addCustomModelBtn").click()
+    assert not page.locator("#customModelModal").is_hidden()
+    # Form doldur
+    page.locator("#customModelRepo").fill("openai/whisper-large-v3-turbo")
+    page.locator("#customModelLabel").fill("Whisper Turbo Test")
+    page.locator("#customModelSubmit").click()
+    page.wait_for_function("() => window.__calls.some(c => c.includes('models_add_custom:openai/whisper-large-v3-turbo'))")
+    assert page.locator("#customModelModal").is_hidden()
+
+    # 2. "⋯" Menüsü
+    page.wait_for_function("() => document.querySelectorAll('.model-menu-btn').length > 0")
+    page.locator(".model-menu-btn").first.click()
+    assert page.locator(".model-dropdown.is-open").count() == 1
+
+
+def test_welcome_wizard(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    # Sihirbazı başlat
+    page.locator("#restartWizardBtn").click()
+    assert not page.locator("#welcomeWizard").is_hidden()
+    # Adım 1 -> Adım 2 -> Adım 3 -> Adım 4 -> Adım 5
+    for _ in range(4):
+        page.locator("#wizardNextBtn").click()
+    assert not page.locator("#wizardFinishBtn").is_hidden()
+    page.locator("#wizardFinishBtn").click()
+    page.wait_for_function("() => document.querySelector('#welcomeWizard').hidden")
+    assert page.evaluate("() => window.__calls.some(c => c.includes('wizard_complete'))")
+
+
+def test_rollback_controls(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#rollbackSelect option').length > 1")
+    assert page.locator("#rollbackBtn").is_disabled()
+    page.locator("#rollbackSelect").select_option("v1.5.0")
+    assert not page.locator("#rollbackBtn").is_disabled()
+    page.evaluate("() => { window.confirm = () => true; }")
+    page.locator("#rollbackBtn").click()
+    page.wait_for_function("() => window.__calls.some(c => c.includes('update_rollback:v1.5.0'))")

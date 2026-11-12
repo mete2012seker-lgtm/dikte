@@ -51,11 +51,13 @@
 
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-logo"><svg class="ic"><use href="#i-logo"/></svg></div>
+    <div class="brand" id="brandToggle" title="Menüyü daralt / genişlet">
+      <div class="brand-logo">
+        <img src="assets/icon.png" alt="Dikte" class="brand-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+        <svg class="ic" style="display:none"><use href="#i-logo"/></svg>
+      </div>
       <div>
-        <div class="brand-name">VoxNote AI</div>
-        <div class="brand-tag">Daha iyi fikirler, daha hızlı.</div>
+        <div class="brand-name">Dikte</div>
       </div>
     </div>
     <nav class="nav">
@@ -64,7 +66,7 @@
       <button class="nav-btn" data-page="page-modeller"><svg class="ic"><use href="#i-models"/></svg><span>Modeller</span></button>
       <button class="nav-btn" data-page="page-ayarlar"><svg class="ic"><use href="#i-settings"/></svg><span>Ayarlar</span></button>
     </nav>
-    <div class="sidebar-foot"><span class="led" id="systemLed"></span><span id="systemText">Yerel sistem hazır</span></div>
+    <div class="sidebar-foot" style="display:none"><span class="led" id="systemLed"></span><span id="systemText"></span></div>
   </aside>
 
   <main class="workspace">
@@ -72,8 +74,7 @@
     <!-- ===== 1. DİKTE ===== -->
     <section class="page is-active" id="page-dikte">
       <div class="page-head">
-        <h1 class="page-title">Dikte çalışma alanı</h1>
-        <p class="page-sub">Konuşun, yapay zeka sizin için yazsın.</p>
+        <h1 class="page-title">Dikte</h1>
       </div>
 
       <div class="dikte-layout">
@@ -112,6 +113,11 @@
           </div>
 
           <div class="stage" id="stage">
+            <canvas id="waveCanvas"></canvas>
+            <div class="halo-wrapper" aria-hidden="true">
+              <div class="halo-ring halo-ring--outer"></div>
+              <div class="halo-ring halo-ring--inner"></div>
+            </div>
             <div class="stage-row">
               <div class="wave left" id="waveLeft" aria-hidden="true"></div>
               <div class="mic-wrap">
@@ -121,7 +127,10 @@
                 <span class="pulse"></span>
                 <span class="pulse delay"></span>
                 <button class="mic-btn" id="micBtn" aria-label="Kaydı başlat" aria-pressed="false">
-                  <svg class="ic"><use href="#i-mic"/></svg>
+                  <div class="icon-morph">
+                    <svg class="ic mic-svg"><use href="#i-mic"/></svg>
+                    <div class="stop-square" aria-hidden="true"></div>
+                  </div>
                 </button>
               </div>
               <div class="wave right" id="waveRight" aria-hidden="true"></div>
@@ -181,7 +190,6 @@
     <section class="page" id="page-gecmis">
       <div class="page-head">
         <h1 class="page-title">Dikte Geçmişi</h1>
-        <p class="page-sub">Kaydedilen dikte metinlerini görüntüle ve yönet.</p>
       </div>
 
       <div class="card history-card" id="historyCard">
@@ -210,7 +218,6 @@
     <section class="page" id="page-modeller">
       <div class="page-head">
         <h1 class="page-title">Modeller</h1>
-        <p class="page-sub">Konuşmayı yazıya çeviren yerel Whisper modellerini yönet.</p>
       </div>
 
       <div class="models-layout">
@@ -241,6 +248,7 @@
               <svg class="ic"><use href="#i-search"/></svg>
               <input id="modelSearch" type="search" placeholder="Model ara…" aria-label="Model ara">
             </div>
+            <button class="btn btn-primary" id="addCustomModelBtn" type="button"><svg class="ic"><use href="#i-download"/></svg>Özel Model Ekle (Hugging Face)</button>
           </div>
           <div class="ai-note" id="localEngineNote" hidden>Yerel metin motoru (llama.cpp) kurulu değil; metin modelleri indirilebilir ama çalıştırmak için bileşen gerekir.</div>
           <div class="list-title">
@@ -277,8 +285,18 @@
           </div>
           <div class="set-row">
             <div class="set-info">
+              <div class="set-title">Tuş kombinasyonu kaydet</div>
+              <div class="set-desc">1, 2 veya 3 tuşlu serbest kısayol ata (Örn: Ctrl+Shift+D, Alt+Space, F8).</div>
+            </div>
+            <div class="set-control key-control">
+              <button class="btn" id="hotkeyRecorderBtn" type="button">Tuş Kombinasyonu Kaydet</button>
+              <span class="keycap" id="hotkeyRecorderStatus" hidden>Tuşa basın…</span>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
               <div class="set-title">Etkin kısayol</div>
-              <div class="set-desc">Değişiklik "Kaydet" deyince uygulanır.</div>
+              <div class="set-desc">Değişiklik anında kaydedilir ve uygulanır.</div>
             </div>
             <div class="set-control"><span class="keycap" id="hotkeyNow">Sağ Ctrl</span></div>
           </div>
@@ -435,6 +453,16 @@
           <div class="card-head"><svg class="ic"><use href="#i-bulb"/></svg>Görünüm</div>
           <div class="set-row">
             <div class="set-info">
+              <div class="set-title">Arayüz Tasarım Modeli</div>
+              <div class="set-desc">Sade Dikte.AI veya klasik v1.4 görünümünü seçin. Değişiklik anında uygulanır.</div>
+            </div>
+            <div class="set-control theme-seg" id="designStyleGroup" role="group" aria-label="Tasarım Modeli">
+              <button class="seg is-active" type="button" data-design-choice="dikte_ai">Sade Dikte.AI</button>
+              <button class="seg" type="button" data-design-choice="classic">Klasik Magic UI</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
               <div class="set-title">Tema</div>
               <div class="set-desc">Sistem seçilirse Windows ayarını izler. Değişiklik anında uygulanır.</div>
             </div>
@@ -484,11 +512,32 @@
               <button class="switch" id="updateAutoSwitch" role="switch" aria-checked="true" aria-label="Açılışta denetle"></button>
             </div>
           </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Önceki Sürümlere Dön (Rollback)</div>
+              <div class="set-desc">Sorun yaşanırsa önceki kararlı bir sürüme tek tıkla geri dönün.</div>
+            </div>
+            <div class="set-control key-control">
+              <select class="select select-plain" id="rollbackSelect" aria-label="Geri dönülecek sürüm">
+                <option value="">Sürümler taranıyor…</option>
+              </select>
+              <button class="btn btn-danger" id="rollbackBtn" type="button" disabled>Bu Sürüme Dön</button>
+            </div>
+          </div>
           <div class="uninstall-status" id="updateStatus" role="status"></div>
         </div>
 
         <div class="card set-card" id="appCard">
           <div class="card-head"><svg class="ic"><use href="#i-cpu"/></svg>Uygulama / Kaldırma</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Kurulum Sihirbazı</div>
+              <div class="set-desc">İlk açılış karşılama sihirbazını yeniden çalıştırarak ayarları yapılandırın.</div>
+            </div>
+            <div class="set-control">
+              <button class="btn" id="restartWizardBtn" type="button">Sihirbazı Başlat</button>
+            </div>
+          </div>
           <div class="set-row">
             <div class="set-info">
               <div class="set-title">Windows ile başlat</div>
@@ -540,6 +589,182 @@
 </div>
 
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+<!-- Özel Model Ekle (Hugging Face) Modalı -->
+<div class="modal-backdrop" id="customModelModal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title"><svg class="ic"><use href="#i-download"/></svg>Özel Model Ekle (Hugging Face)</div>
+      <button class="modal-close" id="customModelClose" type="button" aria-label="Kapat"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="customModelKind">Model Türü:</label>
+        <select class="select select-plain" id="customModelKind">
+          <option value="audio">Ses Modeli (Whisper - HF Repo)</option>
+          <option value="text">Metin Modeli (GGUF - HF Repo / Dosya)</option>
+        </select>
+      </div>
+      <div class="form-group" id="groupCustomRepo">
+        <label for="customModelRepo" id="customModelRepoLabel">Hugging Face Repo ID:</label>
+        <input class="text-input" id="customModelRepo" type="text" placeholder="ör. openai/whisper-large-v3-turbo veya user/repo">
+      </div>
+      <div class="form-group" id="groupCustomFilename" hidden>
+        <label for="customModelFilename">GGUF Dosya Adı:</label>
+        <input class="text-input" id="customModelFilename" type="text" placeholder="ör. model-q4_k_m.gguf">
+      </div>
+      <div class="form-group">
+        <label for="customModelLabel">Model Etiketi / Görünen İsim (İsteğe bağlı):</label>
+        <input class="text-input" id="customModelLabel" type="text" placeholder="ör. Whisper Turbo Türkçe">
+      </div>
+      <div class="modal-status" id="customModelStatus" role="status"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="customModelCancel" type="button">İptal</button>
+      <button class="btn btn-primary" id="customModelSubmit" type="button">Modeli Ekle</button>
+    </div>
+  </div>
+</div>
+
+<!-- Karşılama Sihirbazı (5 Adım) -->
+<div class="wizard-backdrop" id="welcomeWizard" hidden>
+  <div class="wizard-card">
+    <div class="wizard-progress">
+      <div class="wizard-step-indicator is-active" data-step="1">1</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-indicator" data-step="2">2</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-indicator" data-step="3">3</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-indicator" data-step="4">4</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-indicator" data-step="5">5</div>
+    </div>
+
+    <!-- Adım 1: Hoş Geldiniz & Tasarım -->
+    <div class="wizard-step is-active" id="wizardStep1">
+      <div class="wizard-head">
+        <h2>Dikte'ye Hoş Geldiniz</h2>
+        <p>Yapay zeka destekli yerel sesli dikte asistanınız hazır. Tercih ettiğiniz arayüz tasarımını seçin.</p>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-choice-grid">
+          <label class="wizard-choice is-selected">
+            <input type="radio" name="wizardDesign" value="dikte_ai" checked>
+            <div class="choice-content">
+              <strong>Sade Dikte.AI</strong>
+              <span>Ferah, minimalist, mikrofon morfizmi içeren modern görünüm (Önerilen).</span>
+            </div>
+          </label>
+          <label class="wizard-choice">
+            <input type="radio" name="wizardDesign" value="classic">
+            <div class="choice-content">
+              <strong>Klasik Magic UI v1.4</strong>
+              <span>Kompakt, parlama efektli klasik arayüz.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adım 2: Donanım & CUDA Hızlandırma -->
+    <div class="wizard-step" id="wizardStep2" hidden>
+      <div class="wizard-head">
+        <h2>Donanım Hızlandırma</h2>
+        <p>Bilgisayarınızdaki donanım taranıyor…</p>
+      </div>
+      <div class="wizard-body">
+        <div class="hardware-box" id="wizardHwBox">
+          <div class="hw-icon"><svg class="ic"><use href="#i-chip"/></svg></div>
+          <div class="hw-info">
+            <div class="hw-title" id="wizardHwTitle">Donanım Denetleniyor…</div>
+            <div class="hw-desc" id="wizardHwDesc">NVIDIA GPU ve CUDA kütüphaneleri kontrol ediliyor.</div>
+          </div>
+        </div>
+        <div class="wizard-cuda-actions" id="wizardCudaActions">
+          <p id="wizardCudaMsg">NVIDIA ekran kartı ile dikte 5-10 kat daha hızlı çalışır.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adım 3: Ses Modeli Seçimi -->
+    <div class="wizard-step" id="wizardStep3" hidden>
+      <div class="wizard-head">
+        <h2>Başlangıç Ses Modeli</h2>
+        <p>Konuşmanızı metne çevirecek yerel yapay zeka modelini belirleyin.</p>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-choice-grid">
+          <label class="wizard-choice is-selected">
+            <input type="radio" name="wizardModel" value="small" checked>
+            <div class="choice-content">
+              <strong>Whisper Small (~480 MB)</strong>
+              <span>Dengeli hız ve yüksek Türkçe doğruluk (Önerilen).</span>
+            </div>
+          </label>
+          <label class="wizard-choice">
+            <input type="radio" name="wizardModel" value="tiny">
+            <div class="choice-content">
+              <strong>Whisper Tiny (~75 MB)</strong>
+              <span>Ultra hafif ve anında iner. Düşük sistemler için ideal.</span>
+            </div>
+          </label>
+          <label class="wizard-choice">
+            <input type="radio" name="wizardModel" value="large-v3">
+            <div class="choice-content">
+              <strong>Whisper Large v3 (~2.9 GB)</strong>
+              <span>Stüdyo kalitesinde en yüksek doğruluk (Güçlü GPU önerilir).</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adım 4: Kısayol Tuşu -->
+    <div class="wizard-step" id="wizardStep4" hidden>
+      <div class="wizard-head">
+        <h2>Dikte Kısayolu</h2>
+        <p>Dikteyi başlatıp bitirmek için kullanacağınız tuş kombinasyonu.</p>
+      </div>
+      <div class="wizard-body">
+        <div class="wizard-choice-grid">
+          <label class="wizard-choice is-selected">
+            <input type="radio" name="wizardHotkey" value="right_ctrl" checked>
+            <div class="choice-content">
+              <strong>Sağ Ctrl (Basılı Tut)</strong>
+              <span>En pratik kullanım: Basılı tutup konuşun, bırakınca metin yazılsın.</span>
+            </div>
+          </label>
+          <label class="wizard-choice">
+            <input type="radio" name="wizardHotkey" value="alt+space">
+            <div class="choice-content">
+              <strong>Alt + Boşluk (Alt+Space)</strong>
+              <span>Hızlı erişim kombinasyonu.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adım 5: Kurulum Tamamlandı -->
+    <div class="wizard-step" id="wizardStep5" hidden>
+      <div class="wizard-head">
+        <h2>Her Şey Hazır!</h2>
+        <p>Dikte arka planda ve sistem tepsisinde çalışmaya hazır.</p>
+      </div>
+      <div class="wizard-body wizard-done">
+        <div class="done-icon"><svg class="ic"><use href="#i-check"/></svg></div>
+        <p>Kısayolunuza basılı tutarak herhangi bir programda sesli yazmaya başlayabilirsiniz.</p>
+      </div>
+    </div>
+
+    <div class="wizard-foot">
+      <button class="btn" id="wizardPrevBtn" type="button" disabled>Geri</button>
+      <button class="btn btn-primary" id="wizardNextBtn" type="button">İleri</button>
+      <button class="btn btn-primary" id="wizardFinishBtn" type="button" hidden>Dikte'yi Kullanmaya Başla</button>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

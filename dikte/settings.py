@@ -11,6 +11,13 @@ import uuid
 from pathlib import Path
 
 from . import config
+from .hotkey import (
+    DEFAULT_HOTKEY,
+    HOTKEY_CHOICES,
+    format_hotkey_label,
+    is_valid_hotkey,
+    normalize_hotkey,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +25,6 @@ logger = logging.getLogger(__name__)
 class SettingsError(RuntimeError):
     pass
 
-
-HOTKEY_CHOICES = {
-    "right_ctrl": "Sağ Ctrl",
-    "left_ctrl": "Sol Ctrl",
-    "right_alt": "Sağ Alt",
-    "left_alt": "Sol Alt",
-    "f8": "F8",
-    "f9": "F9",
-    "f10": "F10",
-}
 
 TEXT_PROVIDER_CHOICES = {
     "none": "Kapalı",
@@ -38,11 +35,12 @@ TEXT_PROVIDER_CHOICES = {
 OUTPUT_LANGUAGE_CHOICES = dict(config.OUTPUT_LANGUAGES)
 INPUT_LANGUAGE_CHOICES = {"auto": "Otomatik", "tr": "Türkçe"}
 THEME_CHOICES = {"system": "Sistem", "light": "Açık", "dark": "Koyu"}
+DESIGN_STYLE_CHOICES = {"dikte_ai": "Sade Dikte.AI", "classic": "Klasik (Magic UI)"}
 
-DEFAULT_HOTKEY = "right_ctrl"
 AUTO_MODEL = "auto"
 DEFAULT_TEXT_MODEL = "qwen3-4b"
 DEFAULT_THEME = "system"
+DEFAULT_DESIGN_STYLE = "dikte_ai"
 
 DEFAULTS = {
     "version": 2,
@@ -59,6 +57,9 @@ DEFAULTS = {
     "openrouter_show_all": False,
     "system_prompt": config.DEFAULT_SYSTEM_PROMPT,
     "theme": DEFAULT_THEME,
+    "design_style": DEFAULT_DESIGN_STYLE,
+    "setup_done": False,
+    "sidebar_collapsed": False,
     "autostart": False,
     "update_check_on_start": True,
     "update_last_check": None,
@@ -67,7 +68,7 @@ DEFAULTS = {
 
 
 def hotkey_label(key_id: str) -> str:
-    return HOTKEY_CHOICES.get(key_id, HOTKEY_CHOICES[DEFAULT_HOTKEY])
+    return format_hotkey_label(key_id)
 
 
 def output_language_label(code: str) -> str:
@@ -139,7 +140,11 @@ class SettingsStore:
         result.update({key: value for key, value in data.items() if key not in DEFAULTS})
         result["version"] = 2
         result["save_history"] = _flag(data.get("save_history"), DEFAULTS["save_history"])
-        result["hotkey"] = _choice(data.get("hotkey"), HOTKEY_CHOICES, DEFAULT_HOTKEY)
+        raw_hotkey = data.get("hotkey")
+        if isinstance(raw_hotkey, str) and is_valid_hotkey(raw_hotkey):
+            result["hotkey"] = normalize_hotkey(raw_hotkey)
+        else:
+            result["hotkey"] = DEFAULT_HOTKEY
         result["active_model"] = _text(data.get("active_model"), AUTO_MODEL)
 
         result["output_language"] = _choice(
@@ -167,6 +172,13 @@ class SettingsStore:
             data.get("system_prompt"), config.DEFAULT_SYSTEM_PROMPT
         )
         result["theme"] = _choice(data.get("theme"), THEME_CHOICES, DEFAULT_THEME)
+        result["design_style"] = _choice(
+            data.get("design_style"), config.DESIGN_STYLES, DEFAULT_DESIGN_STYLE
+        )
+        result["setup_done"] = _flag(data.get("setup_done"), DEFAULTS["setup_done"])
+        result["sidebar_collapsed"] = _flag(
+            data.get("sidebar_collapsed"), DEFAULTS["sidebar_collapsed"]
+        )
         result["autostart"] = _flag(data.get("autostart"), DEFAULTS["autostart"])
         result["update_check_on_start"] = _flag(
             data.get("update_check_on_start"), DEFAULTS["update_check_on_start"]
@@ -179,6 +191,11 @@ class SettingsStore:
     def get(self, key: str, default=None):
         with self._lock:
             return self._data.get(key, default)
+
+    def set_hotkey(self, hotkey: str) -> dict:
+        if not is_valid_hotkey(hotkey):
+            raise ValueError("Geçersiz kısayol kombinasyonu.")
+        return self.save(hotkey=normalize_hotkey(hotkey))
 
     def as_dict(self) -> dict:
         with self._lock:

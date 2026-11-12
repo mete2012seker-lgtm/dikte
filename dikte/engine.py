@@ -147,14 +147,15 @@ class TranscriptionEngine:
             logger.error("Model yüklenemedi: %s", " | ".join(errors))
         raise EngineError(message, kind="model_missing")
 
-    def transcribe(self, wav_path: Path) -> TranscriptResult:
+    def transcribe(self, wav_path: Path, language: str | None = None) -> TranscriptResult:
         if self._model is None:
             raise EngineError(diagnostics.MSG_MODEL_MISSING, kind="model_missing")
         started = time.perf_counter()
+        whisper_lang = None if language == "auto" else (language or config.LANGUAGE)
         try:
             segments, info = self._model.transcribe(
                 str(wav_path),
-                language=config.LANGUAGE,
+                language=whisper_lang,
                 beam_size=5,
                 vad_filter=True,
                 condition_on_previous_text=False,

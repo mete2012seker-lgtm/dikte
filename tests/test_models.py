@@ -107,3 +107,59 @@ def test_snapshot_missing_config_or_tokenizer_is_not_installed(tmp_path):
     assert result["small"]["installed"] is False
     assert result["small"]["partial"] is True
 
+
+def test_custom_speech_model_lifecycle(tmp_path, monkeypatch):
+    from dikte import config
+
+    custom_file = tmp_path / "custom_models.json"
+    monkeypatch.setattr(config, "CUSTOM_MODELS_FILE", custom_file)
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path / "models")
+
+    # 1. Özel ses modeli ekle
+    added = models.add_custom_model("kullanici/turkce-whisper", label="Türkçe Whisper")
+    assert added["name"].startswith("custom-")
+    assert added["repo_id"] == "kullanici/turkce-whisper"
+    assert added["label"] == "Türkçe Whisper"
+
+    # URL ile de eklenebilmeli ve tekrarda etiket güncellenebilmeli
+    dup = models.add_custom_model(
+        "https://huggingface.co/kullanici/turkce-whisper", label="Yeni Etiket"
+    )
+    assert dup["name"] == added["name"]
+    assert dup["label"] == "Yeni Etiket"
+
+    # 2. Disk durumunda taranabilmeli
+    scan_res = models.scan(tmp_path / "models")
+    m_name = added["name"]
+    assert m_name in scan_res
+    assert scan_res[m_name]["custom"] is True
+    assert scan_res[m_name]["installed"] is False
+
+    # 3. Snapshot dosyası oluşturunca installed True olmalı
+    make_snapshot(tmp_path / "models", m_name, size=1024)
+    scan_res2 = models.scan(tmp_path / "models")
+    assert scan_res2[m_name]["installed"] is True
+
+    # 4. delete() çağrılınca dosya silinmeli ama kart custom_models.json içinde KALMALI
+    models.delete(m_name, tmp_path / "models")
+    assert not (tmp_path / "models" / models.repo_folder_name(m_name)).exists()
+    assert m_name in models.scan(tmp_path / "models")
+    assert models.scan(tmp_path / "models")[m_name]["installed"] is False
+
+    # 5. remove_custom_model() çağrılınca custom_models.json'dan da kaldırılmalı
+    models.remove_custom_model(m_name, tmp_path / "models")
+    assert m_name not in models.scan(tmp_path / "models")
+
+    # Yerleşik modeller remove_custom_model ile silinemez
+    with pytest.raises(models.ModelError):
+        models.remove_custom_model("tiny", tmp_path / "models")
+
+
+def test_model_manager_cancel_download(tmp_path, monkeypatch):
+    from dikte import config
+
+    mgr = models.ModelManager(models_dir=tmp_path / "models")
+    res = mgr.cancel_download()
+    assert res == {"cancelled": True}
+
+

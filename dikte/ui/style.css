@@ -604,3 +604,99 @@ html.light .bento-card::before{background:linear-gradient(140deg,rgba(61,91,245,
 .uninstall-status{margin-top:10px;font-size:13px;color:var(--muted,#A7B2C9)}
 html.light .uninstall-btn{background:rgba(217,58,58,.08);border-color:rgba(217,58,58,.55);color:#A32626}
 html.light .uninstall-btn:hover:not(:disabled){background:rgba(217,58,58,.16)}
+
+/* ---------- Faz 3.1 & 3.2: Yan Menü Daralma / Katlama ---------- */
+.brand{cursor:pointer;user-select:none;transition:padding .2s ease}
+.brand-img{width:28px;height:28px;border-radius:8px;object-fit:cover}
+body.sidebar-collapsed .sidebar{width:72px;flex:0 0 72px;padding:22px 10px 18px}
+body.sidebar-collapsed .brand{padding:0 0 26px;justify-content:center}
+body.sidebar-collapsed .brand > div:not(.brand-logo){display:none}
+body.sidebar-collapsed .nav-btn{justify-content:center;padding:0;height:48px}
+body.sidebar-collapsed .nav-btn span{display:none}
+body.sidebar-collapsed .sidebar-foot{display:none}
+
+/* ---------- Faz 3.4: Mikrofon Morfizmi & Canvas Ses Dalgası ---------- */
+.stage{position:relative;overflow:hidden}
+#waveCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.halo-wrapper{position:absolute;top:50%;left:50%;width:260px;height:260px;transform:translate(-50%,-50%) scale(1);pointer-events:none;z-index:2;transition:transform .75s cubic-bezier(0.22,1,0.36,1),opacity .75s ease}
+.halo-ring{position:absolute;top:50%;left:50%;border-radius:50%;transform:translate(-50%,-50%)}
+.halo-ring--outer{width:250px;height:250px;border:1px solid rgba(100,140,255,.12);box-shadow:0 0 36px rgba(48,86,211,.08)}
+.halo-ring--inner{width:196px;height:196px;border:1px solid rgba(110,150,255,.20);box-shadow:0 0 26px rgba(64,108,255,.12)}
+.stage.is-recording .halo-wrapper{transform:translate(-50%,calc(-50% + 90px)) scale(0.35);opacity:0}
+
+.icon-morph{position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.mic-svg{position:absolute;width:28px;height:28px;opacity:1;transform:scale(1) rotate(0deg);transition:opacity .4s ease,transform .6s cubic-bezier(0.22,1,0.36,1)}
+.stop-square{position:absolute;width:24px;height:24px;border-radius:6px;background:linear-gradient(145deg,#ff4d5a,#dc2626);box-shadow:0 0 16px rgba(239,68,68,.7);opacity:0;transform:scale(0.2) rotate(18deg);transition:opacity .4s ease,transform .6s cubic-bezier(0.22,1,0.36,1)}
+.stage.is-recording .mic-svg{opacity:0;transform:scale(0.3) rotate(-18deg)}
+.stage.is-recording .stop-square{opacity:1;transform:scale(1) rotate(0deg)}
+.stage.is-recording .mic-btn{border-color:rgba(239,68,68,.75);background:radial-gradient(circle at 50% 45%,#2a121b 0%,#170a12 65%,#0c070c 100%);box-shadow:0 0 34px rgba(239,68,68,.35)}
+
+/* ---------- Faz 3.4: Sade Dikte.AI Tasarım Modeli ---------- */
+html[data-design="dikte_ai"]{--radius:18px}
+html[data-design="dikte_ai"].light{
+  --bg:#F4F6F9; --app:#F4F6F9; --side:#FFFFFF; --card:#FFFFFF; --inner:#EEF1F5;
+  --line:#E5E9F0; --line-soft:#ECEFF5; --line-strong:#D5DDE8;
+  --text:#1A1F2C; --text2:#64748B; --text3:#94A3B8;
+}
+html[data-design="dikte_ai"].light .card{box-shadow:0 4px 24px rgba(15,23,42,0.04);border-color:rgba(226,232,240,0.7)}
+html[data-design="dikte_ai"].light .sidebar{border-right-color:#E5E9F0}
+html[data-design="dikte_ai"].light .nav-btn.is-active{background:#EAEDF2;color:#1A1F2C;border-color:transparent;box-shadow:none;font-weight:600}
+
+/* ---------- Faz 4.3 & 4.4: Modeller Menüsü & HF Modalları ---------- */
+.model-menu-wrap{position:relative;display:inline-block}
+.model-menu-btn{background:transparent;border:1px solid transparent;border-radius:8px;padding:4px 8px;font-size:16px;cursor:pointer;color:var(--text2);line-height:1}
+.model-menu-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.model-dropdown{position:absolute;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.4);z-index:50;min-width:140px;display:none;flex-direction:column;padding:4px}
+.model-dropdown.is-open{display:flex}
+.model-dropdown-item{background:transparent;border:none;color:var(--text);padding:8px 12px;font-size:12.5px;text-align:left;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.model-dropdown-item:hover{background:rgba(255,255,255,.07)}
+.model-dropdown-item.danger{color:var(--error)}
+.model-dropdown-item.danger:hover{background:rgba(239,91,91,.15)}
+
+.modal-backdrop,.wizard-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;z-index:999;
+}
+.modal-backdrop[hidden],.wizard-backdrop[hidden]{display:none !important}
+.modal-card,.wizard-card{
+  background:var(--card);border:1px solid var(--line-strong);border-radius:20px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);width:min(540px,94vw);padding:26px;
+  animation:modalFadeIn .2s ease;
+}
+.wizard-card{width:min(620px,95vw);padding:32px 30px 24px}
+@keyframes modalFadeIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:17px;font-weight:600;display:flex;align-items:center;gap:10px}
+.modal-close{background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:6px}
+.modal-close:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.form-group{margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:12.5px;color:var(--text2);font-weight:500}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+/* Karşılama Sihirbazı */
+.wizard-progress{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:28px}
+.wizard-step-indicator{width:32px;height:32px;border-radius:50%;background:var(--inner);border:2px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--text3);transition:all .2s ease}
+.wizard-step-indicator.is-active{border-color:var(--accent);background:var(--accent);color:#fff}
+.wizard-step-indicator.is-done{border-color:var(--ready);background:var(--ready);color:#fff}
+.wizard-step-line{width:28px;height:2px;background:var(--line)}
+.wizard-head{text-align:center;margin-bottom:22px}
+.wizard-head h2{margin:0 0 8px;font-size:22px;font-weight:600}
+.wizard-head p{margin:0;font-size:13.5px;color:var(--text2)}
+.wizard-body{margin-bottom:24px}
+.wizard-choice-grid{display:flex;flex-direction:column;gap:10px}
+.wizard-choice{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--inner);cursor:pointer;transition:border-color .15s,background .15s}
+.wizard-choice:hover{border-color:var(--line-strong)}
+.wizard-choice.is-selected{border-color:var(--accent);background:rgba(76,107,255,.08)}
+.wizard-choice input[type="radio"]{margin-top:3px;accent-color:var(--accent)}
+.choice-content{display:flex;flex-direction:column;gap:3px}
+.choice-content strong{font-size:14px;color:var(--text)}
+.choice-content span{font-size:12.5px;color:var(--text2)}
+.hardware-box{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;border:1px solid var(--line);background:var(--inner);margin-bottom:14px}
+.hw-icon{width:48px;height:48px;border-radius:12px;background:rgba(76,107,255,.15);color:var(--accent);display:grid;place-items:center}
+.hw-icon svg.ic{width:26px;height:26px}
+.hw-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.hw-desc{font-size:12.5px;color:var(--text2)}
+.wizard-done{text-align:center;padding:20px 0}
+.done-icon{width:64px;height:64px;border-radius:50%;background:rgba(46,212,122,.15);color:var(--ready);display:grid;place-items:center;margin:0 auto 16px}
+.done-icon svg.ic{width:36px;height:36px;stroke-width:2.5}
+.wizard-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line-soft);padding-top:18px}

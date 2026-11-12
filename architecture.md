@@ -34,24 +34,32 @@ Akış:
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
 | `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu (cublas/cudnn/cudart), VRAM/RAM, Türkçe hata metinleri, log | Hazır |
-| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, ses/metin modelleri, ayarlar, yenile, temizle/çevir, anahtar) | Hazır |
-| `dikte/ui/index.html` | Dört sayfa + tema düğmesi; Ayarlar: Yapay Zeka, Yapıştırma/Dil, Görünüm (tema + efekt anahtarı) | Hazır |
-| `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), MagicCard/ShineBorder/AnimatedList/Bento/DotPattern efektleri | Hazır |
-| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, efekt anahtarı + kart ışığı, model sekmeleri | Hazır |
+| `dikte/tray.py` | Sistem tepsisi (SystemTrayManager): pystray + Pillow, menü (Göster/Gizle, Durum, Çıkış), bildirim | Hazır |
+| `dikte/updater.py` | GitHub Releases listeleme, sürüm karşılaştırma, rollback, indirme ve sessiz kurucu çalıştırma | Hazır |
+| `dikte/uninstall.py` | Kaldırma desteği, kurulu sürüm kontrolü ve veri boyutu hesabı | Hazır |
+| `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, ses/metin modelleri, ayarlar, yenile, temizle/çevir, HF özel model, sihirbaz, rollback, tepsi) | Hazır |
+| `dikte/ui/index.html` | Dört sayfa + Karşılama Sihirbazı + HF Model modalı + Rollback + Wave Canvas | Hazır |
+| `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), Magic UI efektleri, Sade Dikte.AI teması, morphing mikrofon | Hazır |
+| `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, anında ayar kaydı, serbest kısayol kaydedici, sihirbaz | Hazır |
 | `design/v2/` | v1.4 efekt dokümantasyonu: ui-spec.md + 10 ekran görüntüsü (koyu/açık × 4 sayfa + modeller-ses) | Hazır |
-| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 220 test geçti |
-| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 220 test geçti |
-| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 220 test geçti |
-| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 220 test geçti |
-| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3 alanları | 220 test geçti |
-| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 220 test geçti |
-| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 220 test geçti |
-| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 220 test geçti |
-| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, 404, silme | 220 test geçti |
-| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 220 test geçti |
-| `tests/test_models.py` | Katalog, boyut, kısmi indirme, silme, indirme hatası | 220 test geçti |
-| `tests/test_ui.py` | Playwright + sahte köprü: dört sayfa, çıktı dili, Yapay Zeka kartı, tema, model sekmeleri | 220 test geçti |
-| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 220 test geçti |
+| `tests/test_tray_and_icon.py` | İkon dosyaları, fallback ikon, sistem tepsisi menü/toggle/thread ve selftest dosyaları testi | 303 test geçti |
+| `tests/test_hotkey.py` | 1–3 tuşlu serbest kısayol doğrulama ve normalizasyon testleri | 303 test geçti |
+| `tests/test_updater.py` | Güncelleme listesi, rollback, indirme ve sha256 doğrulama testleri | 303 test geçti |
+| `tests/test_uninstall.py` | Kaldırıcı yolu, kurulum kontrolü ve veri boyutu hesabı testleri | 303 test geçti |
+| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 303 test geçti |
+| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 303 test geçti |
+| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 303 test geçti |
+| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 303 test geçti |
+| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3/v1.6 alanları | 303 test geçti |
+| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 303 test geçti |
+| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 303 test geçti |
+| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 303 test geçti |
+| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, HF özel modeller, 404, silme | 303 test geçti |
+| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 303 test geçti |
+| `tests/test_models.py` | Katalog, boyut, HF özel modeller, indirme iptali, silme | 303 test geçti |
+| `tests/test_ui.py` | Playwright + sahte köprü: 4 sayfa, sihirbaz, HF modal, rollback, wave canvas (34 test) | 303 test geçti |
+| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 303 test geçti |
+| `tests/test_version.py` | Tek sürüm kaynağı (1.6.0), latest.json, User-Agent uyumu | 303 test geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |

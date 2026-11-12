@@ -15,6 +15,8 @@ AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_VALUE = "Dikte"
 # v1.6: yayın yeri GitHub Releases (karar 2026-11-07).
 UPDATE_URL = "https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json"
+RELEASES_API_URL = "https://api.github.com/repos/mete2012seker-lgtm/dikte/releases"
+DESIGN_STYLES = ("dikte_ai", "classic")
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = PACKAGE_DIR.parent
@@ -38,6 +40,7 @@ SETTINGS_FILE = DATA_DIR / "settings.json"
 HISTORY_FILE = DATA_DIR / "history.json"
 SECRETS_FILE = DATA_DIR / "secrets.json"
 OPENROUTER_MODELS_FILE = DATA_DIR / "openrouter_models.json"
+CUSTOM_MODELS_FILE = DATA_DIR / "custom_models.json"
 LAST_RECORDING = TEMP_DIR / "last.wav"
 
 HISTORY_LIMIT = 500

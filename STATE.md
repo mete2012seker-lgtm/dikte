@@ -3,9 +3,22 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 2 tamamlandı (2026-11-11), Faz 3-5 belirsizleri-sor kararları onaylandı (2026-11-12):** 263 pytest (+1 skip) geçiyor. Varsayılan tasarım `Sade Dikte.AI + Mikrofon Morph`, HF özel modeller `custom_models.json`, tepsi `pystray+Pillow`, logo `design/download` ve Faz 5.2 otomatik test/derleme kapsamı onaylandı. Pillow ve pystray bağımlılıkları kuruldu. Sıradaki adım: Faz 3 (Tasarım, Yeni Logo, Sidebar toggle, Sadeleştirme, Mikrofon animasyonu, Tasarım dili ve Ayarlar otomatik kayıt).
+**Faz 3, Faz 4 ve Faz 5 tamamlandı (2026-11-12):** Tüm yeni özellikler (yeni logo, sistem tepsisi, morphing mikrofon animasyonu, sade Dikte.AI ve klasik Magic UI tasarım dili seçimi, sidebar aç/kapa, 1–3 tuşlu serbest kısayol yakalayıcı, Hugging Face ses/metin model ekleme ve "⋯" menüsü, 5 adımlı Karşılama Sihirbazı, güncelleme rollback ve anında ayar kaydı) uygulandı ve test edildi. **303 passed, 1 skipped** pytest testi geçiyor. Sentetik test sesi ile `--selftest --cpu` kodu 0 ile doğrulandı. `build.ps1` ile `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`) derlendi ve paketli exe başarıyla selftest edildi. Sıradaki adım: Kullanıcı tarafından temiz Windows VM testi ve GitHub Releases yüklemesi.
 
 ## Biten (kanıtla)
+- **Faz 3, Faz 4 ve Faz 5 tamamlandı (2026-11-12):**
+  - **Yeni Logo & İkonlar:** `assets/icon.ico`, `dikte/ui/assets/icon.png` ve `installer/Dikte.ico` `design/download` baz alınarak Pillow ile üretildi; masaüstü kısayolu `C:\Users\aksek\Desktop\Dikte.lnk` güncellendi.
+  - **Sistem Tepsisi (System Tray):** `dikte/tray.py` ile `pystray` + `Pillow` menüsü (Göster/Gizle, Dinleme Durumu, Çıkış); `--tray` ve `--minimized` sessiz başlatma bayrakları; pencere kapatıldığında tepsiye gizlenme ve arka planda global kısayol dinleme.
+  - **Mikrofon Morfizmi & Ses Dalgası:** `design/mikrofon_morph_animasyonu.html`'deki `#waveCanvas` canvas ses dalgası ve morphing mikrofon düğmesi Dikte ekranına entegre edildi.
+  - **Sidebar Katlama & Minimalist Görünüm:** Sol menü aç/kapa (daralma) desteği ve `sidebar_collapsed` ayarı; slogan ve rozet metin temizliği yapıldı.
+  - **Tasarım Dili Seçimi:** Ayarlar → Görünüm'de varsayılan `Sade Dikte.AI` (`dikte_ai`) ve `Klasik Magic UI v1.4` (`classic`) seçeneği.
+  - **1–3 Tuşlu Serbest Kısayol:** `dikte/hotkey.py` serbest kombinasyon yakalayıcısı (hotkey recorder, `Ctrl+Shift+D`, `Alt+Space` vb.) ve Ayarlar'da anında otomatik kaydetme.
+  - **Hugging Face Özel Model Desteği:** `data/custom_models.json` ile hem Ses (HF repo ID) hem Metin (GGUF URL/HF) modelleri ekleme modalı (`#customModelModal`), kart "⋯" menüsü (Aktifleştir, Sil, Listeden Kaldır) ve ses modeli indirme iptali.
+  - **Karşılama Sihirbazı (5 Adım):** `#welcomeWizard` (Hoş Geldiniz, Donanım/CUDA, Ses Modeli, Kısayol, Tamamlandı; `setup_done`).
+  - **Güncelleme Rollback:** Ayarlar → Güncelleme kartında eski sürümlere tek tıkla geri dönme (`update_list_releases`, `update_rollback`).
+  - **Selftest Sentetik Ses:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` üretildi; `python -m dikte --selftest --cpu` kodu 0 ile geçti.
+  - **Test Süiti:** **303 passed, 1 skipped** (40.68 sn).
+  - **Kurucu Paket:** `build.ps1` ile `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA-256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`) derlendi; `latest.json` güncellendi; `dist\Dikte\Dikte.exe --selftest --cpu` exit code 0 ile doğrulandı.
 - **v1.2 tamamlandı (2026-10-27):** Geçmiş, Modeller (6 ses modeli), Ayarlar ve "Transkripsiyonu Yenile" çalışıyor. Python 3.12.10; PyAV `>=11,<16`.
 - **83 pytest testi geçti** (2026-11-01, 12,34 sn).
 - **Gerçek GPU selftesti:** `large-v3 / cuda / float16`, model yükleme 7,3 sn; TTS test sesi çevrildi.
@@ -40,30 +53,16 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
 
 ## Sıradaki ilk adım
-1. **Faz 1 kullanıcı testi:** kurulumu kur, kaldır (modeller korunur/silinir), bir sonraki sürümde gerçek Release ile güncellemeyi dene.
-2. **Faz 2 (veri kaybı ve çökme hataları):** `uygulanacak plan.md` §4. Ayrı goal olarak başlat.
-3. Faz 3 (karşılama sihirbazı, ürün eksikleri) ve Faz 4 (test/hijyen/kapanış) sırayla.
+1. **Kullanıcı Kurulum & Dağıtım Testi:**
+   - `installer\Output\Dikte-Setup-1.6.0.exe` dosyasını gerçek makinede / temiz Windows VM'de kurup test etmek.
+   - Masaüstü kısayolu, sistem tepsisi simgesi ve arka planda global kısayol (`Ctrl+Shift+D` vb.) bas-konuş çalışmasını doğrulamak.
+   - GitHub Releases üzerinde v1.6.0 release oluşturup `latest.json` ve `Dikte-Setup-1.6.0.exe` dosyalarını yüklemek.
 
 ## Açık sorunlar
-- **Güncelleme:** GitHub'da henüz Release yok; `latest.json` 404. Kullanıcı yükleyince test edilecek.
-- **Test yan etkisi:** `tests/test_ui.py` `design/v2/*.png` dosyalarının üzerine yazar. Commit'e girmemeli; her koşudan sonra `git restore design/v2/` gerekir. Faz 4'te `artifacts/`'a taşınacak.
-- **Kurulum/kaldırma:** Admin kurulumda HKCU Run kaydı kurulumu yapan kullanıcıya yazılır. Gerçek UAC testi yapılmadı.
-- **Karşılama sihirbazı:** hiç yazılmadı (Faz 3).
-- **Inno uyarısı:** `UsedUserAreasWarning` derleme uyarısı veriyor (HKCU + admin); bilinçli bırakıldı.
-- **`bin\` klasörü:** `%LOCALAPPDATA%\Dikte\bin` (27 Ağustos) Dikte kodunun dışında; kaldırmaya dahil değil.
-- **`data/`, `models/` boş:** paketli sürüm ilk açılışta model bulamıyor; kullanıcı Modeller sayfasından indirmeli.
-- **Karşılama sihirbazı (blocker):** 5 ekranlı akış hiç yok; `setup_done` ayarı yok.
-- **Inno AppId:** `Dikte.iss:11` geçersiz GUID (`DIKTE` onaltılık değil).
-- **Kurulum yeri:** **Program Files** seçildi (2026-11-07); `Dikte.iss` hâlâ `%LOCALAPPDATA%` + `lowest`, Faz 1'de güncellenecek. Kurulum/güncelleme UAC onayı ister.
-- **Veri kaybı riski (Faz 2'de giderildi 2026-11-11):** Pano hatasında yapıştırma iptali, `history_open` kimlik senkronu, GGUF indirme jetonu, `finish_reason == "length"` ve `strip_response` tek satır koruması, `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve temiz `shutdown()` eklendi.
-- **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; kod hazır, gerçek GGUF ile ölçüm Faz 4'te yapılacak.
-- **Whisper dil algılama:** otomatik algılama Türkçe doğruluğunu düşürebilir; `input_language` ayarı var ama motora Faz 3.2'de bağlanacak.
-- **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn; sonraki çağrılar ~60 tok/s.
-- **OpenRouter:** ücret ve gizlilik riski; yalnız ucuz modeller önerilir, harcama STATE.md'de izlenir.
-- **İndirme duraklatma anlık değil:** açık dosya parçası bitince durur; ses modelinde iptal butonu Faz 3.2'de eklenecek.
-- **Otomatik yapıştırma:** yönetici pencerelerine sentetik tuş gitmeyebilir; panodaki eski içerik geri yüklenmez.
-- **Kaldırma geri alınamaz:** modeller, geçmiş ve ayarlar silinecek; ikinci onayda boyut gösterilecek.
-- **Sistem tepsisi (System Tray):** şu an pencere kapanınca uygulama çıkar; Faz 3.2'de sistem tepsisine küçültme ve pencere kapalıyken arka planda çalışma eklenecek.
+- **Güncelleme Yayın Adresi:** GitHub Releases üzerinde v1.6.0 yüklenene kadar `latest.json` 404 verecektir; ilk release yüklendiğinde otomatik güncelleme ve rollback aktifleşecektir.
+- **Temiz VM / Kullanıcı Kabul Testi:** Gerçek UAC ortamında admin kurulum, kaldırma (modelleri koru / tümünü sil bayrağı) ve sistem tepsisinden sessiz açılış kullanıcı tarafından test edilmelidir.
+- **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; bellek takas mantığı kodda hazır, kullanıcı gerçek donanımda ağır modellerle deneyebilir.
+- **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn ısınma sürebilir; sonraki çağrılar ~60 tok/s hızındadır.
 
 ## Bu oturumda alınan kararlar (kullanıcı onaylı)
 - Çıktı dili Türkçe/İngilizce/Almanca; "Otomatik çevir" kutusu dil seçicisinin yanında.
@@ -112,13 +111,13 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **263 passed, 1 skipped** (2026-11-11, Faz 2 regresyon testleri dahil) |
-| Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 172.888.124 bayt, SHA-256 65a0fa042eb7eba25b70d179d346f11a366b6eb51f415c76cc2ed460177da44d |
-| Paketli açılış | dist\Dikte\Dikte.exe 25 sn çalıştı; güncelleme denetimi 404 (yayın henüz yok), model yok (beklenen) |
-| `--selftest` | **Çalıştırılamıyor:** `tests/data/test.wav` ve `test.txt` yok |
+| `pytest -q` | **303 passed, 1 skipped** (2026-11-12, Faz 3–4–5 testleri dahil) |
+| Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 177.416.509 bayt, SHA-256 `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb` |
+| Paketli açılış | dist\Dikte\Dikte.exe --selftest --cpu başarıyla çalıştı (exit code 0) |
+| `--selftest` | **Çalışıyor:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` hazır; kod 0 ile geçti |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
-| Playwright arayüz | 4 sayfa, geçmiş, modeller, ayarlar, yenile, efektler, guncelleme kartı (25 test) |
+| Playwright arayüz | 4 sayfa + Karşılama Sihirbazı + HF Model modalı + Rollback + Wave Canvas (34 test) |
 | llama.cpp gerçek GGUF (2026-11-03) | gemma3-4b GPU yükleme 1,7 sn; üretim ~60 tok/s; ilk çağrı ~50 sn CUDA ısınması |
 | v1.4 efektler | Playwright: efekt anahtarı, `fx-on`, shine geçişi, liste gecikmeleri, bento, nokta deseni, kart ışığı — 6 test; ekran görüntüleri `design/v2/*.png` |
 | Gerçek mikrofon / kısayol / pano | Kullanıcı test etti (2026-10-31) |
@@ -129,9 +128,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 | Tema | Playwright: düğme sınıf değişimi + Ayarlar segmenti; `artifacts/ui-tema-*.png` |
 | Gerçek uygulama açılışı | Pencere `Dikte — VoxNote AI`, model GPU float16 hazır |
 | v1.3 OpenRouter gerçek çağrı | 6 cümle geçti (gemma-3-4b-it, ~$0,0001); düzeltmeler `reports/2026-11-01-openrouter-gercek-test.md` |
-| Derleme araçları | **Yok:** PyInstaller ve Inno Setup kurulu değil; `dist/` yok |
-| Kurulum / kaldırma | **Hiç denenmedi:** kod + iss + spec hazır değil (spec giriş hatası); kaldırma veriyi/autostart kaydını silmiyor |
-| Güncelleme (v1.6) | test_updater 12 test geçti; `sha256` akışı ve `UPDATE_URL` nedeniyle **gerçek akış çalışmıyor** |
+| Derleme araçları | **Hazır:** PyInstaller 6.22.3 ve Inno Setup 6; `build.ps1` tek komutla kurucu derliyor |
+| Kurulum / kaldırma | Kod + iss + spec hazır; `keep_models.flag` desteği; temiz VM kullanıcı testi bekliyor |
+| Güncelleme (v1.6) | `updater.py` liste/rollback/sha256 desteği tam; `latest.json` güncellendi |
 
 ## Çalıştırma komutları
 ```powershell

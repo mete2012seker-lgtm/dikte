@@ -12,6 +12,7 @@
 
 #define AppName "Dikte"
 #define AppExe "Dikte.exe"
+#define MyAppExeName "Dikte.exe"
 
 [Setup]
 ; AppId sabit olmalı; her sürümde aynı kalır, güncelleme ve kaldırma bu kimlikle eşleşir.
@@ -38,6 +39,8 @@ WizardStyle=modern
 [Tasks]
 Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; \
   GroupDescription: "Ek kısayollar:"
+Name: "autostart"; Description: "Windows açıldığında Dikte'yi sistem tepsisinde başlat"; \
+  GroupDescription: "Başlatma seçenekleri:"; Flags: unchecked
 
 [Files]
 ; dist\Dikte PyInstaller çıktısının tamamı (veri içermez; veri %LOCALAPPDATA%\Dikte'de)
@@ -49,10 +52,13 @@ Name: "{group}\{#AppName} Kaldır"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Registry]
-; Otomatik başlatma varsayılan kapalıdır; anahtar yalnız Ayarlar'dan açılınca yazılır.
-; Kaldırmada değer her durumda silinir (uygulama da set_autostart(False) çağırır).
+; Otomatik başlatma: Kurulumda seçilirse veya Ayarlar'dan açılırsa --tray ile sessiz başlar.
+; Kaldırmada her durumda temizlenir.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-  ValueType: none; ValueName: "Dikte"; Flags: uninsdeletevalue
+  ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#MyAppExeName}"" --tray"; \
+  Flags: uninsdeletevalue; Tasks: autostart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
+  ValueType: none; ValueName: "{#AppName}"; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{#AppName} uygulamasını başlat"; \

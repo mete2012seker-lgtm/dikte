@@ -21,6 +21,7 @@ def isolated_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "HISTORY_FILE", tmp_path / "history.json")
     monkeypatch.setattr(config, "LAST_RECORDING", tmp_path / "last.wav")
     monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "CUSTOM_MODELS_FILE", tmp_path / "custom_models.json")
     (tmp_path / "temp").mkdir(exist_ok=True)
 
 

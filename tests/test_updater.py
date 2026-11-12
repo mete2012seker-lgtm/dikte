@@ -226,3 +226,106 @@ def _yaz(tmp_path, icerik: bytes):
     yol = tmp_path / "kurucu.bin"
     yol.write_bytes(icerik)
     return yol
+
+
+def test_list_releases_and_fetch_payload(monkeypatch):
+    sample_releases = [
+        {
+            "tag_name": "v1.6.0",
+            "name": "Dikte 1.6.0",
+            "published_at": "2026-11-09T10:00:00Z",
+            "body": "sha256: " + "a" * 64 + "\nNotlar",
+            "assets": [
+                {
+                    "name": "Dikte-Setup-1.6.0.exe",
+                    "browser_download_url": "https://github.com/repo/releases/download/v1.6.0/Dikte-Setup-1.6.0.exe",
+                }
+            ],
+        },
+        {
+            "tag_name": "v1.5.0",
+            "name": "Dikte 1.5.0",
+            "published_at": "2026-11-01T10:00:00Z",
+            "body": "Eski sürüm. SHA-256: " + "b" * 64,
+            "assets": [
+                {
+                    "name": "Dikte-Setup-1.5.0.exe",
+                    "browser_download_url": "https://github.com/repo/releases/download/v1.5.0/Dikte-Setup-1.5.0.exe",
+                }
+            ],
+        },
+        {
+            "tag_name": "v2.0.0",
+            "name": "Dikte 2.0.0",
+            "published_at": "2026-12-01T10:00:00Z",
+            "body": "Gelecek sürüm",
+            "assets": [],
+        },
+    ]
+
+    data = json.dumps(sample_releases).encode("utf-8")
+    monkeypatch.setattr(updater.urllib.request, "urlopen", lambda *_a, **_k: FakeResponse(data))
+
+    payload = updater.fetch_releases_payload("https://api.github.com/repos/test/releases")
+    assert "releases" in payload
+    assert len(payload["releases"]) == 3
+
+    # list_releases denetimi
+    releases = updater.list_releases(
+        "https://api.github.com/repos/test/releases",
+        current_version="1.6.0",
+    )
+    assert len(releases) == 3
+
+    v16 = releases[0]
+    assert v16["version"] == "1.6.0"
+    assert v16["is_current"] is True
+    assert v16["is_downgrade"] is False
+    assert v16["installer_url"].endswith(".exe")
+    assert v16["sha256"] == "a" * 64
+
+    v15 = releases[1]
+    assert v15["version"] == "1.5.0"
+    assert v15["is_current"] is False
+    assert v15["is_downgrade"] is True
+    assert v15["sha256"] == "b" * 64
+
+    v20 = releases[2]
+    assert v20["version"] == "2.0.0"
+    assert v20["is_current"] is False
+    assert v20["is_downgrade"] is False
+
+
+def test_download_installer_cancel_and_progress(tmp_path, monkeypatch):
+    import threading
+
+    kurucu = b"x" * 1024
+    monkeypatch.setattr(config, "UPDATE_URL", "https://ornek/latest.json")
+    monkeypatch.setattr(
+        updater.urllib.request,
+        "urlopen",
+        lambda *_a, **_k: FakeResponse(kurucu),
+    )
+
+    # 1. progress_cb çağrılmalı
+    progress_calls = []
+    yol = updater.download_installer(
+        "https://ornek/kurucu.exe",
+        dest_dir=tmp_path,
+        progress_cb=lambda d, t: progress_calls.append((d, t)),
+        allow_missing_sha256=True,
+    )
+    assert yol.exists()
+    assert progress_calls
+
+    # 2. cancel_event ile durdurulabilmeli
+    cancel_ev = threading.Event()
+    cancel_ev.set()
+    with pytest.raises(updater.UpdaterError) as exc:
+        updater.download_installer(
+            "https://ornek/kurucu2.exe",
+            dest_dir=tmp_path,
+            cancel_event=cancel_ev,
+        )
+    assert exc.value.code == "cancelled"
+

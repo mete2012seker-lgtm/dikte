@@ -17,6 +17,7 @@ import json
 import logging
 import re
 import subprocess
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -59,11 +60,19 @@ def compare_versions(current: str, new: str) -> int:
     return 0
 
 
-def _fetch_json(url: str, timeout: float = CHECK_TIMEOUT) -> dict:
+def _fetch_json(
+    url: str,
+    timeout: float = CHECK_TIMEOUT,
+    headers: dict | None = None,
+) -> dict | list:
     if not url.lower().startswith("https://"):
         raise UpdaterError("http_rejected")
+    req_headers = {"User-Agent": "Dikte-updater"}
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, headers=req_headers)
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8", errors="replace"))
     except UpdaterError:
         raise
@@ -73,9 +82,95 @@ def _fetch_json(url: str, timeout: float = CHECK_TIMEOUT) -> dict:
         raise UpdaterError("net") from exc
     except json.JSONDecodeError as exc:
         raise UpdaterError("bad_json") from exc
-    if not isinstance(data, dict):
+    if not isinstance(data, (dict, list)):
         raise UpdaterError("bad_json")
     return data
+
+
+def fetch_releases_payload(
+    releases_url: str | None = None,
+    timeout: float = CHECK_TIMEOUT,
+) -> dict:
+    """GitHub releases API'den yayın verilerini çeker."""
+    base = releases_url or getattr(config, "RELEASES_API_URL", "")
+    if not base:
+        raise UpdaterError("no_url", "Releases URL yapılandırılmamış.")
+    headers = {"Accept": "application/vnd.github+json"}
+    raw = _fetch_json(base, timeout=timeout, headers=headers)
+    if isinstance(raw, list):
+        return {"releases": raw}
+    if isinstance(raw, dict):
+        if "releases" in raw:
+            return raw
+        return {"releases": [raw]}
+    raise UpdaterError("bad_json", "Geçersiz yayın listesi biçimi.")
+
+
+def list_releases(
+    releases_url: str | None = None,
+    current_version: str = config.APP_VERSION,
+    timeout: float = CHECK_TIMEOUT,
+) -> list[dict]:
+    """GitHub sürümlerini listeler, sürüm karşılaştırması ve indirme bağlantılarını çıkarır."""
+    payload = fetch_releases_payload(releases_url, timeout=timeout)
+    raw_list = payload.get("releases", [])
+    if not isinstance(raw_list, list):
+        return []
+
+    results = []
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        tag_name = str(item.get("tag_name") or "")
+        name = str(item.get("name") or tag_name or "Sürüm")
+        published_at = str(item.get("published_at") or "")
+        body = str(item.get("body") or "")
+
+        # Sürüm numarasını çıkar (ör. 'v1.6.0' -> '1.6.0')
+        version_match = re.search(r"(\d+\.\d+(?:\.\d+)?)", tag_name)
+        version = version_match.group(1) if version_match else tag_name.lstrip("vV")
+
+        # Inno Setup kurucu (.exe) varlığını bul
+        installer_url = ""
+        assets = item.get("assets", [])
+        if isinstance(assets, list):
+            for asset in assets:
+                if not isinstance(asset, dict):
+                    continue
+                a_name = str(asset.get("name") or "").lower()
+                a_url = str(asset.get("browser_download_url") or "")
+                if a_name.endswith(".exe") or a_url.lower().endswith(".exe"):
+                    installer_url = a_url
+                    break
+
+        # SHA-256 özetini çıkar (body içindeki 'sha256: ...' veya 64 hex karakter)
+        sha256 = ""
+        sha_match = re.search(r"(?:sha256|sha-256)[\s:=]+([0-9a-fA-F]{64})", body, re.IGNORECASE)
+        if sha_match:
+            sha256 = sha_match.group(1).lower()
+        else:
+            hex_match = re.search(r"\b([0-9a-fA-F]{64})\b", body)
+            if hex_match:
+                sha256 = hex_match.group(1).lower()
+
+        cmp = compare_versions(current_version, version)
+        is_current = (cmp == 0)
+        is_downgrade = (cmp == -1)
+
+        results.append(
+            {
+                "tag_name": tag_name,
+                "version": version,
+                "name": name,
+                "published_at": published_at,
+                "installer_url": installer_url,
+                "sha256": sha256,
+                "is_downgrade": is_downgrade,
+                "is_current": is_current,
+                "notes": body,
+            }
+        )
+    return results
 
 
 def check(force: bool = False, url: str | None = None) -> dict | None:
@@ -90,6 +185,10 @@ def check(force: bool = False, url: str | None = None) -> dict | None:
         raise UpdaterError("no_url", "Güncelleme sunucusu yapılandırılmamış.")
     try:
         data = _fetch_json(base)
+        if not isinstance(data, dict):
+            if force:
+                raise UpdaterError("bad_json", "Güncelleme bildirimi eksik.")
+            return None
         version = str(data.get("version", "")).strip()
         download_url = str(data.get("url", "")).strip()
         sha256 = str(data.get("sha256", "")).strip().lower()
@@ -128,12 +227,29 @@ def _validate_download_host(url: str) -> str:
     if not url_host:
         raise UpdaterError("bad_url")
     if expected_host and url_host != expected_host:
+        if expected_host in ("github.com", "api.github.com") and url_host in (
+            "github.com",
+            "api.github.com",
+            "objects.githubusercontent.com",
+        ):
+            return url
         raise UpdaterError("host_rejected")
     return url
 
 
-def download(url: str, dest_dir: Path | None = None, progress=None) -> Path:
+def download_installer(
+    url: str,
+    dest_dir: Path | None = None,
+    progress=None,
+    progress_cb=None,
+    cancel_event: threading.Event | None = None,
+    sha256: str | None = None,
+    allow_missing_sha256: bool = False,
+) -> Path:
     """Kurucuyu indirir; yarım dosya .part olarak tutulur, bitince adı değişir."""
+    if cancel_event is not None and cancel_event.is_set():
+        raise UpdaterError("cancelled", "İndirme kullanıcı tarafından iptal edildi.")
+
     url = _validate_download_host(url)
     dest_dir = Path(dest_dir or config.TEMP_DIR / "guncelleme")
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -143,18 +259,28 @@ def download(url: str, dest_dir: Path | None = None, progress=None) -> Path:
     if part_path.exists():
         part_path.unlink()
     request = urllib.request.Request(url, headers={"User-Agent": "Dikte-updater"})
+    cb = progress_cb or progress
     try:
         with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT) as response, open(part_path, "wb") as out:
-            total = int(response.headers.get("Content-Length") or 0)
+            headers = getattr(response, "headers", None)
+            total = int(headers.get("Content-Length") or 0) if headers else 0
             done = 0
             while True:
+                if cancel_event is not None and cancel_event.is_set():
+                    part_path.unlink(missing_ok=True)
+                    raise UpdaterError("cancelled", "İndirme kullanıcı tarafından iptal edildi.")
                 chunk = response.read(CHUNK_SIZE)
                 if not chunk:
                     break
                 out.write(chunk)
                 done += len(chunk)
-                if progress and total:
-                    progress(done, total)
+                if cb:
+                    try:
+                        cb(done, total)
+                    except TypeError:
+                        cb(done)
+    except UpdaterError:
+        raise
     except (urllib.error.URLError, OSError) as exc:
         part_path.unlink(missing_ok=True)
         logger.info("Güncelleme indirilemedi: %s", exc)
@@ -163,7 +289,18 @@ def download(url: str, dest_dir: Path | None = None, progress=None) -> Path:
         part_path.unlink(missing_ok=True)
         raise UpdaterError("incomplete")
     part_path.replace(final_path)
+
+    if sha256:
+        if not verify_sha256(final_path, sha256):
+            raise UpdaterError("sha_mismatch", "İndirilen dosyanın SHA-256 özeti uyuşmuyor.")
+    elif sha256 == "" and not allow_missing_sha256:
+        final_path.unlink(missing_ok=True)
+        raise UpdaterError("bad_sha", "Geçerli bir SHA-256 özeti bulunamadı.")
+
     return final_path
+
+
+download = download_installer
 
 
 def verify_sha256(path: Path, expected: str) -> bool:

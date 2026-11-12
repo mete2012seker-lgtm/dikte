@@ -20,6 +20,19 @@ from .engine import EngineError, TranscriptionEngine, select_plan
 from .state import ERROR, PROCESSING, RECORDING, READY, STATE_LABELS
 
 
+def set_app_user_model_id(app_id: str = "VoxNoteAI.Dikte.Desktop.1.6") -> bool:
+    """Windows görev çubuğunda uygulamanın kendi ikonunun görünmesini sağlar."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+            return True
+        except Exception:
+            return False
+    return False
+
+
 def _print_header() -> None:
     print(f"Dikte {config.APP_VERSION} — Python {sys.version.split()[0]}")
 
@@ -157,7 +170,7 @@ def cmd_console_test(force_device: str | None) -> int:
     return exit_code
 
 
-def cmd_ui(force_device: str | None, debug: bool) -> int:
+def cmd_ui(force_device: str | None, debug: bool, start_in_tray: bool = False) -> int:
     from .controller import Controller
     from .ui.bridge import run_app
 
@@ -166,7 +179,10 @@ def cmd_ui(force_device: str | None, debug: bool) -> int:
     engine = TranscriptionEngine(force_device=force_device)
     controller = Controller(engine=engine)
     controller.maybe_startup_update_check()
-    return run_app(controller, debug=debug)
+    try:
+        return run_app(controller, debug=debug, start_in_tray=start_in_tray)
+    except TypeError:
+        return run_app(controller, debug=debug)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -180,6 +196,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cpu", action="store_true", help="CPU modunu zorla")
     parser.add_argument("--debug", action="store_true", help="arayüz geliştirici araçlarını aç")
     parser.add_argument(
+        "--tray",
+        action="store_true",
+        help="uygulamayı sistem tepsisinde gizli başlat",
+    )
+    parser.add_argument(
+        "--minimized",
+        action="store_true",
+        help="uygulamayı sistem tepsisinde simge durumunda başlat",
+    )
+    parser.add_argument(
         "--selftest-dosya",
         type=Path,
         default=config.SELFTEST_WAV,
@@ -189,6 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    set_app_user_model_id()
     diagnostics.configure_console()
     diagnostics.setup_logging()
     args = build_parser().parse_args(argv)
@@ -204,7 +231,9 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_selftest(force_device, args.selftest_dosya)
     if args.dikte_testi:
         return cmd_console_test(force_device)
-    return cmd_ui(force_device, args.debug)
+
+    start_in_tray = bool(getattr(args, "tray", False) or getattr(args, "minimized", False))
+    return cmd_ui(force_device, args.debug, start_in_tray=start_in_tray)
 
 
 if __name__ == "__main__":

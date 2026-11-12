@@ -248,15 +248,22 @@ python -c "import ast,pathlib,sys; [ast.parse(p.read_text(encoding='utf-8')) for
 
 ---
 
-## 10. Model ve Görev Bölüşümü (Ana Model vs Swarm Alt Ajanları)
+## 10. Swarm Koordinatör Sistemi ve Görev Bölüşümü (`swarm` aracı zorunlu)
 
 2026-11-12 kuralı uyarınca:
-1. **Ana Model Rolü:** Ana model sadece en zor mimari kararlar, karmaşık kilitleme/algoritmalar, kritik köprü protokolleri ve genel koordinatörlük görevlerinde çalışır. Kolay/uzun kodları kendisi yazmaz, uzun belgeleri tek başına özetleyip vakit kaybetmez.
-2. **Alt Ajanlar (`/swarm` & Sub-agents):**
-   - Kolay ama uzun kodlama görevlerinde,
-   - CSS/HTML arayüz uyarlamalarında (`design/dikte-ai.html`, `mikrofon_morph_animasyonu.html`),
-   - Uzun belgelerin incelenmesi, özetlenmesi ve güncellenmesinde,
-   - Test koşturma, hata denetimi ve doğrulama süreçlerinde
-   **daima `gemini-3.8-flash-medium` (`Model: "flash"`)** ile çalıştırılır.
-3. **Paralel Çalışma (`/swarm`):** Aynı anda yapılabilecek bağımsız işlerde (örneğin bir ajan arayüz animasyonunu entegre ederken diğerinin kısayol tuş dinleyicisini yazması gibi) 2 veya daha fazla alt ajan aynı anda çağrılarak işler paralel bitirilir.
+1. **Ana Model (Koordinatör):**
+   - Ana model orta veya kolay zorluktaki hiçbir kodu kendisi yazmaz; yalnızca en zor mimari kararlar, kritik kilitler/algoritmalar, karmaşık köprü protokolleri ve bir işçinin 3 denemede çözemediği blokajlarda devreye girer.
+   - Kolay ama uzun kodlar, arayüz uyarlamaları, testler ve doküman güncellemeleri koordinatör tarafından doğrudan yazılmaz.
+2. **Yerleşik Swarm Aracı (`swarm`):**
+   - Kodlama, test ve doküman işleri `invoke_subagent` yerine doğrudan yerleşik **`swarm` aracı (`swarm{action:"add", model:"gemini-3.8-flash-medium", ...}`)** ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür.
+   - Tüm swarm işçileri istisnasız `gemini-3.8-flash-medium` (`Model: "flash"`) ile başlatılır.
+3. **Dosya Sahipliği ve Paralel Çalışma:**
+   - İşe başlamadan önce dosyalar çakışmayacak şekilde (her işçiye özel dosya sahipliği verilerek) ayrılır:
+     - Örnek: `icon-tray`, `data-layer`, `controller-api`, `ui-frontend`, `verifier` ve `monitor`.
+   - İki işçinin aynı anda aynı dosyayı düzenlemesine kesinlikle izin verilmez.
+   - İşçiler aynı anda paralel başlatılır; sistem stallsız ilerlesin diye `monitor` desteği de devreye alınabilir.
+4. **Pano İletişimi ve Yaşam Döngüsü:**
+   - İşçiler tamamladıkları işi panoda `@verifier` ve `@coordinator`'ı etiketleyerek duyurur.
+   - Koordinatör iş akışını `read_board` ile okur, boşta beklerken `swarm_wait` çağırır (token harcamaz).
+   - İşlerin bittiği `@verifier` raporu ile doğrulandığında, koordinatör `swarm{action:"kill"}` ile işçileri kapatır ve sonuçları teslim alır.
 

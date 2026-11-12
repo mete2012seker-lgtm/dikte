@@ -44,12 +44,17 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Commit ve push yalnızca `/asama-bitir` çağrıldığında ya da kullanıcı açıkça isterse yapılır.
 
 ## Plan ve denetim düzeni (zorunlu)
-- Plan, denetim veya "eksik / yarım / hata" çıkarımı yaparken **`calisma-duzeni.md` zorunludur**; aşamalar atlanmaz: keşif → doküman okuma → 4 paralel salt-okunur alt ajan (backend çekirdek, veri katmanı, arayüz+köprü, paketleme+doküman) → sentez + çapraz doğrulama → rapor → doğrulama.
+- Plan, denetim veya "eksik / yarım / hata" çıkarımı yaparken **`calisma-duzeni.md` zorunludur**; aşamalar atlanmaz: keşif → doküman okuma → paralel salt-okunur swarm işçileri → sentez + çapraz doğrulama → rapor → doğrulama.
 - Her bulgu `önem | dosya:satır | kısa alıntı | neden yanlış | somut düzeltme` biçiminde yazılır. Kanıtsız iddia rapora veya plana girmez; doğrulanamayanlar ayrı başlıkta toplanır.
 - Doküman iddiası kanıt sayılmaz. En kritik 3 iddia kod satırından bizzat doğrulanır; test sahtesi bir hatayı gizliyorsa bu ayrıca "test maskesi" olarak yazılır.
 - Çıktı sırası: blocker → yüksek → orta → düşük; sonunda fazlı düzeltme planı, kabul ölçütleri ve doğrulanamayanlar bölümü.
-- Denetim alt ajanları **yalnız salt okunur** çalışır: dosya oluşturmaz/değiştirmez/silmez, uygulamayı çalıştırmaz. Bu düzen dışında aynı anda en fazla 2 alt ajan çalıştırılır.
-- **Alt ajan modeli ve yetkisi:** Alt ajanlar daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çağrılır. Kolay ama uzun kodlama görevlerinde ve test koşumlarında çalıştırılabilir. Aşama sonunda yine aynı modelle çağrılarak yapılanları ve yapılmayanları denetleyip ana ajana raporlar.
+
+## Swarm Koordinatör Sistemi (`swarm` aracı zorunlu)
+- **Ana Model (Koordinatör):** Orta veya kolay zorluktaki hiçbir kodu kendisi yazmaz; yalnızca en zor mimari düğümlere, karmaşık köprü protokollerine veya bir işçinin 3 denemede çözemediği kritik hatalara müdahale eder.
+- **İş Bölümü ve Paralellik:** Kodlama, test ve doküman işleri `invoke_subagent` yerine doğrudan yerleşik **`swarm` aracı (`swarm{action:"add", model:"gemini-3.8-flash-medium", ...}`)** ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür.
+- **Dosya Sahipliği:** İşe başlamadan önce dosyalar çakışmayacak şekilde (her işçiye özel dosya sahipliği vererek) bölünür (ör. `icon-tray`, `data-layer`, `controller-api`, `ui-frontend`, `verifier`) ve aynı anda paralel başlatılır (`monitor` ile birlikte). İki ajanın aynı anda aynı dosyayı düzenlemesine izin verilmez.
+- **Pano ve Yaşam Döngüsü:** İşçiler işini bitirdiğinde panoda `@verifier` ve `@coordinator`'ı etiketler. Koordinatör ara adımlarda `swarm_wait` ile bekler, `read_board` ile süreci denetler, verifier raporuyla doğrular ve iş bitince `swarm{action:"kill"}` ile işçileri kapatır.
+- **Alt Ajan Modeli:** Tüm swarm işçileri daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çalıştırılır.
 - Plan dosyası, bu düzeni kullandığını ve hangi kanıtlara dayandığını başında yazar.
 
 ## Soru sorma

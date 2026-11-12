@@ -22,6 +22,7 @@ a = Analysis(
     binaries=llama_binaries,
     datas=[
         (str(ROOT / "dikte" / "ui"), "dikte/ui"),
+        (str(ROOT / "assets"), "assets"),
         *llama_datas,
     ],
     hiddenimports=[
@@ -35,6 +36,11 @@ a = Analysis(
         "pyperclip",
         "psutil",
         "winreg",
+        "pystray",
+        "pystray._win32",
+        "PIL",
+        "PIL.Image",
+        "PIL.ImageDraw",
         *llama_hidden,
     ],
     hookspath=[],

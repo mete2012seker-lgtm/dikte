@@ -181,3 +181,50 @@ def test_settings_write_uses_lock_unique_tmp_and_fsync(tmp_path, monkeypatch):
     assert seen_temps[0] != "settings.json.tmp"
     assert seen_temps[0] != seen_temps[1]
 
+
+# ---------- Faz 3-4 yeni alanlar ve çoklu tuş ----------
+
+
+def test_new_fields_defaults_and_roundtrip(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    data = store.as_dict()
+    assert data["design_style"] == "dikte_ai"
+    assert data["setup_done"] is False
+    assert data["sidebar_collapsed"] is False
+
+    store.save(design_style="classic", setup_done=True, sidebar_collapsed=True)
+    reloaded = SettingsStore(path).as_dict()
+    assert reloaded["design_style"] == "classic"
+    assert reloaded["setup_done"] is True
+    assert reloaded["sidebar_collapsed"] is True
+
+
+def test_design_style_invalid_fallback(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"design_style": "gecersiz"}), encoding="utf-8")
+    assert SettingsStore(path).get("design_style") == "dikte_ai"
+
+
+def test_multikey_hotkey_save_and_normalize(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+
+    # 3'lü kombinasyon
+    store.save(hotkey="shift+ctrl+d")
+    assert store.get("hotkey") == "ctrl+shift+d"
+    assert SettingsStore(path).get("hotkey") == "ctrl+shift+d"
+
+    # 2'li kombinasyon
+    store.set_hotkey("space+alt")
+    assert store.get("hotkey") == "alt+space"
+
+    # Geçersiz kombinasyon set_hotkey ile ValueError vermeli
+    with pytest.raises(ValueError):
+        store.set_hotkey("ctrl+shift+alt+d+x")
+
+    # Geçersiz kombinasyon dosyadan okununca varsayılana düşmeli
+    path.write_text(json.dumps({"hotkey": "1+2+3+4"}), encoding="utf-8")
+    assert SettingsStore(path).get("hotkey") == "right_ctrl"
+
+

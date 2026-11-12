@@ -145,10 +145,25 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §4.
 - [x] `shutdown()` içinde `_closed` kontrolü, tüm worker thread'lerinin `join` edilmesi ve yetim `kayit-*.wav` temizliği.
 - Kanıt: **263 passed, 1 skipped** (`pytest -q`); `Model: "flash"` alt ajan denetim raporu.
 
+### Aşama 14 — Faz 3, Faz 4 ve Faz 5: Sistem Tepsisi, Tasarım Dili, Serbest Kısayol, Sihirbaz, Rollback ve Kurucu Paketi (2026-11-12 tamamlandı)
+Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
+- [x] Yeni logo (`assets/icon.ico`, `dikte/ui/assets/icon.png`, `installer/Dikte.ico`) ve masaüstü kısayolu `Dikte.lnk` güncellendi.
+- [x] Sistem tepsisi (System Tray - `dikte/tray.py`, pystray+Pillow): Göster/Gizle, Dinleme Durumu, Çıkış, `--tray` ve `--minimized` başlatma bayrakları; pencere kapalıyken arka planda global kısayol dinleme.
+- [x] Sade Dikte.AI ve Klasik Magic UI v1.4 arayüz tasarım modeli seçicisi (`design_style` ayarı, varsayılan `dikte_ai`).
+- [x] Dikte ana ekranında canvas dalga + morflayan mikrofon animasyonu (`#waveCanvas`, morphing mic).
+- [x] Sidebar daralma (aç/kapa) desteği ve kalıcı `sidebar_collapsed` ayarı; slogan/rozet metin sadeleştirmesi.
+- [x] 1–3 tuşlu serbest kısayol kombinasyon yakalayıcısı (hotkey recorder, `Ctrl+Shift+D`, `Alt+Space` vb.) ve Ayarlar'da tüm değişikliklerin anında otomatik kaydedilmesi.
+- [x] Modeller sayfası: Ses ve Metin için Hugging Face repo ekleme modalı (`#customModelModal`), model kartı "⋯" menüsü (Aktifleştir, Sil, Listeden Kaldır), ses modeli indirme iptali (`models_cancel_download`).
+- [x] 5 adımlı Karşılama Sihirbazı (`#welcomeWizard`, `setup_done`): Hoş Geldiniz, CUDA tespiti/atlama, Ses Modeli seçimi, Kısayol seçimi, Tamamlandı.
+- [x] Güncelleme Rollback: Ayarlar → Güncelleme kartında eski sürümlere tek tıkla geri dönme (`update_list_releases`, `update_rollback`).
+- [x] Sentetik test sesi (`tests/data/test.wav` 16 kHz mono WAV + `test.txt`), `.venv\Scripts\python.exe -m dikte --selftest --cpu` kodu 0 ile doğrulandı.
+- [x] Pytest test süiti: **303 passed, 1 skipped** (40.68 sn).
+- [x] Inno Setup güncel kurucu: `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`), `installer/latest.json` güncellendi, paketli exe selftest ile doğrulandı.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (263 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (304 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

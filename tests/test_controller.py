@@ -19,6 +19,7 @@ def isolated_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "SETTINGS_FILE", tmp_path / "settings.json")
     monkeypatch.setattr(config, "HISTORY_FILE", tmp_path / "history.json")
     monkeypatch.setattr(config, "LAST_RECORDING", tmp_path / "last.wav")
+    monkeypatch.setattr(config, "CUSTOM_MODELS_FILE", tmp_path / "custom_models.json")
     (tmp_path / "temp").mkdir(exist_ok=True)
 
 
@@ -49,8 +50,9 @@ class FakeEngine:
         self.loaded_models.append(name)
         return EngineInfo(name, config.model_label(name), "GPU", "float16", 0.1)
 
-    def transcribe(self, wav_path):
+    def transcribe(self, wav_path, language=None):
         self.transcribe_calls += 1
+        self.last_language = language
         if self.gate is not None:
             self.gate.wait(timeout=3)
         if self.fail_transcribe:
@@ -695,5 +697,176 @@ def test_shutdown_joins_workers_and_cleans_kayit_wav():
     assert controller._worker is None or not controller._worker.is_alive()
     assert not orphan_wav.exists(), "Kapanışta kayit-*.wav dosyaları temizlenmeli"
     assert controller.toggle_record()["ok"] is False
+
+
+def test_settings_new_fields_and_hotkey():
+    controller = make_controller()
+    settings = controller.settings_get()
+    assert "design_style" in settings
+    assert "setup_done" in settings
+    assert "sidebar_collapsed" in settings
+    assert "hotkey" in settings
+    assert "hotkey_label" in settings
+
+    res = controller.settings_save({
+        "design_style": "classic",
+        "setup_done": True,
+        "sidebar_collapsed": True,
+        "hotkey": "ctrl+shift+d",
+    })
+    assert res["ok"] is True
+    updated = controller.settings_get()
+    assert updated["design_style"] == "classic"
+    assert updated["setup_done"] is True
+    assert updated["sidebar_collapsed"] is True
+    assert updated["hotkey"] == "ctrl+shift+d"
+
+    snap = controller.snapshot()
+    assert snap["design_style"] == "classic"
+    assert snap["setup_done"] is True
+    assert snap["sidebar_collapsed"] is True
+    assert snap["hotkey_id"] == "ctrl+shift+d"
+
+
+def test_refresh_last_with_auto_translate():
+    def fake_processor(text, **kwargs):
+        from dikte.text_engine import TextResult
+        return TextResult(text=f"Temizlenmis: {text}", translated=True, unchanged=False)
+
+    controller = make_controller(
+        engine=FakeEngine(text="Ham kayit metni."),
+        text_processor=fake_processor,
+        model_manager=FakeModels(),
+    )
+    controller.settings.save(
+        text_provider="openrouter",
+        auto_translate=True,
+    )
+
+    dictation(controller, "Ilk dikte metni")
+    assert controller.snapshot()["can_refresh"] is True
+
+    controller.engine.text = "Yenilenen ham metin"
+    res = controller.refresh_last()
+    assert res["ok"] is True
+    assert wait_for_state(controller, READY)
+
+    snap = controller.snapshot()
+    assert snap["state"] == READY
+    assert "Temizlenmis: Yenilenen ham metin" in snap["latest_text"]
+
+
+def test_ai_cancel_and_async_tasks():
+    gate = threading.Event()
+
+    def slow_processor(text, **kwargs):
+        gate.wait(timeout=2)
+        from dikte.text_engine import TextResult
+        return TextResult(text="Gecikmeli metin", translated=False, unchanged=False)
+
+    controller = make_controller(text_processor=slow_processor)
+    controller.settings.save(text_provider="openrouter")
+
+    # 1. Async başlat ve iptal et
+    res = controller.clean_text_async("Merhaba test")
+    assert res["ok"] is True
+    assert controller.snapshot()["state"] == "cleaning"
+
+    cancel_res = controller.ai_cancel()
+    assert cancel_res["ok"] is True
+    gate.set()
+
+    # Controller hazır duruma dönmeli ve en son metin değişmemeli
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        if controller.snapshot()["state"] == READY:
+            break
+        time.sleep(0.02)
+
+    assert controller.snapshot()["state"] == READY
+    assert controller.snapshot()["latest_text"] != "Gecikmeli metin"
+
+
+def test_models_custom_and_cancel_download():
+    controller = make_controller(model_manager=FakeModels())
+    
+    # İptal
+    cancel_res = controller.models_cancel_download()
+    assert cancel_res["ok"] is True
+
+    # Özel ses modeli ekle & kaldır
+    add_res = controller.models_add_custom("openai/whisper-large-v3", label="OpenAI Whisper")
+    assert add_res["ok"] is True
+    assert "model" in add_res
+
+    rem_res = controller.models_remove_custom(add_res["model"]["name"])
+    assert rem_res["ok"] is True
+
+    # Özel metin modeli ekle & kaldır
+    text_add = controller.text_models_add_custom("bartowski/Qwen_Qwen3-4B-GGUF", "model.gguf", "Qwen Custom")
+    assert "ok" in text_add
+
+    text_rem = controller.text_models_remove_custom("custom-qwen")
+    assert "ok" in text_rem
+
+
+def test_wizard_status_and_complete():
+    controller = make_controller()
+    status = controller.wizard_status()
+    assert status["ok"] is True
+    assert "setup_done" in status
+    assert "has_nvidia_gpu" in status
+    assert "cuda_ready" in status
+    assert "models" in status
+
+    comp = controller.wizard_complete({
+        "design_style": "classic",
+        "hotkey": "ctrl+alt+d",
+        "save_history": True,
+    })
+    assert comp["ok"] is True
+    assert controller.settings.get("setup_done") is True
+    assert controller.settings.get("design_style") == "classic"
+    assert controller.settings.get("hotkey") == "ctrl+alt+d"
+
+
+def test_update_list_releases_rollback_cancel():
+    controller = make_controller()
+    rel = controller.update_list_releases()
+    assert "ok" in rel
+
+    canc = controller.update_cancel()
+    assert canc["ok"] is True
+
+    # Rollback without url fails gracefully
+    roll_err = controller.update_rollback("1.5.0", "")
+    assert roll_err["ok"] is False
+
+
+def test_bridge_api_integration():
+    from dikte.ui.bridge import Api
+
+    controller = make_controller()
+    api = Api(controller)
+
+    assert api.snapshot()["state"] == READY
+    assert api.wizard_status()["ok"] is True
+    assert api.wizard_complete()["ok"] is True
+    assert api.ai_cancel()["ok"] is True
+    assert api.update_cancel()["ok"] is True
+    assert api.models_cancel_download()["ok"] is True
+
+    # window_hide_to_tray with mock window
+    class MockWindow:
+        def __init__(self):
+            self.hidden = False
+        def hide(self):
+            self.hidden = True
+
+    mock_win = MockWindow()
+    api.set_window(mock_win)
+    assert api.window_hide_to_tray()["ok"] is True
+    assert mock_win.hidden is True
+
 
 

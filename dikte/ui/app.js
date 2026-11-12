@@ -69,6 +69,131 @@
   let aiState = null;
   let aiBusy = false;
 
+  /* ---------- Faz 3.1 & 3.2: Yan Menü Daraltma ---------- */
+  const brandToggle = $("#brandToggle");
+  function toggleSidebar(collapsed, persist) {
+    const isCollapsed = collapsed !== undefined
+      ? Boolean(collapsed)
+      : !document.body.classList.contains("sidebar-collapsed");
+    document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+    if (persist && hasApi("settings_save")) {
+      api.settings_save({ sidebar_collapsed: isCollapsed }).catch(() => {});
+    }
+  }
+  if (brandToggle) {
+    brandToggle.addEventListener("click", () => toggleSidebar(undefined, true));
+  }
+
+  /* ---------- Faz 3.4: Tasarım Dili (dikte_ai / classic) ---------- */
+  let designStyle = document.documentElement.getAttribute("data-design") || "dikte_ai";
+  function setDesignStyle(style, persist) {
+    designStyle = (style === "classic") ? "classic" : "dikte_ai";
+    document.documentElement.setAttribute("data-design", designStyle);
+    $$("#designStyleGroup [data-design-choice]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.designChoice === designStyle);
+    });
+    if (persist && hasApi("settings_save")) {
+      api.settings_save({ design_style: designStyle }).catch(() => {});
+    }
+  }
+  $$("#designStyleGroup [data-design-choice]").forEach((btn) => {
+    btn.addEventListener("click", () => setDesignStyle(btn.dataset.designChoice, true));
+  });
+  setDesignStyle(designStyle, false);
+
+  /* ---------- Faz 3.4: Mikrofon Morfizmi & Canvas Ses Dalgaları ---------- */
+  const waveCanvas = $("#waveCanvas");
+  let waveCtx = waveCanvas ? waveCanvas.getContext("2d") : null;
+  let isRecordingState = false;
+  let morphValue = 0;
+  let morphFrom = 0;
+  let morphTo = 0;
+  let morphStartTime = 0;
+  const MORPH_DURATION_MS = 750;
+
+  const leftProfile = [
+    0.07, 0.08, 0.08, 0.11, 0.15, 0.12, 0.20, 0.25,
+    0.18, 0.30, 0.38, 0.44, 0.32, 0.56, 0.68, 0.50,
+    0.74, 0.88, 0.62, 0.94, 0.82, 0.72, 0.58, 0.48
+  ];
+  const rightProfile = [
+    0.52, 0.64, 0.78, 0.88, 0.95, 0.68, 0.82, 0.72,
+    0.54, 0.62, 0.44, 0.36, 0.48, 0.34, 0.26, 0.22,
+    0.28, 0.18, 0.14, 0.12, 0.09, 0.08, 0.08, 0.06
+  ];
+  const idleHeights = [...leftProfile, ...rightProfile];
+  const currentHeights = idleHeights.map((h) => h * 54);
+
+  function resizeWaveCanvas() {
+    if (!waveCanvas || !stage) return;
+    const rect = stage.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    waveCanvas.width = rect.width * dpr;
+    waveCanvas.height = rect.height * dpr;
+    if (waveCtx) waveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resizeWaveCanvas);
+  setTimeout(resizeWaveCanvas, 100);
+
+  function easeMorph(x) {
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function drawRoundedBar(ctx, x, centerY, width, height, alpha) {
+    const radius = width / 2;
+    const top = centerY - height / 2;
+    ctx.save();
+    ctx.fillStyle = `rgba(90, 130, 255, ${0.85 * alpha})`;
+    ctx.shadowColor = `rgba(74, 108, 247, ${0.45 * alpha})`;
+    ctx.shadowBlur = 8 * alpha;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - width / 2, top, width, height, radius);
+    else ctx.rect(x - width / 2, top, width, height);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function renderWaveAnim(now) {
+    if (waveCtx && waveCanvas && stage) {
+      if (morphValue !== morphTo) {
+        const elapsed = Math.max(0, now - morphStartTime);
+        const rawT = Math.min(1, elapsed / MORPH_DURATION_MS);
+        morphValue = lerp(morphFrom, morphTo, easeMorph(rawT));
+      }
+      const rect = stage.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      waveCtx.clearRect(0, 0, W, H);
+
+      const isClassic = document.documentElement.getAttribute("data-design") === "classic";
+      if (!isClassic && W > 100) {
+        const centerY = H / 2 - 20;
+        const totalBars = idleHeights.length;
+        const barWidth = 4;
+        const spacing = (W * 0.82) / totalBars;
+        const startX = (W - (totalBars * spacing)) / 2 + spacing / 2;
+
+        const timeSec = now * 0.003;
+        for (let i = 0; i < totalBars; i++) {
+          const baseH = idleHeights[i] * 60;
+          let targetH = baseH;
+          if (isRecordingState) {
+            const waveA = Math.sin(timeSec * 2.5 + i * 0.3) * 22;
+            const waveB = Math.cos(timeSec * 4.0 - i * 0.2) * 14;
+            targetH = Math.max(8, baseH * 0.4 + Math.abs(waveA + waveB) * 1.6);
+          }
+          currentHeights[i] = lerp(currentHeights[i], targetH, 0.15);
+          const x = startX + i * spacing;
+          const alpha = 0.5 + 0.5 * (currentHeights[i] / 70);
+          drawRoundedBar(waveCtx, x, centerY, barWidth, Math.max(6, currentHeights[i]), alpha);
+        }
+      }
+    }
+    requestAnimationFrame(renderWaveAnim);
+  }
+  requestAnimationFrame(renderWaveAnim);
+
   /* ---------- küçük yardımcılar ---------- */
 
   function toast(message, kind) {
@@ -262,11 +387,20 @@
   /* ---------- durum ---------- */
 
   function applyState(state) {
-    stage.classList.toggle("is-listening", state === "recording");
+    const rec = (state === "recording");
+    stage.classList.toggle("is-listening", rec);
+    stage.classList.toggle("is-recording", rec);
     stage.classList.toggle("is-processing", state === "processing");
     stage.classList.toggle("is-cleaning", state === "cleaning");
     stage.classList.toggle("is-loading", state === "loading");
     stage.classList.toggle("is-error", state === "error");
+
+    if (isRecordingState !== rec) {
+      isRecordingState = rec;
+      morphFrom = morphValue;
+      morphTo = rec ? 1 : 0;
+      morphStartTime = performance.now();
+    }
 
     const textCard = $(".text-card");
     if (textCard) {
@@ -765,6 +899,66 @@
         actions.appendChild(remove);
       }
 
+      // Faz 4.3: "⋯" (üç nokta) işlem menüsü
+      const menuWrap = document.createElement("div");
+      menuWrap.className = "model-menu-wrap";
+      const menuBtn = document.createElement("button");
+      menuBtn.className = "model-menu-btn";
+      menuBtn.setAttribute("aria-label", "Model menüsü");
+      menuBtn.textContent = "⋯";
+      const menuDropdown = document.createElement("div");
+      menuDropdown.className = "model-dropdown";
+
+      if (item.installed && !item.active && !item.loaded) {
+        const itemAct = document.createElement("button");
+        itemAct.className = "model-dropdown-item";
+        itemAct.textContent = "Aktifleştir";
+        itemAct.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          textModelAction("text_model_activate", item.name);
+        });
+        menuDropdown.appendChild(itemAct);
+      }
+
+      if (item.installed || item.partial) {
+        const itemDel = document.createElement("button");
+        itemDel.className = "model-dropdown-item danger";
+        itemDel.textContent = "Dosyayı Sil";
+        itemDel.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
+          textModelAction("text_model_delete", item.name);
+        });
+        menuDropdown.appendChild(itemDel);
+      }
+
+      if (item.custom) {
+        const itemRem = document.createElement("button");
+        itemRem.className = "model-dropdown-item danger";
+        itemRem.textContent = "Listeden Kaldır";
+        itemRem.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          if (!window.confirm(item.label + " listeden tamamen kaldırılsın mı?")) return;
+          if (hasApi("text_models_remove_custom")) {
+            await api.text_models_remove_custom(item.name);
+            toast("Özel model listeden kaldırıldı.", "info");
+            loadModels();
+          }
+        });
+        menuDropdown.appendChild(itemRem);
+      }
+
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        $$(".model-dropdown.is-open").forEach(d => { if (d !== menuDropdown) d.classList.remove("is-open"); });
+        menuDropdown.classList.toggle("is-open");
+      });
+      menuWrap.append(menuBtn, menuDropdown);
+      actions.appendChild(menuWrap);
+
       card.append(icon, main, size, statusBox, actions);
       list.appendChild(card);
     });
@@ -918,6 +1112,81 @@
         });
         actions.appendChild(remove);
       }
+
+      // Faz 4.3: Ses modeli indirme iptali
+      if (item.downloading || (download && download.name === item.name && download.state === "downloading")) {
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "m-btn";
+        cancelBtn.textContent = "İptal";
+        cancelBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (hasApi("models_cancel_download")) {
+            await api.models_cancel_download();
+            toast("Ses modeli indirme iptal edildi.", "info");
+            loadModels();
+          }
+        });
+        actions.appendChild(cancelBtn);
+      }
+
+      // Faz 4.3: "⋯" (üç nokta) işlem menüsü
+      const menuWrap = document.createElement("div");
+      menuWrap.className = "model-menu-wrap";
+      const menuBtn = document.createElement("button");
+      menuBtn.className = "model-menu-btn";
+      menuBtn.setAttribute("aria-label", "Model menüsü");
+      menuBtn.textContent = "⋯";
+      const menuDropdown = document.createElement("div");
+      menuDropdown.className = "model-dropdown";
+
+      if (item.installed && !item.active) {
+        const itemAct = document.createElement("button");
+        itemAct.className = "model-dropdown-item";
+        itemAct.textContent = "Aktifleştir";
+        itemAct.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          activateModel(item.name);
+        });
+        menuDropdown.appendChild(itemAct);
+      }
+
+      if (item.installed || item.partial) {
+        const itemDel = document.createElement("button");
+        itemDel.className = "model-dropdown-item danger";
+        itemDel.textContent = "Dosyayı Sil";
+        itemDel.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          deleteModel(item.name, item.label);
+        });
+        menuDropdown.appendChild(itemDel);
+      }
+
+      if (item.custom) {
+        const itemRem = document.createElement("button");
+        itemRem.className = "model-dropdown-item danger";
+        itemRem.textContent = "Listeden Kaldır";
+        itemRem.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("is-open");
+          if (!window.confirm(item.label + " listeden tamamen kaldırılsın mı?")) return;
+          if (hasApi("models_remove_custom")) {
+            await api.models_remove_custom(item.name);
+            toast("Özel ses modeli listeden kaldırıldı.", "info");
+            loadModels();
+          }
+        });
+        menuDropdown.appendChild(itemRem);
+      }
+
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        $$(".model-dropdown.is-open").forEach(d => { if (d !== menuDropdown) d.classList.remove("is-open"); });
+        menuDropdown.classList.toggle("is-open");
+      });
+      menuWrap.append(menuBtn, menuDropdown);
+      actions.appendChild(menuWrap);
 
       card.append(icon, main, size, statusBox, actions);
       card.addEventListener("click", () => {
@@ -1559,6 +1828,10 @@
         last_check_text: data.ai && data.ai.update_last_check_text,
         auto_check: data.ai && data.ai.update_check_on_start,
       });
+      if (data.sidebar_collapsed !== undefined) toggleSidebar(data.sidebar_collapsed, false);
+      if (data.design_style) setDesignStyle(data.design_style, false);
+      checkWelcomeWizard(data);
+      loadRollbackReleases();
     } catch (error) {
       console.error("Ayarlar okunamadı:", error);
       toast("Ayarlar okunamadı.", "error");
@@ -1568,14 +1841,17 @@
   $("#hotkeySelect").addEventListener("change", () => {
     updateHotkeyPreview();
     markDirty();
+    triggerInstantSettingsSave();
   });
 
   $("#historySwitch").addEventListener("click", () => {
     setSwitch(!switchOn());
     markDirty();
+    triggerInstantSettingsSave();
   });
 
   $("#saveSettingsBtn").addEventListener("click", async () => {
+    clearTimeout(instantSaveTimer);
     if (!hasApi("settings_save")) return;
     const payload = {
       hotkey: $("#hotkeySelect").value,
@@ -1846,6 +2122,350 @@
       toast("Kaydedilemedi.", "error");
     }
   });
+
+  /* ---------- Faz 4.4: Hugging Face Özel Model Ekle Modalı ---------- */
+  const customModelModal = $("#customModelModal");
+  const addCustomModelBtn = $("#addCustomModelBtn");
+  const customModelClose = $("#customModelClose");
+  const customModelCancel = $("#customModelCancel");
+  const customModelSubmit = $("#customModelSubmit");
+  const customModelKind = $("#customModelKind");
+  const customModelRepo = $("#customModelRepo");
+  const customModelFilename = $("#customModelFilename");
+  const customModelLabel = $("#customModelLabel");
+  const customModelStatus = $("#customModelStatus");
+  const groupCustomFilename = $("#groupCustomFilename");
+  const customModelRepoLabel = $("#customModelRepoLabel");
+
+  if (addCustomModelBtn && customModelModal) {
+    addCustomModelBtn.addEventListener("click", () => {
+      customModelKind.value = modelTab === "text" ? "text" : "audio";
+      updateCustomModelForm();
+      customModelModal.hidden = false;
+      if (customModelStatus) customModelStatus.textContent = "";
+    });
+
+    const closeModal = () => { customModelModal.hidden = true; };
+    if (customModelClose) customModelClose.addEventListener("click", closeModal);
+    if (customModelCancel) customModelCancel.addEventListener("click", closeModal);
+
+    function updateCustomModelForm() {
+      const isText = customModelKind.value === "text";
+      if (groupCustomFilename) groupCustomFilename.hidden = !isText;
+      if (customModelRepoLabel) {
+        customModelRepoLabel.textContent = isText
+          ? "Hugging Face Repo ID veya Doğrudan GGUF URL:"
+          : "Hugging Face Whisper Repo ID:";
+      }
+      if (customModelRepo) {
+        customModelRepo.placeholder = isText
+          ? "ör. unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF"
+          : "ör. openai/whisper-large-v3-turbo veya user/repo";
+      }
+    }
+    if (customModelKind) customModelKind.addEventListener("change", updateCustomModelForm);
+
+    if (customModelSubmit) {
+      customModelSubmit.addEventListener("click", async () => {
+        const repo = (customModelRepo ? customModelRepo.value : "").trim();
+        const filename = (customModelFilename ? customModelFilename.value : "").trim();
+        const label = (customModelLabel ? customModelLabel.value : "").trim();
+        const isText = customModelKind.value === "text";
+
+        if (!repo) {
+          if (customModelStatus) customModelStatus.textContent = "Repo ID veya URL boş olamaz.";
+          return;
+        }
+
+        if (customModelStatus) customModelStatus.textContent = "Ekleniyor…";
+        customModelSubmit.disabled = true;
+        try {
+          let res = null;
+          if (isText) {
+            if (hasApi("text_models_add_custom")) {
+              res = await api.text_models_add_custom(repo, filename, label);
+            }
+          } else {
+            if (hasApi("models_add_custom")) {
+              res = await api.models_add_custom(repo, label);
+            }
+          }
+          if (res && res.ok) {
+            toast(res.message || "Özel model başarıyla eklendi.", "info");
+            closeModal();
+            loadModels();
+          } else {
+            if (customModelStatus) customModelStatus.textContent = (res && res.message) || "Model eklenemedi.";
+          }
+        } catch (e) {
+          if (customModelStatus) customModelStatus.textContent = "Model eklenirken hata oluştu.";
+        }
+        customModelSubmit.disabled = false;
+      });
+    }
+  }
+
+  /* ---------- Faz 4.1: 1–3 Tuşlu Kısayol Yakalayıcı ---------- */
+  const hotkeyRecorderBtn = $("#hotkeyRecorderBtn");
+  const hotkeyRecorderStatus = $("#hotkeyRecorderStatus");
+  let recordingHotkey = false;
+
+  function formatKeyLabel(key) {
+    if (!key) return "";
+    const parts = key.toLowerCase().split("+");
+    return parts.map(p => {
+      if (p === "ctrl" || p === "control" || p === "right_ctrl" || p === "left_ctrl") return "Ctrl";
+      if (p === "shift" || p === "right_shift" || p === "left_shift") return "Shift";
+      if (p === "alt" || p === "right_alt" || p === "left_alt") return "Alt";
+      if (p === "space") return "Space";
+      return p.toUpperCase();
+    }).join(" + ");
+  }
+
+  if (hotkeyRecorderBtn) {
+    hotkeyRecorderBtn.addEventListener("click", () => {
+      recordingHotkey = true;
+      hotkeyRecorderBtn.disabled = true;
+      if (hotkeyRecorderStatus) {
+        hotkeyRecorderStatus.hidden = false;
+        hotkeyRecorderStatus.textContent = "Tuşlara basın (örn: Ctrl+Shift+D)...";
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (!recordingHotkey) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) {
+        let pressed = [];
+        if (e.ctrlKey) pressed.push("Ctrl");
+        if (e.shiftKey) pressed.push("Shift");
+        if (e.altKey) pressed.push("Alt");
+        if (hotkeyRecorderStatus) hotkeyRecorderStatus.textContent = pressed.join("+") + " + ...";
+        return;
+      }
+
+      let combo = [];
+      if (e.ctrlKey) combo.push("ctrl");
+      if (e.shiftKey) combo.push("shift");
+      if (e.altKey) combo.push("alt");
+
+      let keyName = e.key.toLowerCase();
+      if (e.code && e.code.startsWith("Key")) keyName = e.code.slice(3).toLowerCase();
+      else if (e.code && e.code.startsWith("Digit")) keyName = e.code.slice(5);
+      else if (e.code === "Space") keyName = "space";
+      else if (e.code && e.code.startsWith("F") && !isNaN(e.code.slice(1))) keyName = e.code.toLowerCase();
+
+      if (!combo.includes(keyName)) combo.push(keyName);
+      const hotkeyStr = combo.join("+");
+
+      recordingHotkey = false;
+      hotkeyRecorderBtn.disabled = false;
+      const formatted = formatKeyLabel(hotkeyStr);
+      if (hotkeyRecorderStatus) hotkeyRecorderStatus.textContent = formatted;
+      const hotkeyNow = $("#hotkeyNow");
+      if (hotkeyNow) hotkeyNow.textContent = formatted;
+      window.__hotkeyLabel = formatted;
+      if (shortcutHint) shortcutHint.textContent = formatted + " (basılı tut)";
+
+      if (hasApi("settings_save")) {
+        api.settings_save({ hotkey: hotkeyStr }).then(() => {
+          toast("Kısayol güncellendi: " + formatted, "info");
+        }).catch(() => {});
+      }
+    });
+  }
+
+  /* ---------- Faz 3.5: Ayarlarda Anında Otomatik Kaydetme ---------- */
+  let instantSaveTimer = null;
+  function triggerInstantSettingsSave() {
+    clearTimeout(instantSaveTimer);
+    instantSaveTimer = setTimeout(() => {
+      if (!hasApi("settings_save")) return;
+      const payload = {
+        save_history: switchOn(),
+        hotkey: $("#hotkeySelect") ? $("#hotkeySelect").value : "right_ctrl",
+        design_style: designStyle,
+        sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
+      };
+      api.settings_save(payload).then(() => {
+        const dirty = $("#settingsDirty");
+        if (dirty) dirty.hidden = true;
+      }).catch(() => {});
+    }, 600);
+  }
+
+  /* ---------- Faz 5.1: Önceki Sürümlere Dön (Rollback) ---------- */
+  const rollbackSelect = $("#rollbackSelect");
+  const rollbackBtn = $("#rollbackBtn");
+
+  async function loadRollbackReleases() {
+    if (!rollbackSelect || !hasApi("update_list_releases")) return;
+    try {
+      const releases = await api.update_list_releases();
+      rollbackSelect.innerHTML = "";
+      if (!releases || !releases.length) {
+        rollbackSelect.innerHTML = '<option value="">Önceki sürüm bulunamadı</option>';
+        if (rollbackBtn) rollbackBtn.disabled = true;
+        return;
+      }
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = "";
+      defaultOpt.textContent = "Geri dönülecek sürüm seçin…";
+      rollbackSelect.appendChild(defaultOpt);
+
+      releases.forEach((rel) => {
+        const opt = document.createElement("option");
+        opt.value = rel.tag_name || rel.version;
+        opt.textContent = (rel.name || rel.tag_name) + (rel.is_current ? " (Mevcut)" : "");
+        if (rel.is_current) opt.disabled = true;
+        rollbackSelect.appendChild(opt);
+      });
+      rollbackSelect.addEventListener("change", () => {
+        if (rollbackBtn) rollbackBtn.disabled = !rollbackSelect.value;
+      });
+    } catch (e) {
+      if (rollbackSelect) rollbackSelect.innerHTML = '<option value="">Sürümler alınamadı</option>';
+    }
+  }
+
+  if (rollbackBtn) {
+    rollbackBtn.addEventListener("click", async () => {
+      const target = rollbackSelect ? rollbackSelect.value : "";
+      if (!target) return;
+      if (!window.confirm(target + " sürümüne geri dönülsün mü? Mevcut sürüm kaldırılıp bu sürüm kurulacak.")) return;
+      rollbackBtn.disabled = true;
+      rollbackBtn.textContent = "İndiriliyor…";
+      try {
+        if (hasApi("update_rollback")) {
+          const res = await api.update_rollback(target);
+          toast((res && res.message) || "Rollback işlemi başlatıldı.", "info");
+        }
+      } catch (e) {
+        toast("Rollback başlatılamadı.", "error");
+      }
+      rollbackBtn.disabled = false;
+      rollbackBtn.textContent = "Bu Sürüme Dön";
+    });
+  }
+
+  /* ---------- Faz 4.4: 5 Adımlı Karşılama Sihirbazı ---------- */
+  const welcomeWizard = $("#welcomeWizard");
+  const wizardPrevBtn = $("#wizardPrevBtn");
+  const wizardNextBtn = $("#wizardNextBtn");
+  const wizardFinishBtn = $("#wizardFinishBtn");
+  const restartWizardBtn = $("#restartWizardBtn");
+  let currentWizardStep = 1;
+
+  function showWizardStep(step) {
+    currentWizardStep = step;
+    for (let i = 1; i <= 5; i++) {
+      const stepEl = $("#wizardStep" + i);
+      if (stepEl) stepEl.hidden = (i !== step);
+      const ind = $(`[data-step="${i}"]`);
+      if (ind) {
+        ind.classList.toggle("is-active", i === step);
+        ind.classList.toggle("is-done", i < step);
+      }
+    }
+    if (wizardPrevBtn) wizardPrevBtn.disabled = (step === 1);
+    if (wizardNextBtn) wizardNextBtn.hidden = (step === 5);
+    if (wizardFinishBtn) wizardFinishBtn.hidden = (step !== 5);
+
+    if (step === 2) {
+      const hwTitle = $("#wizardHwTitle");
+      const hwDesc = $("#wizardHwDesc");
+      if (hwTitle && modelsState) {
+        const hasGpu = modelsState.device === "GPU";
+        hwTitle.textContent = hasGpu ? "NVIDIA GPU Algılandı" : "Standart CPU Modu";
+        hwDesc.textContent = hasGpu
+          ? "GPU hızlandırma aktif. CUDA bileşenleri ile maksimum performans."
+          : "NVIDIA ekran kartı bulunamadı. Dikte CPU ile optimize çalışacak.";
+      }
+    }
+  }
+
+  if (wizardPrevBtn) {
+    wizardPrevBtn.addEventListener("click", () => {
+      if (currentWizardStep > 1) showWizardStep(currentWizardStep - 1);
+    });
+  }
+  if (wizardNextBtn) {
+    wizardNextBtn.addEventListener("click", () => {
+      if (currentWizardStep < 5) showWizardStep(currentWizardStep + 1);
+    });
+  }
+
+  $$(".wizard-choice").forEach((label) => {
+    label.addEventListener("click", () => {
+      const radio = label.querySelector('input[type="radio"]');
+      if (radio) {
+        const name = radio.name;
+        $$(`.wizard-choice input[name="${name}"]`).forEach((r) => {
+          r.closest(".wizard-choice").classList.remove("is-selected");
+        });
+        label.classList.add("is-selected");
+        radio.checked = true;
+      }
+    });
+  });
+
+  if (wizardFinishBtn) {
+    wizardFinishBtn.addEventListener("click", async () => {
+      const designVal = ($('input[name="wizardDesign"]:checked') || {}).value || "dikte_ai";
+      const modelVal = ($('input[name="wizardModel"]:checked') || {}).value || "small";
+      const hotkeyVal = ($('input[name="wizardHotkey"]:checked') || {}).value || "right_ctrl";
+
+      setDesignStyle(designVal, true);
+
+      if (welcomeWizard) welcomeWizard.hidden = true;
+      toast("Kurulum tamamlandı! Dikte hazır.", "info");
+
+      if (hasApi("wizard_complete")) {
+        await api.wizard_complete({
+          design_style: designVal,
+          active_model: modelVal,
+          hotkey: hotkeyVal,
+          setup_done: true,
+        }).catch(() => {});
+      } else if (hasApi("settings_save")) {
+        await api.settings_save({
+          design_style: designVal,
+          active_model: modelVal,
+          hotkey: hotkeyVal,
+          setup_done: true,
+        }).catch(() => {});
+      }
+    });
+  }
+
+  if (restartWizardBtn) {
+    restartWizardBtn.addEventListener("click", () => {
+      if (welcomeWizard) {
+        welcomeWizard.hidden = false;
+        showWizardStep(1);
+      }
+    });
+  }
+
+  async function checkWelcomeWizard(settings) {
+    if (!welcomeWizard) return;
+    if (settings && settings.setup_done === false) {
+      welcomeWizard.hidden = false;
+      showWizardStep(1);
+      return;
+    }
+    if (hasApi("wizard_status")) {
+      try {
+        const st = await api.wizard_status();
+        if (st && st.setup_done === false) {
+          welcomeWizard.hidden = false;
+          showWizardStep(1);
+        }
+      } catch (e) {}
+    }
+  }
 
   showPage("page-dikte");
 })();

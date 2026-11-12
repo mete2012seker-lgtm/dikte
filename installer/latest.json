@@ -1,7 +1,7 @@
 {
   "version": "1.6.0",
   "url": "https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.0/Dikte-Setup-1.6.0.exe",
-  "sha256": "65a0fa042eb7eba25b70d179d346f11a366b6eb51f415c76cc2ed460177da44d",
+  "sha256": "eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb",
   "notes": "Dikte 1.6.0: otomatik güncelleme, kaldırma (modelleri koruma seçeneği) ve kurucu paketi.",
   "published": "2026-11-09T12:00:00Z"
 }

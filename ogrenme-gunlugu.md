@@ -64,4 +64,14 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Atomik yazma ve `fsync`:** Dosyayı doğrudan ezmek yerine önce benzersiz adlı bir `.tmp` dosyasına yazıp `os.fsync` ile diske fiziksel olarak kaydedilmesini beklemek ve sonra `os.replace` ile yer değiştirmek, elektrik kesintisinde bile ayar/geçmiş dosyasının bozulmasını engeller.
 5. **Kırpılan yanıt (`finish_reason == "length"`):** Yapay zeka modeli token sınırına çarpıp cümleyi yarıda kestiğinde yanıt boş olmasa bile eksiktir; bunu hata sayıp token bütçesini iki katına çıkararak yeniden denemek yarım cümlelerin metin kutusuna yazılmasını önler.
 
+## 2026-11-12 — Faz 3, Faz 4 ve Faz 5: Sistem tepsisi, serbest kısayol, sihirbaz ve kurucu
+
+1. **Sistem Tepsisi (System Tray) ve pystray:** Bir masaüstü uygulamasının arka planda sessizce çalışıp bildirim alanında ikon göstermesi için `pystray` ve `Pillow` kullanılır. Pencere `X` ile kapatıldığında kapanmak yerine tepsiye gizlenir (`toggle_visibility`), böylece kullanıcı arka planda istediği zaman kısayola basarak dikte yapmaya devam edebilir.
+2. **Serbest Kısayol (Key Recorder) ve `pynput`:** Tek tuş sınırlaması yerine 1, 2 veya 3 tuşlu serbest kombinasyonlar (`Ctrl+Shift+D`, `Alt+Space` vb.) yakalanırken basılan sanal tuş kodları (vk) normalize edilir. Böylece sistem tepsisindeyken de global olarak tüm Windows ortamında bas-konuş kısayolu dinlenir.
+3. **Anında Otomatik Kaydetme (Auto-Save):** Ayarlar sayfasında "Kaydet" butonu aramak yerine tüm `change` ve `input` olaylarının anında diske atomik yazılması kullanıcı deneyimini hızlandırır ve veri kaybını sıfıra indirir.
+4. **Hugging Face Özel Model Desteği (`custom_models.json`):** Yalnızca yerleşik modellere bağlı kalmayıp kullanıcının harici Hugging Face repo ID'si (ses için Whisper reposu, metin için GGUF linki) eklemesine imkan tanındı. Model diskten silinse bile listede kalır; istenirse "⋯" menüsünden tamamen listeden kaldırılabilir.
+5. **Kurucu Derleme (Build Pipeline):** PyInstaller tek klasör (onedir) çıktısı alınıp Inno Setup ile sıkıştırıldığında tek kurulum dosyası (`Dikte-Setup-1.6.0.exe`) elde edilir. Kurucunun SHA-256 özeti `latest.json` içine işlenerek otomatik güncelleme zinciri tam ve doğrulanmış hale getirildi.
+6. **Swarm Koordinatör Sistemi (`swarm` aracı):** Ana modelin (koordinatör) kolay kodlarla vakit kaybetmeyip yalnızca en zor mimari kararlarla ilgilenmesi; kodlama, test ve doküman işlerinin bağımsız dosya sahipliğiyle birden fazla `gemini-3.8-flash-medium` alt işçisine paylaştırılıp paralel bitirilmesi geliştirme hızını ve kalitesini katlar.
+
+
 
