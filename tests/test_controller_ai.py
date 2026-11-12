@@ -579,3 +579,65 @@ def test_gguf_download_pause_resume_and_cancel_do_not_race(tmp_path, monkeypatch
     assert controller.text_model_cancel("qwen3-1.7b")["ok"] is True
     assert not part.exists(), "Açık iptalde .part silinmeli"
 
+
+def test_local_process_text_retry_on_bad_or_unchanged_response(monkeypatch):
+    from dikte import text_models
+    controller = make_controller()
+    controller.settings.save(output_language="en", text_model="qwen3-4b")
+    monkeypatch.setattr(text_models, "is_installed", lambda name: True)
+
+    attempts = []
+
+    class MockRuntime:
+        model_name = "qwen3-4b"
+
+        def generate(self, system, user, max_tokens=512):
+            attempts.append((system, user, max_tokens))
+            if len(attempts) == 1:
+                # 1. denemede aynı metni döndürsün (çevrilmedi)
+                return "yarın sabah toplantı var"
+            # 2. denemede doğru çeviriyi döndürsün
+            return "Tomorrow morning there is a meeting."
+
+    controller._text_runtime = MockRuntime()
+    result = controller._local_process_text("yarın sabah toplantı var", translate=True)
+
+    assert len(attempts) == 2
+    assert result.text == "Tomorrow morning there is a meeting."
+    assert result.translated is True
+    # İkinci denemede bütçe artırılmış ve katı talimat verilmiş olmalı
+    assert attempts[1][2] >= attempts[0][2]
+    assert "DİKKAT" in attempts[1][0]
+
+
+def test_ai_start_task_triggers_auto_paste(monkeypatch):
+    controller = make_controller()
+    controller.settings.save(auto_paste=True, text_provider="openrouter", openrouter_model="test/model")
+
+    paste_called = []
+    controller._paster = lambda: (paste_called.append(1), True)[1]
+    controller._processor = FakeProcessor(result="Temizlenen ve yapıştırılan metin.")
+
+    controller._latest = "Ham dikte"
+    res = controller.ai_start_task("clean", "Ham dikte")
+    assert res["ok"] is True
+
+    # Async iş parçacığının bitmesini bekle
+    time.sleep(0.15)
+    assert paste_called == [1], "ai_start_task sonrasında otomatik yapıştırma çağrılmalı"
+    activities = [a["title"] for a in controller.snapshot()["activity"]]
+    assert "Etkin pencereye yapıştırıldı" in activities
+
+
+def test_auto_ai_text_provider_none_adds_skip_activity():
+    controller = make_controller()
+    controller.settings.save(auto_translate=True, text_provider="none")
+
+    result = controller._auto_ai_text("üç kelimelik dikte cümlesi")
+    # Ham metin dönmeli
+    assert result == "üç kelimelik dikte cümlesi"
+
+    activities = [a["title"] for a in controller.snapshot()["activity"]]
+    assert "Otomatik çeviri atlandı" in activities
+
+

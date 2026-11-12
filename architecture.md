@@ -26,11 +26,11 @@ Akış:
 | `dikte/text_engine.py` | Prompt kurma, tek çağrıda temizle/çevir, yanıt temizleme, çıktı dili ve halüsinasyon denetimi, Türkçe hata kodları | Hazır (OpenRouter; GGUF 7b) |
 | `dikte/history.py` | `data/history.json`: ekle/listele/ara/sil/temizle, 500 sınırı, bozuk dosya yedeği | Hazır |
 | `dikte/models.py` | 6 ses modeli kataloğu, disk taraması, indirme, silme, boyut biçimleme | Hazır |
-| `dikte/paste.py` | Etkin pencereye Ctrl+V; Dikte penceresini atlar, hata sessiz | Hazır |
-| `dikte/text_models.py` | 4 GGUF modeli kataloğu, `.part` + HTTP Range indirme (duraklat/devam/iptal), boyut doğrulama, llama.cpp sarmalayıcısı (yükleme öncesi CUDA DLL hazırlığı) | Hazır (llama-cpp-python GPU kurulu, cu124) |
-| `dikte/engine.py` | Cihaz seçimi, seçili modeli yükleme/boşaltma, çeviri, GPU→CPU düşüşü | Hazır |
+| `dikte/paste.py` | Etkin pencereye Ctrl+V (`SendInput` + `MapVirtualKeyW`); basılı olmayan Alt tuşuna keyup göndermeyerek menü çubuğuna odak kaçışını engeller, `KEYEVENTF_EXTENDEDKEY` destekler, `is_pasting()` koruması sağlar, gizli tepsi penceresini atlar | Hazır |
+| `dikte/text_models.py` | 4 GGUF modeli kataloğu, `.part` + HTTP Range indirme (duraklat/devam/iptal), boyut doğrulama, llama.cpp sarmalayıcısı (yükleme öncesi CUDA DLL hazırlığı), detay paneli metadata sağlayıcısı | Hazır (llama-cpp-python GPU kurulu, cu124) |
+| `dikte/engine.py` | Cihaz seçimi, seçili modeli yükleme/boşaltma, çeviri, GPU→CPU düşüşü, Türkçe `initial_prompt`, Silero `vad_parameters` | Hazır |
 | `dikte/audio.py` | sounddevice kaydı, geçici wav, temizlik | Hazır |
-| `dikte/hotkey.py` | pynput ile seçilebilir kısayol dinleyicisi (7 hazır tuş) | Hazır |
+| `dikte/hotkey.py` | pynput ile seçilebilir kısayol dinleyicisi (1–3 tuş serbest kombinasyon), `is_pasting()` yapay olay koruması ve `_keys_lock` kilit güvenliği | Hazır |
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
 | `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu (cublas/cudnn/cudart), VRAM/RAM, Türkçe hata metinleri, log | Hazır |
@@ -43,26 +43,26 @@ Akış:
 | `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), Magic UI efektleri, Sade Dikte.AI teması, morphing mikrofon | Hazır |
 | `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, anında ayar kaydı, serbest kısayol kaydedici, sihirbaz | Hazır |
 | `design/v2/` | v1.4 efekt dokümantasyonu: ui-spec.md + 10 ekran görüntüsü (koyu/açık × 4 sayfa + modeller-ses) | Hazır |
-| `tests/test_single_instance.py` | Named Mutex kilidi, ikinci kopya algılama, pencere öne getirme ve Win32 ikonu testleri (9 test) | 320 test geçti |
-| `tests/test_ui_fixes.py` | Sade Dikte.AI ve Klasik mod DOM yapısı, mikrofon morphing sınıfları, anında ayar kaydı ve etkinlik tekilleştirme testleri (8 test) | 320 test geçti |
-| `tests/test_tray_and_icon.py` | İkon dosyaları, fallback ikon, sistem tepsisi menü/toggle/thread ve selftest dosyaları testi | 320 test geçti |
-| `tests/test_hotkey.py` | 1–3 tuşlu serbest kısayol doğrulama ve normalizasyon testleri | 320 test geçti |
-| `tests/test_updater.py` | Güncelleme listesi, rollback, indirme ve sha256 doğrulama testleri | 320 test geçti |
-| `tests/test_uninstall.py` | Kaldırıcı yolu, kurulum kontrolü ve veri boyutu hesabı testleri | 320 test geçti |
-| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 320 test geçti |
-| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı | 320 test geçti |
-| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu | 320 test geçti |
-| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 320 test geçti |
-| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3/v1.6 alanları | 320 test geçti |
-| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 320 test geçti |
-| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 320 test geçti |
-| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, 401/402/429/ağ, dil denetimi | 320 test geçti |
-| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, HF özel modeller, 404, silme | 320 test geçti |
-| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 320 test geçti |
-| `tests/test_models.py` | Katalog, boyut, HF özel modeller, indirme iptali, silme | 320 test geçti |
-| `tests/test_ui.py` | Playwright + sahte köprü: 4 sayfa, sihirbaz, HF modal, rollback, wave canvas (34 test) | 320 test geçti |
-| `tests/test_paste.py` | Kendi pencereyi atlama, kapalı ayar, hata | 320 test geçti |
-| `tests/test_version.py` | Tek sürüm kaynağı (1.6.0), latest.json, User-Agent uyumu | 320 test geçti |
+| `tests/test_single_instance.py` | Named Mutex kilidi, ikinci kopya algılama, pencere öne getirme ve Win32 ikonu testleri (9 test) | 343 test geçti |
+| `tests/test_ui_fixes.py` | Sade Dikte.AI ve Klasik mod DOM yapısı, mikrofon morphing sınıfları, anında ayar kaydı, etkinlik tekilleştirme, logo boyutu ve metin modeli detay paneli testleri (10 test) | 343 test geçti |
+| `tests/test_tray_and_icon.py` | İkon dosyaları, fallback ikon, sistem tepsisi menü/toggle/thread ve selftest dosyaları testi | 343 test geçti |
+| `tests/test_hotkey.py` | 1–3 tuşlu serbest kısayol doğrulama ve normalizasyon testleri | 343 test geçti |
+| `tests/test_updater.py` | Güncelleme listesi, rollback, indirme ve sha256 doğrulama testleri | 343 test geçti |
+| `tests/test_uninstall.py` | Kaldırıcı yolu, kurulum kontrolü ve veri boyutu hesabı testleri | 343 test geçti |
+| `tests/test_state.py` | Durum geçişleri (cleaning dahil) | 343 test geçti |
+| `tests/test_controller.py` | Sahte bileşenlerle dikte, geçmiş, model, ayar, yenile akışı, sıfır gecikmeli kayıt ve engine lock | 343 test geçti |
+| `tests/test_controller_ai.py` | Temizle/Çevir, sağlayıcı kapalı, otomatik çevir, anahtar durumu, yerel yeniden deneme | 343 test geçti |
+| `tests/test_engine_plan.py` | GPU/CPU ve seçili model sırası | 343 test geçti |
+| `tests/test_settings.py` | Ayar okuma/yazma, bozuk dosya, atomik yazma, v1.3/v1.6 alanları | 343 test geçti |
+| `tests/test_secrets.py` | DPAPI gidiş-dönüş, bozuk blob, maskeleme | 343 test geçti |
+| `tests/test_openrouter.py` | Ucuz filtre, önbellek, çevrimdışı düşüş | 343 test geçti |
+| `tests/test_text_engine.py` | Prompt sırası, yanıt temizleme, <think> temizliği, 401/402/429/ağ, genişletilmiş dil denetimi | 343 test geçti |
+| `tests/test_text_models.py` | Katalog, Range ile devam, duraklat/iptal, HF özel modeller, metadata, 404, silme | 343 test geçti |
+| `tests/test_history.py` | Kayıt, Türkçe arama, filtre, silme, sınır, bozuk JSON | 343 test geçti |
+| `tests/test_models.py` | Katalog, boyut, HF özel modeller, indirme iptali, silme | 343 test geçti |
+| `tests/test_ui.py` | Playwright + sahte köprü: 4 sayfa, sihirbaz, HF modal, rollback, wave canvas, metin model detayları (38 test) | 343 test geçti |
+| `tests/test_paste.py` | Kendi pencereyi atlama, gizli tepsi penceresi, şartlı modifier keyup, extended tuş bayrağı | 343 test geçti |
+| `tests/test_version.py` | Tek sürüm kaynağı (1.6.0), latest.json, User-Agent uyumu | 343 test geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |

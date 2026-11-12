@@ -249,3 +249,41 @@ def test_custom_text_model_lifecycle_and_manager(tmp_path, monkeypatch):
     assert m_id not in scanned_after_remove
 
 
+def test_text_models_scan_enriched_metadata(tmp_path, monkeypatch):
+    custom_file = tmp_path / "custom_models.json"
+    models_dir = tmp_path / "models"
+    monkeypatch.setattr(config, "CUSTOM_MODELS_FILE", custom_file)
+    monkeypatch.setattr(config, "MODELS_DIR", models_dir)
+
+    # 1. Yerleşik modellerin metadata alanlarını tara
+    all_models = scan()
+    assert len(all_models) >= 4
+    for item in all_models:
+        assert "folder" in item
+        assert "path" in item
+        assert "repo_id" in item
+        assert "approx_bytes" in item
+        assert "vram_label" in item
+        assert "speed_label" in item
+        assert "quality_label" in item
+        assert item["approx_bytes"] > 0
+        assert isinstance(item["vram_label"], str) and len(item["vram_label"]) > 0
+        assert isinstance(item["speed_label"], str) and len(item["speed_label"]) > 0
+        assert isinstance(item["quality_label"], str) and len(item["quality_label"]) > 0
+
+    # 2. Özel model ekle ve onun da metadata alanlarını doğrula
+    mgr = text_models.TextModelManager(models_dir=models_dir)
+    url = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+    added = mgr.add_custom_text_model(url, label="Qwen 2.5 3B")
+    custom_item = next(m for m in mgr.scan() if m["name"] == added["name"])
+
+    assert custom_item["repo_id"] == "Qwen/Qwen2.5-3B-Instruct-GGUF"
+    assert custom_item["filename"] == "qwen2.5-3b-instruct-q4_k_m.gguf"
+    assert "folder" in custom_item
+    assert "path" in custom_item
+    assert custom_item["vram_label"] == "GGUF · Yerel"
+    assert custom_item["speed_label"] == "Değişken"
+    assert custom_item["quality_label"] == "Özel Model"
+
+
+

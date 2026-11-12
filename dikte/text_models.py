@@ -188,12 +188,26 @@ delete_model = delete
 delete_text_model = delete
 
 
+def _text_model_metadata(name: str) -> tuple[str, str, str]:
+    """Returns (vram_label, speed_label, quality_label)."""
+    lowered = name.lower()
+    if "1.7b" in lowered or "1_7b" in lowered:
+        return "~1.5 GB VRAM / 4 GB RAM", "Çok Hızlı", "İyi"
+    if "3b" in lowered or "3.2" in lowered:
+        return "~2.5 GB VRAM / 6 GB RAM", "Hızlı", "Yüksek"
+    if "4b" in lowered:
+        return "~3.0 GB VRAM / 8 GB RAM", "Dengeli", "Çok Yüksek"
+    return "GGUF · Yerel", "Hızlı", "Yüksek"
+
+
 def scan() -> list[dict]:
     items = []
     # 1. Yerleşik metin modelleri
     for spec in TEXT_MODELS:
         installed = is_installed(spec.name)
         part = partial_bytes(spec.name)
+        p = text_model_path(spec.name)
+        vram_lbl, speed_lbl, quality_lbl = _text_model_metadata(spec.name)
         items.append(
             {
                 "name": spec.name,
@@ -203,6 +217,7 @@ def scan() -> list[dict]:
                 "desc": spec.desc,
                 "tags": list(spec.tags),
                 "size_bytes": spec.size_bytes,
+                "approx_bytes": spec.size_bytes,
                 "approx_label": "~ " + human_size(spec.size_bytes),
                 "size_label": human_size(spec.size_bytes) if installed else "—",
                 "installed": installed,
@@ -210,7 +225,13 @@ def scan() -> list[dict]:
                 "bytes": installed_bytes(spec.name) if installed else part,
                 "custom": False,
                 "repo": spec.repo,
+                "repo_id": spec.repo,
                 "filename": spec.filename,
+                "path": str(p),
+                "folder": str(p.parent) if installed else "",
+                "vram_label": vram_lbl,
+                "speed_label": speed_lbl,
+                "quality_label": quality_lbl,
             }
         )
 
@@ -225,6 +246,8 @@ def scan() -> list[dict]:
         inst_bytes = installed_bytes(m_name)
         size_b = int(c.get("size_bytes") or 0)
         actual_size = inst_bytes if installed else size_b
+        p = text_model_path(m_name)
+        vram_lbl, speed_lbl, quality_lbl = _text_model_metadata(m_name)
         items.append(
             {
                 "name": m_name,
@@ -234,6 +257,7 @@ def scan() -> list[dict]:
                 "desc": c.get("desc", f"Hugging Face: {c.get('repo', '')}"),
                 "tags": list(c.get("tags") or ["Özel", "Hugging Face"]),
                 "size_bytes": actual_size,
+                "approx_bytes": actual_size,
                 "approx_label": f"~ {human_size(actual_size)}" if actual_size > 0 else "—",
                 "size_label": human_size(actual_size) if installed else "—",
                 "installed": installed,
@@ -241,7 +265,13 @@ def scan() -> list[dict]:
                 "bytes": inst_bytes if installed else part,
                 "custom": True,
                 "repo": c.get("repo", ""),
+                "repo_id": c.get("repo", ""),
                 "filename": c.get("filename", ""),
+                "path": str(p),
+                "folder": str(p.parent) if installed else "",
+                "vram_label": c.get("vram_label") or "GGUF · Yerel",
+                "speed_label": c.get("speed_label") or "Değişken",
+                "quality_label": c.get("quality_label") or "Özel Model",
             }
         )
     return items
@@ -407,6 +437,48 @@ class Downloader:
                 content_range = headers_obj.get("Content-Range", "") or ""
             if content_range and not content_range.startswith(f"bytes {resume_from}-"):
                 resume_from = 0
+
+        # Determine total size from Content-Length or Content-Range
+        headers_obj = getattr(response, "headers", None)
+        total_remote = 0
+        if headers_obj is not None:
+            cr = headers_obj.get("Content-Range", "") or ""
+            if cr and "/" in cr:
+                try:
+                    total_remote = int(cr.split("/")[-1].strip())
+                except Exception:
+                    pass
+            if not total_remote:
+                cl = headers_obj.get("Content-Length")
+                if cl:
+                    try:
+                        cl_int = int(cl)
+                        total_remote = resume_from + cl_int if resume_from else cl_int
+                    except Exception:
+                        pass
+        elif hasattr(response, "length"):
+            total_remote = int(getattr(response, "length", 0) or 0)
+
+        effective_total = total_remote if total_remote > 0 else spec.size_bytes
+
+        if spec.size_bytes <= 0 and effective_total > 0:
+            try:
+                data = load_custom_models()
+                for c in data.get("text", []):
+                    if c.get("name") == name or c.get("id") == name:
+                        c["size_bytes"] = effective_total
+                        save_custom_models(data)
+                        break
+            except Exception:
+                pass
+            if progress is not None and hasattr(progress, "__closure__") and progress.__closure__:
+                for cell in progress.__closure__:
+                    val = cell.cell_contents
+                    if hasattr(val, "_text_download") and isinstance(val._text_download, dict):
+                        val._text_download["total"] = effective_total
+                    elif isinstance(val, dict) and "total" in val and "bytes" in val:
+                        val["total"] = effective_total
+
         mode = "ab" if resume_from else "wb"
         written = resume_from
         try:
@@ -422,7 +494,10 @@ class Downloader:
                     handle.write(chunk)
                     written += len(chunk)
                     if progress is not None:
-                        progress(written)
+                        try:
+                            progress(written, effective_total)
+                        except TypeError:
+                            progress(written)
         finally:
             try:
                 response.close()

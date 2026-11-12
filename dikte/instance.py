@@ -143,18 +143,13 @@ def find_dikte_window() -> Optional[int]:
         user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
         user32.FindWindowW.restype = wintypes.HWND
 
-        # 1. Tam başlık ile ara (config.APP_TITLE: "Dikte — VoxNote AI")
-        app_title = getattr(config, "APP_TITLE", "Dikte — VoxNote AI")
+        # 1. Tam başlık ile ara (config.WINDOW_TITLE veya config.APP_TITLE: "Dikte — VoxNote AI")
+        app_title = getattr(config, "WINDOW_TITLE", getattr(config, "APP_TITLE", "Dikte — VoxNote AI"))
         hwnd = user32.FindWindowW(None, app_title)
         if hwnd:
             return hwnd
 
-        # 2. Kısa başlık ile ara ("Dikte")
-        hwnd = user32.FindWindowW(None, "Dikte")
-        if hwnd:
-            return hwnd
-
-        # 3. EnumWindows ile başlığında "Dikte" geçen görünür/ana pencereyi ara
+        # 2. EnumWindows ile başlığı tam eşleşen veya "Dikte —" ile başlayan pencereyi ara
         found_hwnds: list[int] = []
 
         def _enum_proc(hwnd_cand: int, lparam: int) -> bool:
@@ -162,8 +157,10 @@ def find_dikte_window() -> Optional[int]:
             if length > 0:
                 buff = ctypes.create_unicode_buffer(length + 1)
                 user32.GetWindowTextW(hwnd_cand, buff, length + 1)
-                title = buff.value
-                if "Dikte" in title:
+                title = buff.value.strip()
+                # Yalnızca tam başlık veya "Dikte —" ile başlayan ana pencereler eşlenir.
+                # "dikte projesi" gibi klasör veya tarayıcı sekmeleri asla eşlenmez.
+                if title == app_title or title.startswith("Dikte —"):
                     found_hwnds.append(hwnd_cand)
                     return False
             return True
@@ -178,6 +175,9 @@ def find_dikte_window() -> Optional[int]:
         logger.debug("find_dikte_window hatası: %s", exc)
 
     return None
+
+
+_find_dikte_hwnd = find_dikte_window
 
 
 def activate_existing_instance() -> bool:

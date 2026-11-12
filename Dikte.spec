@@ -23,6 +23,7 @@ a = Analysis(
     datas=[
         (str(ROOT / "dikte" / "ui"), "dikte/ui"),
         (str(ROOT / "assets"), "assets"),
+        (str(ROOT / "tests" / "data"), "tests/data"),
         *llama_datas,
     ],
     hiddenimports=[
@@ -35,6 +36,7 @@ a = Analysis(
         "webview",
         "pyperclip",
         "psutil",
+        "pynvml",
         "winreg",
         "pystray",
         "pystray._win32",

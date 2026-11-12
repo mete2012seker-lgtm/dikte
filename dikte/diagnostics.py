@@ -31,12 +31,19 @@ def prepare_cuda_dlls() -> None:
         import sysconfig
 
         bases = set()
+        if getattr(sys, "frozen", False):
+            frozen_nvidia = config.exe_dir() / "nvidia"
+            if frozen_nvidia.is_dir():
+                bases.add(frozen_nvidia)
         # nvidia paketleri namespace paket olabilir; __file__ boş kalırsa
         # doğrudan sanal ortamın site-packages klasörünü kullan.
-        site_packages = Path(sysconfig.get_paths()["purelib"])
-        base_candidate = site_packages / "nvidia"
-        if base_candidate.is_dir():
-            bases.add(base_candidate)
+        try:
+            site_packages = Path(sysconfig.get_paths()["purelib"])
+            base_candidate = site_packages / "nvidia"
+            if base_candidate.is_dir():
+                bases.add(base_candidate)
+        except Exception:
+            pass
 
         for module_name in ("nvidia.cublas", "nvidia.cudnn", "nvidia.cuda_runtime"):
             try:

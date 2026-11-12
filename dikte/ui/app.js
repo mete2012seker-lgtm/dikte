@@ -60,6 +60,7 @@
   let modelsState = null;
   let modelsTimer = null;
   let selectedModel = null;
+  let selectedTextModel = null;
   let modelsSignature = "";
   let lastNotifiedDownload = "";
   let modelTab = "text";
@@ -68,6 +69,8 @@
   let settingsDirty = false;
   let aiState = null;
   let aiBusy = false;
+  let aiSaveInFlight = 0;
+  let lastAiSaveTime = 0;
 
   /* ---------- Faz 3.1 & 3.2: Yan Menü Daraltma ---------- */
   const brandToggle = $("#brandToggle");
@@ -891,9 +894,7 @@
 
   function renderTextModels(list, items) {
     const panel = $("#detailPanel");
-    const descPanel = $("#descPanel");
-    if (panel) panel.style.display = "none";
-    if (descPanel) descPanel.innerHTML = "";
+    if (panel) panel.style.display = "";
     const note = $("#localEngineNote");
     if (note) note.hidden = Boolean(modelsState && modelsState.local_text_available);
 
@@ -902,12 +903,18 @@
       !query || (item.label + " " + item.desc).toLocaleLowerCase("tr").includes(query)
     );
 
+    if (!selectedTextModel || !visible.some((i) => i.name === selectedTextModel)) {
+      const active = visible.find((i) => i.active);
+      selectedTextModel = (active || visible[0] || {}).name || null;
+    }
+
     list.innerHTML = "";
     if (!visible.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
       empty.textContent = "Aramanla eşleşen model yok.";
       list.appendChild(empty);
+      renderDetail();
       return;
     }
 
@@ -915,8 +922,9 @@
 
     visible.forEach((item) => {
       const card = document.createElement("div");
-      card.className = "m-card";
+      card.className = "m-card" + (item.name === selectedTextModel ? " is-selected" : "");
       card.dataset.name = item.name;
+      card.style.cursor = "pointer";
 
       const icon = document.createElement("div");
       icon.className = "m-ico";
@@ -1090,6 +1098,13 @@
       actions.appendChild(menuWrap);
 
       card.append(icon, main, size, statusBox, actions);
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("button") || e.target.closest(".model-menu-wrap") || e.target.closest(".model-dropdown")) {
+          return;
+        }
+        selectedTextModel = item.name;
+        renderModels();
+      });
       list.appendChild(card);
     });
   }
@@ -1117,6 +1132,7 @@
     if (title) title.textContent = isText ? "Metin Modelleri" : "Ses Modelleri";
     if (isText) {
       renderTextModels(list, items);
+      renderDetail();
       return;
     }
     const panel = $("#detailPanel");
@@ -1334,6 +1350,133 @@
     const panel = $("#detailPanel");
     const descPanel = $("#descPanel");
     if (!panel || !descPanel || !modelsState) return;
+
+    if (modelTab === "text") {
+      const items = (modelsState && modelsState.text_items) || [];
+      const item = items.find((entry) => entry.name === selectedTextModel) ||
+                   items.find((entry) => entry.active) ||
+                   items[0];
+      if (!item) {
+        panel.innerHTML = '<div class="empty">Model bulunamadı.</div>';
+        descPanel.innerHTML = "";
+        return;
+      }
+      const download = modelsState && modelsState.text_download;
+      const isDownloading = download && download.name === item.name;
+      const state = isDownloading ? download.state : null;
+      const status = textStatus(item);
+
+      let statusText = status.text;
+      if (isDownloading && (download.state === "downloading" || download.state === "pausing")) {
+        statusText = `İndiriliyor (%${download.percent || 0})`;
+      }
+
+      panel.innerHTML =
+        '<div class="detail-head"><svg class="ic"><use href="#i-spark"/></svg>Model Detayları' +
+          '<button class="icon-btn x" id="closeDetail" aria-label="Paneli kapat"><svg class="ic" style="width:15px;height:15px"><use href="#i-close"/></svg></button></div>' +
+        '<div class="detail-model"><div class="m-ico"><svg class="ic"><use href="#i-spark"/></svg></div>' +
+          '<div><div class="model-name" id="detailName"></div><div class="model-sub">Yerel GGUF metin modeli</div></div></div>' +
+        '<div class="d-row">Kategori<span>Yapay Zeka Metin Modeli</span></div>' +
+        '<div class="d-row">Boyut<span id="detailSize"></span></div>' +
+        '<div class="d-row">Bellek / Donanım<span id="detailVram"></span></div>' +
+        '<div class="d-row">Hız / Kalite<span id="detailPerf"></span></div>' +
+        '<div class="d-row">Dosya<span id="detailFile" style="word-break:break-all"></span></div>' +
+        '<div class="d-row">Klasör<span id="detailFolder"></span></div>' +
+        '<div class="divider"></div>' +
+        '<div class="d-row">Model Durumu<span id="detailStatus"></span></div>' +
+        '<div class="d-actions" id="detailActionRow"></div>';
+
+      panel.querySelector("#detailName").textContent = item.label;
+      panel.querySelector("#detailSize").textContent = item.installed
+        ? (item.size_label || "—") + " (diskte)"
+        : (item.approx_label || "—") + " (indirme)";
+      panel.querySelector("#detailVram").textContent = item.vram_label || "GPU / CPU (GGUF)";
+      panel.querySelector("#detailPerf").textContent = (item.speed_label && item.quality_label)
+        ? (item.speed_label + " · " + item.quality_label)
+        : "Dengeli";
+      panel.querySelector("#detailFile").textContent = item.filename || "—";
+      panel.querySelector("#detailFolder").textContent = item.folder || (item.installed ? "models\\text" : "İndirilince oluşturulur");
+
+      const statusSpan = panel.querySelector("#detailStatus");
+      const led = document.createElement("span");
+      led.className = "led";
+      led.style.background = (item.active || item.loaded) ? "var(--ready)" : item.installed ? "var(--ready)" : (isDownloading ? "var(--processing)" : "#5C6A85");
+      led.style.boxShadow = (item.active || item.loaded || item.installed) ? "0 0 7px rgba(46,212,122,.7)" : "none";
+      statusSpan.append(led, document.createTextNode(statusText));
+
+      const actionRow = panel.querySelector("#detailActionRow");
+      if (state === "downloading" || state === "pausing") {
+        const pauseBtn = document.createElement("button");
+        pauseBtn.className = "btn";
+        pauseBtn.textContent = "Duraklat";
+        pauseBtn.addEventListener("click", () => textModelAction("text_model_pause", item.name));
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "btn";
+        cancelBtn.textContent = "İptal";
+        cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+        actionRow.append(pauseBtn, cancelBtn);
+      } else if (state === "paused") {
+        const resumeBtn = document.createElement("button");
+        resumeBtn.className = "btn btn-primary";
+        resumeBtn.textContent = "Devam et";
+        resumeBtn.addEventListener("click", () => textModelAction("text_model_resume", item.name));
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "btn";
+        cancelBtn.textContent = "İptal";
+        cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+        actionRow.append(resumeBtn, cancelBtn);
+      } else if (item.installed) {
+        const actBtn = document.createElement("button");
+        actBtn.className = "btn btn-primary";
+        if (item.active || item.loaded) {
+          actBtn.textContent = item.loaded ? "Yüklü" : "Aktif Model";
+          actBtn.disabled = true;
+        } else {
+          actBtn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>Aktifleştir';
+          actBtn.addEventListener("click", () => textModelAction("text_model_activate", item.name));
+        }
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn btn-danger";
+        delBtn.innerHTML = '<svg class="ic"><use href="#i-trash"/></svg>Sil';
+        delBtn.disabled = item.active || item.loaded;
+        delBtn.addEventListener("click", () => {
+          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
+          textModelAction("text_model_delete", item.name);
+        });
+        actionRow.append(actBtn, delBtn);
+      } else {
+        const dlBtn = document.createElement("button");
+        dlBtn.className = "btn btn-primary";
+        dlBtn.innerHTML = '<svg class="ic"><use href="#i-download"/></svg>' + (item.partial ? "Devam et" : "İndir");
+        dlBtn.addEventListener("click", () => textModelAction("text_model_download", item.name));
+        actionRow.appendChild(dlBtn);
+      }
+
+      panel.querySelector("#closeDetail").addEventListener("click", () => {
+        panel.style.display = "none";
+      });
+      panel.style.display = "";
+
+      descPanel.innerHTML =
+        '<h3><svg class="ic"><use href="#i-spark"/></svg>Model Açıklaması</h3>' +
+        '<p id="descText"></p><ul class="desc-list" id="descList"></ul>';
+      descPanel.querySelector("#descText").textContent = item.desc || item.description || "Yerel GGUF metin modeli.";
+      const dList = descPanel.querySelector("#descList");
+      const defaultFeatures = [
+        "Türkçe, İngilizce ve Almanca metin temizleme ve çeviri",
+        "Çevrimdışı yerel GGUF motoru (llama.cpp)",
+        "İndirme duraklatma ve kaldığı yerden devam etme desteği"
+      ];
+      const tags = (item.tags && item.tags.length) ? item.tags : defaultFeatures;
+      tags.forEach((tag) => {
+        const li = document.createElement("li");
+        li.innerHTML = '<svg class="ic"><use href="#i-check"/></svg><span></span>';
+        li.querySelector("span").textContent = tag;
+        dList.appendChild(li);
+      });
+      return;
+    }
+
     const items = modelsState.items || [];
     const item = items.find((entry) => entry.name === selectedModel) || items[0];
     if (!item) {
@@ -1519,8 +1662,38 @@
   function applyAi(ai) {
     if (!ai) return;
     aiState = Object.assign({}, ai, { state: ai.state || (aiState && aiState.state) || "ready" });
-    if (outputLang && ai.output_language) outputLang.value = ai.output_language;
-    if (autoTranslate) autoTranslate.checked = Boolean(ai.auto_translate);
+
+    const canSyncInput = (aiSaveInFlight === 0) && (Date.now() - lastAiSaveTime > 400);
+
+    if (canSyncInput) {
+      if (outputLang && ai.output_language && document.activeElement !== outputLang) {
+        outputLang.value = ai.output_language;
+      }
+      if (autoTranslate) {
+        autoTranslate.checked = Boolean(ai.auto_translate);
+      }
+      const outSet = $("#outputLangSettings");
+      if (outSet && ai.output_language && document.activeElement !== outSet) {
+        outSet.value = ai.output_language;
+      }
+      const autoTrSet = $("#autoTranslateSettings");
+      if (autoTrSet) {
+        setSwitchEl(autoTrSet, Boolean(ai.auto_translate));
+      }
+      const autoPaste = $("#autoPasteSwitch");
+      if (autoPaste && ai.auto_paste !== undefined) {
+        setSwitchEl(autoPaste, ai.auto_paste !== false);
+      }
+      const inLang = $("#inputLang");
+      if (inLang && ai.input_language && document.activeElement !== inLang) {
+        inLang.value = ai.input_language;
+      }
+      const txtProv = $("#textProvider");
+      if (txtProv && ai.provider && document.activeElement !== txtProv) {
+        txtProv.value = ai.provider;
+      }
+    }
+
     if (textModelRow) {
       if (ai.provider === "none" || !ai.provider) {
         textModelRow.textContent = "Sağlayıcı kapalı";
@@ -1573,16 +1746,20 @@
 
   async function saveAi(patch) {
     if (!hasApi("ai_settings_save")) return null;
+    aiSaveInFlight++;
     try {
       const result = await api.ai_settings_save(patch);
       if (result && result.ok) {
         applyAi(result.ai);
-        if (currentPage === "page-ayarlar") syncAiControls(result.ai);
+        syncAiControls(result.ai);
         return result.ai;
       }
       toast((result && result.message) || "Ayar kaydedilemedi.", "warn");
     } catch (error) {
       toast("Ayar kaydedilemedi.", "error");
+    } finally {
+      aiSaveInFlight--;
+      lastAiSaveTime = Date.now();
     }
     return null;
   }
@@ -1731,7 +1908,12 @@
     outputLang.addEventListener("change", () => saveAi({ output_language: outputLang.value }));
   }
   if (autoTranslate) {
-    autoTranslate.addEventListener("change", () => saveAi({ auto_translate: autoTranslate.checked }));
+    autoTranslate.addEventListener("change", () => {
+      saveAi({ auto_translate: autoTranslate.checked });
+      if (autoTranslate.checked && aiState && (aiState.provider === "none" || !aiState.provider)) {
+        toast("Otomatik çevirinin çalışması için Ayarlar → Yapay Zeka'dan bir sağlayıcı (Yerel veya OpenRouter) seçin.", "warn");
+      }
+    });
   }
 
   $("#textProvider").addEventListener("change", async () => {
@@ -1949,6 +2131,13 @@
         option.textContent = choice.label;
         select.appendChild(option);
       });
+      const hasOption = Array.from(select.options).some((opt) => opt.value === data.hotkey);
+      if (!hasOption && data.hotkey) {
+        const customOpt = document.createElement("option");
+        customOpt.value = data.hotkey;
+        customOpt.textContent = formatKeyLabel(data.hotkey);
+        select.appendChild(customOpt);
+      }
       select.value = data.hotkey;
       setSwitch(data.save_history);
       updateHotkeyPreview();
@@ -1982,9 +2171,12 @@
   function triggerInstantSettingsSave() {
     clearTimeout(instantSaveTimer);
     instantSaveTimer = setTimeout(async () => {
+      const currentHotkey = ($("#hotkeySelect") && $("#hotkeySelect").value)
+        ? $("#hotkeySelect").value
+        : ((settingsState && settingsState.hotkey) || "right_ctrl");
       const payload = {
         save_history: switchOn(),
-        hotkey: $("#hotkeySelect") ? $("#hotkeySelect").value : "right_ctrl",
+        hotkey: currentHotkey,
         design_style: designStyle,
         sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
         theme: themeMode,
@@ -2454,6 +2646,21 @@
       window.__hotkeyLabel = formatted;
       if (shortcutHint) shortcutHint.textContent = formatted + " (basılı tut)";
 
+      const select = $("#hotkeySelect");
+      if (select) {
+        let opt = Array.from(select.options).find((o) => o.value === hotkeyStr);
+        if (!opt) {
+          opt = document.createElement("option");
+          opt.value = hotkeyStr;
+          opt.textContent = formatted;
+          select.appendChild(opt);
+        }
+        select.value = hotkeyStr;
+      }
+      if (settingsState) {
+        settingsState.hotkey = hotkeyStr;
+      }
+
       if (hasApi("settings_save")) {
         api.settings_save({ hotkey: hotkeyStr }).then(() => {
           toast("Kısayol güncellendi: " + formatted, "info");
@@ -2472,7 +2679,8 @@
     try {
       const releases = await api.update_list_releases();
       rollbackSelect.innerHTML = "";
-      if (!releases || !releases.length) {
+      const list = Array.isArray(releases) ? releases : ((releases && releases.releases) || []);
+      if (!list || !list.length) {
         rollbackSelect.innerHTML = '<option value="">Önceki sürüm bulunamadı</option>';
         if (rollbackBtn) rollbackBtn.disabled = true;
         return;
@@ -2482,10 +2690,12 @@
       defaultOpt.textContent = "Geri dönülecek sürüm seçin…";
       rollbackSelect.appendChild(defaultOpt);
 
-      releases.forEach((rel) => {
+      list.forEach((rel) => {
         const opt = document.createElement("option");
         opt.value = rel.tag_name || rel.version;
         opt.textContent = (rel.name || rel.tag_name) + (rel.is_current ? " (Mevcut)" : "");
+        opt.dataset.url = rel.installer_url || "";
+        opt.dataset.sha256 = rel.sha256 || "";
         if (rel.is_current) opt.disabled = true;
         rollbackSelect.appendChild(opt);
       });
@@ -2501,12 +2711,16 @@
     rollbackBtn.addEventListener("click", async () => {
       const target = rollbackSelect ? rollbackSelect.value : "";
       if (!target) return;
+      const selectedOpt = rollbackSelect ? rollbackSelect.options[rollbackSelect.selectedIndex] : null;
+      const installerUrl = (selectedOpt && selectedOpt.dataset.url) || "";
+      const sha256 = (selectedOpt && selectedOpt.dataset.sha256) || "";
+
       if (!window.confirm(target + " sürümüne geri dönülsün mü? Mevcut sürüm kaldırılıp bu sürüm kurulacak.")) return;
       rollbackBtn.disabled = true;
       rollbackBtn.textContent = "İndiriliyor…";
       try {
         if (hasApi("update_rollback")) {
-          const res = await api.update_rollback(target);
+          const res = await api.update_rollback(target, installerUrl, sha256);
           toast((res && res.message) || "Rollback işlemi başlatıldı.", "info");
         }
       } catch (e) {

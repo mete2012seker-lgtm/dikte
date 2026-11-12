@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -226,6 +227,7 @@ class HotkeyListener:
         self._target_tokens = set(parse_hotkey(self._key))
         self._listener = None
         self._pressed = False
+        self._keys_lock = threading.Lock()
         self._pressed_keys: dict[object, set[str]] = {}
 
     @property
@@ -249,14 +251,16 @@ class HotkeyListener:
         was_running = self._listener is not None
         if was_running:
             self.stop()
-        previous = self._key
-        self._key = normalized
-        self._target_tokens = set(parse_hotkey(self._key))
+        with self._keys_lock:
+            previous = self._key
+            self._key = normalized
+            self._target_tokens = set(parse_hotkey(self._key))
         try:
             self.start()
         except HotkeyError:
-            self._key = previous
-            self._target_tokens = set(parse_hotkey(self._key))
+            with self._keys_lock:
+                self._key = previous
+                self._target_tokens = set(parse_hotkey(self._key))
             if was_running:
                 try:
                     self.start()
@@ -275,28 +279,58 @@ class HotkeyListener:
         if not self._target_tokens:
             raise HotkeyError("Seçilen kısayol tuşu geçersiz.")
 
+        with self._keys_lock:
+            self._pressed_keys.clear()
+            self._pressed = False
+
         def on_press(key) -> None:
+            try:
+                from .paste import is_pasting
+
+                if is_pasting():
+                    return
+            except Exception:
+                pass
+
             tokens = key_to_tokens(key)
             if not tokens:
                 return
-            self._pressed_keys[key] = tokens
-            active = {tok for toks in self._pressed_keys.values() for tok in toks}
-            if self._target_tokens.issubset(active) and not self._pressed:
-                self._pressed = True
+            should_trigger = False
+            with self._keys_lock:
+                self._pressed_keys[key] = tokens
+                active = {tok for toks in self._pressed_keys.values() for tok in toks}
+                if self._target_tokens.issubset(active) and not self._pressed:
+                    self._pressed = True
+                    should_trigger = True
+
+            if should_trigger:
                 try:
                     self._on_press()
                 except Exception:
                     logger.exception("Kısayol basılma işleyicisi hata verdi")
 
         def on_release(key) -> None:
-            tokens = self._pressed_keys.pop(key, None)
-            if tokens is None:
-                to_remove = [k for k in self._pressed_keys if k == key]
-                for k in to_remove:
-                    self._pressed_keys.pop(k, None)
-            active = {tok for toks in self._pressed_keys.values() for tok in toks}
-            if self._pressed and not self._target_tokens.issubset(active):
-                self._pressed = False
+            try:
+                from .paste import is_pasting
+
+                if is_pasting():
+                    return
+            except Exception:
+                pass
+
+            should_release = False
+            with self._keys_lock:
+                tokens = self._pressed_keys.pop(key, None)
+                if tokens is None:
+                    to_remove = [k for k in self._pressed_keys if k == key]
+                    for k in to_remove:
+                        self._pressed_keys.pop(k, None)
+                active = {tok for toks in self._pressed_keys.values() for tok in toks}
+                if self._pressed and not self._target_tokens.issubset(active):
+                    self._pressed = False
+                    should_release = True
+
+            if should_release:
                 try:
                     self._on_release()
                 except Exception:
@@ -315,9 +349,14 @@ class HotkeyListener:
 
     def reset_state(self) -> None:
         """Pencere odak kaybı veya beklenmeyen durumlarda basılı durumunu sıfırlar."""
-        self._pressed_keys.clear()
-        if self._pressed:
-            self._pressed = False
+        should_release = False
+        with self._keys_lock:
+            self._pressed_keys.clear()
+            if self._pressed:
+                self._pressed = False
+                should_release = True
+
+        if should_release:
             try:
                 self._on_release()
             except Exception:

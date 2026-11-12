@@ -228,3 +228,15 @@ def test_multikey_hotkey_save_and_normalize(tmp_path):
     assert SettingsStore(path).get("hotkey") == "right_ctrl"
 
 
+def test_input_language_roundtrip_and_fallback(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    for lang in ("tr", "auto"):
+        store.save(input_language=lang)
+        assert SettingsStore(path).get("input_language") == lang
+
+    path.write_text(json.dumps({"input_language": "fr"}), encoding="utf-8")
+    assert SettingsStore(path).get("input_language") == "auto"
+
+
+

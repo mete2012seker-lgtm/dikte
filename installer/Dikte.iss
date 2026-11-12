@@ -35,6 +35,7 @@ UninstallDisplayName={#AppName} {#AppVersion}
 UninstallDisplayIcon={app}\{#AppExe}
 DisableProgramGroupPage=yes
 WizardStyle=modern
+CloseApplications=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; \

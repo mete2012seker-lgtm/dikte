@@ -438,7 +438,8 @@ class Controller:
                 return {"ok": False, "state": state, "message": message}
 
         # Metin modeli yüklüyse boşaltıp ses modelini geri getir (VRAM takası).
-        self._prepare_whisper()
+        if not self._whisper_loaded or bool(self._text_runtime.model_name):
+            self._prepare_whisper()
         with self._lock:
             if self._machine.state != READY:
                 return {
@@ -502,6 +503,8 @@ class Controller:
 
     def _transcribe_path(self, path: Path):
         """GPU çevirisi çökerse bir kez CPU yedeğini dener."""
+        if not self._whisper_loaded or bool(self._text_runtime.model_name):
+            self._prepare_whisper()
         input_lang = str(self.settings.get("input_language", "tr"))
 
         def do_transcribe():
@@ -567,6 +570,7 @@ class Controller:
             pasted = False
             if copy_ok and bool(self.settings.get("auto_paste", True)):
                 try:
+                    time.sleep(0.05)
                     pasted = bool(self._paster())
                 except Exception as exc:
                     logger.warning("Otomatik yapıştırma hatası: %s", exc)
@@ -957,62 +961,63 @@ class Controller:
         return {"ok": True, "state": LOADING}
 
     def _activate_worker(self, name: str, old_model: str | None) -> None:
-        if self._text_runtime.model_name:
-            self._text_runtime.unload()
-        try:
-            if hasattr(self.engine, "set_model"):
-                self.engine.set_model(name)
-            if hasattr(self.engine, "unload"):
-                self.engine.unload()
-            self._whisper_loaded = False
-            info = self.engine.load()
-        except Exception as exc:
-            logger.error("Model değiştirilemedi: %s", exc)
-            message = str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_MODEL_MISSING
-            reverted = False
-            if old_model:
-                try:
-                    if hasattr(self.engine, "set_model"):
-                        self.engine.set_model(old_model)
-                    if hasattr(self.engine, "unload"):
-                        self.engine.unload()
-                    info = self.engine.load()
-                    reverted = True
-                except Exception:
-                    logger.exception("Eski model geri yüklenemedi")
-            with self._lock:
-                if reverted:
-                    self._info = info
-                    self._whisper_loaded = True
-                    self._error = None
-                    self._set_state(READY)
-                    self._add_activity(
-                        "Model değiştirilemedi",
-                        f"{message} · {info.model_label} kullanılmaya devam ediyor.",
-                        "warn",
-                    )
-                else:
-                    self._error = message
-                    self._set_state(ERROR)
-                    self._add_activity("Model yüklenemedi", message, "err")
-            self._models_cache = (0.0, None)
-            return
+        with self._engine_lock:
+            if self._text_runtime.model_name:
+                self._text_runtime.unload()
+            try:
+                if hasattr(self.engine, "set_model"):
+                    self.engine.set_model(name)
+                if hasattr(self.engine, "unload"):
+                    self.engine.unload()
+                self._whisper_loaded = False
+                info = self.engine.load()
+            except Exception as exc:
+                logger.error("Model değiştirilemedi: %s", exc)
+                message = str(exc) if isinstance(exc, EngineError) else diagnostics.MSG_MODEL_MISSING
+                reverted = False
+                if old_model:
+                    try:
+                        if hasattr(self.engine, "set_model"):
+                            self.engine.set_model(old_model)
+                        if hasattr(self.engine, "unload"):
+                            self.engine.unload()
+                        info = self.engine.load()
+                        reverted = True
+                    except Exception:
+                        logger.exception("Eski model geri yüklenemedi")
+                with self._lock:
+                    if reverted:
+                        self._info = info
+                        self._whisper_loaded = True
+                        self._error = None
+                        self._set_state(READY)
+                        self._add_activity(
+                            "Model değiştirilemedi",
+                            f"{message} · {info.model_label} kullanılmaya devam ediyor.",
+                            "warn",
+                        )
+                    else:
+                        self._error = message
+                        self._set_state(ERROR)
+                        self._add_activity("Model yüklenemedi", message, "err")
+                self._models_cache = (0.0, None)
+                return
 
-        try:
-            self.settings.save(active_model=info.model_name or name)
-        except Exception:
-            logger.warning("Aktif model ayarı kaydedilemedi", exc_info=True)
-        with self._lock:
-            self._info = info
-            self._whisper_loaded = True
-            self._error = None
-            self._set_state(READY)
-            self._add_activity(
-                "Model değiştirildi",
-                f"{info.model_label} · {info.device} · {info.compute_type}",
-                "ok",
-            )
-        self._models_cache = (0.0, None)
+            try:
+                self.settings.save(active_model=info.model_name or name)
+            except Exception:
+                logger.warning("Aktif model ayarı kaydedilemedi", exc_info=True)
+            with self._lock:
+                self._info = info
+                self._whisper_loaded = True
+                self._error = None
+                self._set_state(READY)
+                self._add_activity(
+                    "Model değiştirildi",
+                    f"{info.model_label} · {info.device} · {info.compute_type}",
+                    "ok",
+                )
+            self._models_cache = (0.0, None)
 
     def model_delete(self, name: str) -> dict:
         with self._lock:
@@ -1878,6 +1883,13 @@ class Controller:
                 except ClipboardError:
                     copy_ok = False
                 self._update_history_text(res.text)
+                pasted = False
+                if copy_ok and bool(self.settings.get("auto_paste", True)):
+                    try:
+                        time.sleep(0.05)
+                        pasted = bool(self._paster())
+                    except Exception as exc:
+                        logger.warning("Otomatik yapıştırma hatası: %s", exc)
                 with self._lock:
                     if not self._ai_cancel_event.is_set():
                         self._latest = res.text
@@ -1886,6 +1898,8 @@ class Controller:
                             f"{text_engine.count_words(res.text)} kelime",
                             "ok",
                         )
+                        if pasted:
+                            self._add_activity("Etkin pencereye yapıştırıldı", "Otomatik yapıştırma açık.", "info")
             except Exception as exc:
                 logger.warning("AI async hatası: %s", exc)
                 with self._lock:
@@ -2016,27 +2030,53 @@ class Controller:
 
         target = str(self.settings.get("output_language", "tr"))
         prompt = str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT)
-        messages = text_engine.build_messages(text, target, translate, prompt)
-        raw = self._text_runtime.generate(
-            messages[0]["content"], messages[1]["content"], max_tokens=512
-        )
-        candidate = text_engine.strip_response(raw)
-        text_engine.validate_output(text, candidate, translate, target)
-        same = (
-            translate
-            and text_engine.count_words(text) >= 3
-            and candidate.strip().lower() == text.strip().lower()
-        )
-        return text_engine.TextResult(
-            text=candidate, translated=bool(translate) and not same, unchanged=same
-        )
+        budget = max(512, text_engine.count_words(text) * 8 + 256)
+        messages = text_engine.build_messages(text, target, translate, prompt, strict=False)
+        last_error = None
+        for attempt in range(2):
+            raw = self._text_runtime.generate(
+                messages[0]["content"], messages[1]["content"], max_tokens=budget
+            )
+            candidate = text_engine.strip_response(raw)
+            try:
+                text_engine.validate_output(text, candidate, translate, target)
+            except text_engine.TextEngineError as exc:
+                last_error = exc
+                if attempt == 0:
+                    messages = text_engine.build_messages(
+                        text, target, translate, prompt, strict=True
+                    )
+                    budget = max(1024, budget * 2)
+                    continue
+                raise
+            same = (
+                translate
+                and text_engine.count_words(text) >= 3
+                and candidate.strip().lower() == text.strip().lower()
+            )
+            if same and attempt == 0:
+                messages = text_engine.build_messages(
+                    text, target, translate, prompt, strict=True
+                )
+                budget = max(1024, budget * 2)
+                continue
+            return text_engine.TextResult(
+                text=candidate, translated=bool(translate) and not same, unchanged=same
+            )
+        raise last_error or text_engine.TextEngineError("bad_response")
 
     def _auto_ai_text(self, text: str) -> str:
         """Otomatik çevir açıksa dikte sonrası metni temizler/çevirir."""
+        if not bool(self.settings.get("auto_translate", False)):
+            return text
         provider = self._provider()
         if provider == "none":
-            return text
-        if not bool(self.settings.get("auto_translate", False)):
+            with self._lock:
+                self._add_activity(
+                    "Otomatik çeviri atlandı",
+                    "Yapay zeka sağlayıcısı seçilmedi (Ayarlar → Yapay Zeka'dan seçin).",
+                    "warn",
+                )
             return text
         if not text_engine.should_translate_auto(text):
             with self._lock:

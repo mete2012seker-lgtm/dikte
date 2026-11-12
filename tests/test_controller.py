@@ -869,4 +869,72 @@ def test_bridge_api_integration():
     assert mock_win.hidden is True
 
 
+def test_toggle_record_zero_delay_when_whisper_loaded(monkeypatch):
+    controller = make_controller()
+    assert controller.snapshot()["state"] == READY
+    assert controller._whisper_loaded is True
+    assert controller._text_runtime.model_name is None
+
+    prepare_called = []
+    monkeypatch.setattr(controller, "_prepare_whisper", lambda: prepare_called.append(1))
+
+    # Whisper zaten yüklüyse ve metin modeli bellekte değilse _prepare_whisper çağrılmamalı (sıfır gecikme)
+    res = controller.toggle_record()
+    assert res["ok"] is True
+    assert res["state"] == RECORDING
+    assert prepare_called == []
+
+    # Kaydı durdur
+    controller.toggle_record()
+
+
+def test_activate_worker_uses_engine_lock(monkeypatch):
+    controller = make_controller()
+    assert hasattr(controller, "_engine_lock")
+
+    lock_acquired = []
+    original_engine_lock = controller._engine_lock
+
+    class TrackingLock:
+        def __enter__(self):
+            lock_acquired.append("enter")
+            return original_engine_lock.__enter__()
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            lock_acquired.append("exit")
+            return original_engine_lock.__exit__(exc_type, exc_val, exc_tb)
+
+    controller._engine_lock = TrackingLock()
+    controller._activate_worker("base", old_model="large-v3")
+
+    assert "enter" in lock_acquired
+    assert "exit" in lock_acquired
+
+
+def test_engine_transcribe_turkish_prompt_and_vad_parameters(tmp_path):
+    from dikte.engine import TranscriptionEngine
+    wav = tmp_path / "test.wav"
+    wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+    captured_kwargs = {}
+
+    class RealLikeModel:
+        def transcribe(self, path, **kwargs):
+            captured_kwargs.update(kwargs)
+            class Segment:
+                text = "Test çıktısı"
+            return [Segment()], None
+
+    engine = TranscriptionEngine()
+    engine._model = RealLikeModel()
+
+    res = engine.transcribe(wav, language="tr")
+    assert res.text == "Test çıktısı"
+    assert captured_kwargs.get("language") == "tr"
+    assert "vad_parameters" in captured_kwargs
+    assert captured_kwargs["vad_parameters"]["threshold"] == 0.35
+    assert captured_kwargs.get("initial_prompt") == "Türkçe sesli dikte kaydı, doğru imla ve noktalama ile."
+
+
+
+
 

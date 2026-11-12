@@ -333,3 +333,55 @@ def test_strip_response_preserves_single_line_dictation_with_meta_words():
     multi = "I corrected the grammar:\nI fixed the report.\nNote: removed filler."
     assert strip_response(multi) == "I fixed the report."
 
+
+def test_strip_response_qwen3_thinking_tags():
+    # 1. Standart <think>...</think> bloğu temizlenmeli
+    qwen_raw = "<think>\nKullanıcı Türkçe metin vermiş, İngilizceye çevirmem gerekiyor.\nAdım adım çeviriyorum.\n</think>\n\nHello world, meeting is at ten."
+    assert strip_response(qwen_raw) == "Hello world, meeting is at ten."
+
+    # 2. <thought>...</thought> bloğu temizlenmeli
+    thought_raw = "<thought>Thinking about punctuation.</thought>Bu doğru bir cümledir."
+    assert strip_response(thought_raw) == "Bu doğru bir cümledir."
+
+    # 3. Kapanmamış <think> bloğu (token sınırında kesilmiş) temizlenmeli
+    unclosed_raw = "<think>Düşünüyorum ama yanıt henüz gelmedi"
+    assert strip_response(unclosed_raw) == ""
+
+
+def test_strip_response_preserves_multiline_user_quotes():
+    # Kullanıcının konuşma içinde tırnak kullandığı çok satırlı dikte
+    user_speech = 'Ahmet dedi ki:\n"Yarın erkenden geleceğim."\nBiz de bekleyeceğiz.'
+    # İlk satır bir açıklama meta markörü ("Here is", "İşte", vb.) olmadığı için tırnak içini tek başına çekip kırpmamalı
+    assert strip_response(user_speech) == user_speech
+
+
+def test_validate_output_german_and_english_without_false_not_translated():
+    # 1. Almanca çeviride sık kullanılan edat ve bağlaçlarla validasyon
+    german_out = "Wir treffen uns morgen um zehn Uhr im Büro für das neue Projekt."
+    # Hata atmamalı
+    text_engine.validate_output(
+        source="Yarın saat onda yeni proje için ofiste buluşalım.",
+        output=german_out,
+        translate=True,
+        target_language="de",
+    )
+
+    # 2. İngilizce çeviride ortak kelimeler olsa bile hedef dilde skor yüksekse geçmeli
+    english_out = "We will meet in the office at ten tomorrow for the new project."
+    text_engine.validate_output(
+        source="Yarın saat onda yeni proje için ofiste buluşalım.",
+        output=english_out,
+        translate=True,
+        target_language="en",
+    )
+
+    # 3. Türkçe hedef dil validasyonu
+    turkish_out = "Yarın saat onda yeni proje için ofiste buluşuyoruz."
+    text_engine.validate_output(
+        source="We will meet in the office at ten tomorrow for the new project.",
+        output=turkish_out,
+        translate=True,
+        target_language="tr",
+    )
+
+

@@ -183,3 +183,45 @@ def test_start_window_icon_watcher_terminates():
         th.join(timeout=2.0)
         assert not th.is_alive()
         mock_apply.assert_called_once()
+
+
+def test_find_dikte_window_title_filtering(monkeypatch):
+    """find_dikte_window yalnızca ana uygulama başlığını eşlemeli, Explorer klasörlerini reddetmeli."""
+    if sys.platform != "win32":
+        pytest.skip("Win32 API testi yalnızca Windows üzerinde çalışır")
+
+    windows = [
+        (101, "c:\\users\\user\\desktop\\dikte projesi"),
+        (102, "Dikte Klasörü - Dosya Gezgini"),
+        (103, "Dikte — VoxNote AI"),
+    ]
+
+    mock_u32 = MagicMock()
+    mock_u32.FindWindowW.return_value = 0
+
+    def fake_get_length(hwnd):
+        title = next((t for h, t in windows if h == hwnd), "")
+        return len(title)
+
+    def fake_get_text(hwnd, buf, max_len):
+        title = next((t for h, t in windows if h == hwnd), "")
+        buf.value = title
+        return len(title)
+
+    def fake_enum(cb, lparam):
+        for hwnd, _ in windows:
+            if not cb(hwnd, lparam):
+                break
+        return 1
+
+    mock_u32.GetWindowTextLengthW.side_effect = fake_get_length
+    mock_u32.GetWindowTextW.side_effect = fake_get_text
+    mock_u32.EnumWindows.side_effect = fake_enum
+
+    import ctypes
+    monkeypatch.setattr(ctypes.windll, "user32", mock_u32)
+
+    found_hwnd = find_dikte_window()
+    assert found_hwnd == 103, "Explorer klasörleri değil, tam 'Dikte — VoxNote AI' penceresi bulunmalı"
+
+

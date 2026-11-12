@@ -114,3 +114,36 @@ def test_app_js_instant_settings_save():
     content = APP_JS.read_text(encoding="utf-8")
     assert "function triggerInstantSettingsSave()" in content
     assert "api.ai_settings_save" in content
+
+
+def test_style_css_sidebar_logo_and_collapsed_rules():
+    """style.css must lock logo to 40x40 and style collapsed sidebar cleanly."""
+    content = STYLE_CSS.read_text(encoding="utf-8")
+    # Brand logo size locked
+    assert "min-width:40px" in content or "min-width: 40px" in content
+    assert "min-height:40px" in content or "min-height: 40px" in content
+    assert "flex:0 0 40px" in content or "flex: 0 0 40px" in content
+    # Sidebar transition
+    assert "transition:width .22s ease" in content or "transition: width .22s ease" in content
+    # Collapsed brand text hidden and toggle rotated
+    assert "body.sidebar-collapsed .brand-text{display:none}" in content or "body.sidebar-collapsed .brand-text { display: none; }" in content
+    assert "body.sidebar-collapsed .sidebar-toggle-ic{transform:rotate(180deg)}" in content or "body.sidebar-collapsed .sidebar-toggle-ic { transform: rotate(180deg); }" in content
+    # Aside pointer-events in dikte_ai mode
+    assert "pointer-events: none" in content or "pointer-events:none" in content
+
+
+def test_index_html_switch_defaults():
+    """index.html must have autoPasteSwitch and effectsSwitch default to on."""
+    content = INDEX_HTML.read_text(encoding="utf-8")
+    assert '<button class="switch on" id="autoPasteSwitch"' in content
+    assert '<button class="switch on" id="effectsSwitch"' in content
+
+
+def test_app_js_text_model_details_and_rollback():
+    """app.js must support text model details panel and 3-argument rollback."""
+    content = APP_JS.read_text(encoding="utf-8")
+    assert "selectedTextModel" in content
+    assert "Yerel GGUF metin modeli" in content
+    assert "update_rollback" in content
+    assert "target, installerUrl, sha256" in content or "api.update_rollback(target" in content
+

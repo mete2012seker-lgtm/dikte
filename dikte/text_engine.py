@@ -116,19 +116,27 @@ def _first_quote(text: str) -> str | None:
     import re
 
     lowered = text.lower().replace("\u0307", "")
-    for marker in ("corrected and translated", "corrected and", "corrected:",
-                   "translated:", "çeviri:", "düzeltilmiş:"):
+    for marker in (
+        "metin:", "çeviri:", "ceviri:", "output:", "result:", "translation:",
+        "corrected:", "corrected and translated", "corrected and", "translated:", "düzeltilmiş:",
+    ):
         index = lowered.find(marker)
         if index == -1:
             continue
         match = re.search(r'["“«]([^"“”«»]{2,})["”»]', text[index:], re.DOTALL)
         if match:
             return match.group(1).strip() or None
-    match = re.search(r'["“«]([^"“”«»]{2,})["”»]', text, re.DOTALL)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    return value or None
+
+    # Fallback to quote extraction ONLY when the leading line starts with or is an explanation marker
+    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+    first_line_lower = lines[0].lower() if lines else ""
+    if any(first_line_lower.startswith(prefix) for prefix in (
+        "here is", "here's", "işte", "below is", "version of your text", "original", "translation",
+    )) or any(prefix in first_line_lower for prefix in ("version of your text", "corrected")):
+        match = re.search(r'["“«]([^"“”«»]{2,})["”»]', text, re.DOTALL)
+        if match:
+            return match.group(1).strip() or None
+    return None
 
 
 def _strip_fences(text: str) -> str:
@@ -142,7 +150,14 @@ def _strip_fences(text: str) -> str:
 
 def strip_response(raw: str) -> str:
     """Modelin eklediği tırnak, başlık, açıklama ve kod bloğu işaretlerini temizler."""
-    text = _strip_fences(raw or "")
+    import re
+
+    text = raw or ""
+    # Strip thinking blocks (<think>...</think> and <thought>...</thought>), including unclosed ones
+    text = re.sub(r"(?is)<think>.*?(?:</think>|$)", "", text)
+    text = re.sub(r"(?is)<thought>.*?(?:</thought>|$)", "", text)
+
+    text = _strip_fences(text)
     lowered = text.lower()
     is_multiline = "\n" in text
     if is_multiline and any(marker in lowered for marker in META_MARKERS):
@@ -175,14 +190,26 @@ def strip_response(raw: str) -> str:
 TR_WORDS = {
     "ve", "bir", "bu", "için", "çok", "var", "ile", "şey", "daha", "gibi",
     "değil", "de", "da", "ama", "ben", "sen", "saat", "bugün", "yarın",
+    "olarak", "kadar", "olan", "sonra", "en", "ne", "göre", "bunu", "o",
+    "biri", "bize", "bana", "beni", "onun", "biz", "siz", "onlar", "tüm",
+    "bütün", "yeni", "iyi", "büyük", "küçük", "ilk", "kendi", "yok",
 }
 EN_WORDS = {
     "the", "and", "is", "are", "was", "were", "this", "that", "to", "of",
     "in", "a", "an", "i", "you", "it", "we", "they", "my", "for", "with",
+    "have", "has", "had", "will", "would", "can", "could", "should", "not",
+    "but", "from", "at", "by", "on", "as", "or", "about", "which", "there",
+    "their", "what", "so", "up", "out", "if", "who", "get", "go", "me",
+    "when", "make", "like", "time", "no", "just", "him", "her", "your",
 }
 DE_WORDS = {
     "der", "die", "das", "und", "ist", "ich", "nicht", "ein", "eine", "zu",
-    "sie", "wir", "mit", "für", "auf", "einem", "einen", "werde",
+    "sie", "wir", "mit", "für", "auf", "einem", "einen", "werde", "in",
+    "im", "an", "von", "sich", "des", "dem", "als", "auch", "es", "werden",
+    "aus", "er", "hat", "dass", "nach", "wird", "bei", "einer", "um", "am",
+    "sind", "noch", "wie", "über", "so", "zum", "war", "haben", "nur",
+    "oder", "aber", "vor", "zur", "bis", "mehr", "durch", "man", "sein",
+    "wurde",
 }
 
 
@@ -226,9 +253,23 @@ def validate_output(source: str, output: str, translate: bool, target_language: 
     if any(marker in lowered for marker in STRICT_META_MARKERS):
         raise TextEngineError("bad_response")
     if translate and source_words >= 3:
-        hint = language_hint(output)
-        if hint and hint != target_language:
-            raise TextEngineError("not_translated")
+        import re
+
+        lowered_out = (output or "").lower()
+        tokens = re.findall(r"[a-zçğıöşü]+", lowered_out)
+        turkish_chars = sum(1 for char in lowered_out if char in "çğıöşü")
+        scores = {
+            "tr": sum(1 for token in tokens if token in TR_WORDS) + (1 if turkish_chars >= 2 else 0),
+            "en": sum(1 for token in tokens if token in EN_WORDS),
+            "de": sum(1 for token in tokens if token in DE_WORDS),
+        }
+        target_score = scores.get(target_language, 0)
+        # If output clearly has words in the target language (target_score >= 2),
+        # do not raise not_translated just because shared words bumped another language.
+        if target_score < 2:
+            hint = language_hint(output)
+            if hint and hint != target_language:
+                raise TextEngineError("not_translated")
 
 
 def _max_tokens(text: str) -> int:

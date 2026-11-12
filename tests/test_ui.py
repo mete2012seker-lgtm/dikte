@@ -82,11 +82,15 @@ window.__models = {
     { name: "qwen3-4b", kind: "text", label: "Qwen3 4B", desc: "Denge modeli.",
       tags: ["Dengeli", "Önerilen"], approx_label: "~ 2,3 GB", size_label: "—",
       size_bytes: 2497280960, installed: false, partial: false,
-      active: false, loaded: false, downloading: false, paused: false, bytes: 0 },
+      active: false, loaded: false, downloading: false, paused: false, bytes: 0,
+      vram_label: "~3.0 GB VRAM / 8 GB RAM", speed_label: "Dengeli", quality_label: "Çok Yüksek",
+      folder: "", filename: "qwen3-4b-instruct-q4_k_m.gguf" },
     { name: "gemma3-4b", kind: "text", label: "Gemma 3 4B", desc: "Akıcı çeviri.",
       tags: ["Çeviri"], approx_label: "~ 2,3 GB", size_label: "2,3 GB",
       size_bytes: 2489758112, installed: true, partial: false,
-      active: true, loaded: false, downloading: false, paused: false, bytes: 2489758112 }
+      active: true, loaded: false, downloading: false, paused: false, bytes: 2489758112,
+      vram_label: "~3.0 GB VRAM / 8 GB RAM", speed_label: "Dengeli", quality_label: "Yüksek",
+      folder: "C:\\Users\\aksek\\.cache\\dikte\\models", filename: "gemma3-4b-it-q4_k_m.gguf" }
   ],
   text_download: null,
   active_text_model: "gemma3-4b",
@@ -250,14 +254,17 @@ window.pywebview = {
     },
     update_list_releases: async () => {
       window.__calls.push("update_list_releases");
-      return [
-        { tag_name: "v1.6.0", version: "1.6.0", name: "Dikte v1.6.0", is_current: true },
-        { tag_name: "v1.5.0", version: "1.5.0", name: "Dikte v1.5.0", is_current: false },
-        { tag_name: "v1.4.0", version: "1.4.0", name: "Dikte v1.4.0", is_current: false }
-      ];
+      return {
+        ok: true,
+        releases: [
+          { tag_name: "v1.6.0", version: "1.6.0", name: "Dikte v1.6.0", is_current: true, installer_url: "https://example.com/Dikte-Setup-1.6.0.exe", sha256: "hash160" },
+          { tag_name: "v1.5.0", version: "1.5.0", name: "Dikte v1.5.0", is_current: false, installer_url: "https://example.com/Dikte-Setup-1.5.0.exe", sha256: "hash150" },
+          { tag_name: "v1.4.0", version: "1.4.0", name: "Dikte v1.4.0", is_current: false, installer_url: "https://example.com/Dikte-Setup-1.4.0.exe", sha256: "hash140" }
+        ]
+      };
     },
-    update_rollback: async (target) => {
-      window.__calls.push("update_rollback:" + target);
+    update_rollback: async (target, installer_url, sha256) => {
+      window.__calls.push("update_rollback:" + target + ":" + (installer_url || "") + ":" + (sha256 || ""));
       return { ok: true, message: "Rollback başlatıldı: " + target };
     },
     wizard_status: async () => ({ ok: true, setup_done: window.__settings.setup_done }),
@@ -685,7 +692,21 @@ def test_metin_modelleri_sekmesi(page):
     assert "Qwen3 4B" in text
     assert "Gemma 3 4B" in text
     assert page.locator("#localEngineNote").is_visible()
-    assert page.locator("#detailPanel").is_hidden()
+    assert page.locator("#detailPanel").is_visible()
+
+    # Detail panel shows the default selected model (gemma3-4b, which is active in stub)
+    assert "Gemma 3 4B" in page.locator("#detailName").inner_text()
+    assert "Yerel GGUF metin modeli" in page.locator("#detailPanel .model-sub").inner_text()
+    assert page.locator("#detailSize").is_visible()
+    assert page.locator("#detailVram").is_visible()
+    assert page.locator("#detailStatus").is_visible()
+    assert page.locator("#detailActionRow").is_visible()
+
+    # Clicking another card (qwen3-4b) updates detailPanel and descPanel
+    page.locator('#modelList .m-card[data-name="qwen3-4b"]').click()
+    page.wait_for_function("() => document.querySelector('#detailName').textContent === 'Qwen3 4B'")
+    assert "Qwen3 4B" in page.locator("#detailName").inner_text()
+    assert "Denge modeli" in page.locator("#descPanel").inner_text()
 
     page.locator('#modelList .m-card[data-name="qwen3-4b"] .m-btn').click()
     page.wait_for_function("() => window.__calls.includes('text_download:qwen3-4b')")
@@ -757,10 +778,10 @@ def test_v14_efektler_varsayilan_acik(page):
     )
     assert "radial-gradient" in pattern
     # MagicCard: fare kart üzerindeyken ışık halkası aktifleşir
-    page.locator("#page-dikte .model-card").hover()
+    page.locator("#page-dikte .text-card").hover()
     page.wait_for_timeout(120)
     assert page.evaluate(
-        "() => document.querySelector('.model-card').getAttribute('data-fx-glow') !== null"
+        "() => document.querySelector('.text-card').getAttribute('data-fx-glow') !== null"
     )
 
 
@@ -982,3 +1003,101 @@ def test_rollback_controls(page):
     page.evaluate("() => { window.confirm = () => true; }")
     page.locator("#rollbackBtn").click()
     page.wait_for_function("() => window.__calls.some(c => c.includes('update_rollback:v1.5.0'))")
+    assert page.evaluate(
+        "() => window.__calls.some(c => c.includes('update_rollback:v1.5.0:https://example.com/Dikte-Setup-1.5.0.exe:hash150'))"
+    )
+
+
+def test_sidebar_logo_bounding_box_never_shrinks(page):
+    fresh(page)
+    # 1. Expanded sidebar
+    box_expanded = page.locator(".brand-logo").bounding_box()
+    assert box_expanded is not None
+    assert round(box_expanded["width"]) == 40
+    assert round(box_expanded["height"]) == 40
+
+    # 2. Collapse sidebar
+    page.locator("#brandToggle").click()
+    page.wait_for_function("() => document.body.classList.contains('sidebar-collapsed')")
+    page.wait_for_timeout(300)
+
+    # 3. Check bounding box in collapsed state
+    box_collapsed = page.locator(".brand-logo").bounding_box()
+    assert box_collapsed is not None
+    assert round(box_collapsed["width"]) == 40
+    assert round(box_collapsed["height"]) == 40
+
+    # 4. Check collapse button remains visible and icon is rotated
+    btn = page.locator("#sidebarCollapseBtn")
+    assert btn.is_visible()
+    transform = page.evaluate("() => getComputedStyle(document.querySelector('.sidebar-toggle-ic')).transform")
+    assert "matrix" in transform
+
+
+def test_dikte_autotranslate_sync_and_autopaste_default(page):
+    fresh(page)
+    # Verify autoPasteSwitch defaults to .on
+    assert "on" in page.locator("#autoPasteSwitch").get_attribute("class")
+
+    # On Dikte page: check initial autoTranslate state
+    auto_trans = page.locator("#autoTranslate")
+    out_lang = page.locator("#outputLang")
+
+    # Toggle autoTranslate on
+    auto_trans.check()
+    out_lang.select_option("en")
+
+    # Wait for instant save and multiple 250ms snapshot polling cycles
+    page.wait_for_timeout(600)
+
+    # Verify not reverted on Dikte page
+    assert auto_trans.is_checked()
+    assert out_lang.input_value() == "en"
+
+    # Go to settings page
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => !document.querySelector('#textProvider').disabled")
+
+    # Settings page controls must be synced
+    assert page.locator("#autoTranslateSettings").is_checked()
+    assert page.locator("#outputLangSettings").input_value() == "en"
+
+
+def test_visual_verification_screenshots(page):
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    fresh(page)
+
+    # 1. Sidebar expanded
+    page.screenshot(path=str(ARTIFACTS / "verify-sidebar-expanded.png"))
+
+    # 2. Sidebar collapsed
+    page.locator("#brandToggle").click()
+    page.wait_for_function("() => document.body.classList.contains('sidebar-collapsed')")
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(ARTIFACTS / "verify-sidebar-collapsed.png"))
+
+    # Restore expanded
+    page.locator("#brandToggle").click()
+    page.wait_for_function("() => !document.body.classList.contains('sidebar-collapsed')")
+    page.wait_for_timeout(300)
+
+    # 3. Text model details panel
+    page.locator('.nav-btn[data-page="page-modeller"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#modelList .m-card').length === 2")
+    page.locator('#modelList .m-card[data-name="qwen3-4b"]').click()
+    page.wait_for_function("() => document.querySelector('#detailName').textContent === 'Qwen3 4B'")
+    page.wait_for_timeout(200)
+    page.screenshot(path=str(ARTIFACTS / "verify-text-model-details.png"))
+
+    # 4. Dikte auto-translate active
+    page.locator('.nav-btn[data-page="page-dikte"]').click()
+    page.locator("#autoTranslate").check()
+    page.locator("#outputLang").select_option("en")
+    page.wait_for_timeout(200)
+    page.screenshot(path=str(ARTIFACTS / "verify-dikte-autotranslate.png"))
+
+    assert (ARTIFACTS / "verify-sidebar-expanded.png").is_file()
+    assert (ARTIFACTS / "verify-sidebar-collapsed.png").is_file()
+    assert (ARTIFACTS / "verify-text-model-details.png").is_file()
+    assert (ARTIFACTS / "verify-dikte-autotranslate.png").is_file()
+

@@ -158,7 +158,7 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Güncelleme Rollback: Ayarlar → Güncelleme kartında eski sürümlere tek tıkla geri dönme (`update_list_releases`, `update_rollback`).
 - [x] Sentetik test sesi (`tests/data/test.wav` 16 kHz mono WAV + `test.txt`), `.venv\Scripts\python.exe -m dikte --selftest --cpu` kodu 0 ile doğrulandı.
 - [x] Pytest test süiti: **303 passed, 1 skipped** (40.68 sn).
-- [x] Inno Setup güncel kurucu: `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`), `installer/latest.json` güncellendi, paketli exe selftest ile doğrulandı.
+- [x] Inno Setup güncel kurucu: `installer\Output\Dikte-Setup-1.6.0.exe` (177.467.632 bayt, SHA256: `74d92d7ff6ebced7b295769ed4e7c1a7aa6607ecc85d2c7324f31644ffe8bf31`), `installer/latest.json` güncellendi, paketli exe selftest ile doğrulandı. Masaüstü: `C:\Users\aksek\Desktop\Dikte-Setup-1.6.0.exe`.
 
 ### Aşama 15 — Hata Ayıklama ve Görsel Doğrulama Turu (2026-11-12, 2. Oturum tamamlandı)
 - [x] Tek kopya kilidi (`dikte/instance.py`): Windows Named Mutex (`Local\DikteSingleInstanceMutex`) ile çift açılış engeli; ikinci kopya açıldığında mevcut pencereyi `SW_RESTORE` + `SetForegroundWindow` ile öne getirme.
@@ -170,10 +170,19 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Header mikrofon SVG ikonu ve tema "Açık / Koyu" pill butonu.
 - [x] Kanıt: **320 passed, 1 skipped** (`pytest -q`, `tests/test_single_instance.py` 9 test, `tests/test_ui_fixes.py` 8 test; 45.42 sn); Playwright koyu/açık tema ve morphing ekran görüntüleri.
 
+### Aşama 16 — Sistem Tepsisi, Otomatik Yapıştırma, Arayüz ve Model Sağlamlaştırma (2026-11-12, 3. Oturum tamamlandı)
+- [x] Sistem tepsisi & global kısayol otomatik yapıştırma (`dikte/paste.py` & `dikte/hotkey.py`): `SendInput` + `MapVirtualKeyW` ile sıralı tuş gönderimi, değiştirici tuşlar için şartlı keyup (basılı olmayan Alt tuşuna keyup gönderilmeyerek hedef uygulamanın menü çubuğuna odak kaptırmanın önlenmesi), `VK_RCONTROL` ve `VK_RMENU` için `KEYEVENTF_EXTENDEDKEY`, yapay `Ctrl+V` gönderiminde `is_pasting()` dinleyici koruması, uygulama tepside gizliyken yapıştırma izni.
+- [x] Dikte çeviri doğruluğu (`dikte/engine.py` & `data/settings.json`): girdi dili `"tr"` sabitlendi, Türkçe `initial_prompt`, Silero `vad_parameters` (`speech_pad_ms=400, min_silence_duration_ms=500, threshold=0.35`) ve sıfır gecikmeli kayıt başlangıcı.
+- [x] Yan menü logo ve daralma iyileştirmesi (`dikte/ui/style.css`): `.brand-logo` 40x40px kilitlendi, dikey daralma butonu ve `rotate(180deg)` animasyonu, yumuşak `.22s` geçişi.
+- [x] Metin modelleri sağ detay paneli (`dikte/ui/app.js` & `dikte/text_models.py`): karta tıklandığında sağdaki `Model Detayları` ve `Model Açıklaması` panelleri ses modelleriyle 1:1 aynı zenginlikte açılıyor; indirme/duraklat/devam/iptal/aktifleştir/sil aksiyonları eksiksiz bağlandı.
+- [x] Otomatik çeviri & çıktı dili kararlılığı (`dikte/text_engine.py`, `dikte/controller.py`, `dikte/ui/app.js`): Qwen3 `<think>` bloklarının temizlenmesi, genişletilmiş DE/EN/TR kelime listesi, 2 denemeli yerel yeniden deneme, 250ms polling koruması (`aiSaveInFlight`) ve sağlayıcı kapalıyken açıklayıcı toast uyarısı.
+- [x] Dağıtım ve genel düzeltmeler: `Dikte.spec` (`pynvml`, `tests/data`), `installer/Dikte.iss` (`CloseApplications=yes`), `dikte_ai` modunda boş tıklama yutma engeli (`pointer-events: none;`), 3 argümanlı rollback çağrısı.
+- [x] Kanıt: **343 passed, 1 skipped** (`pytest -q`, 46.74 sn).
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri, tek kopya, UI) | pytest, `tests/` (321 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri, tek kopya, UI) | pytest, `tests/` (344 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

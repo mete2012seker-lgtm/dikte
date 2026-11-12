@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 
 from .. import config
 
@@ -218,6 +219,7 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
             min_size=(config.WINDOW_MIN_WIDTH, config.WINDOW_MIN_HEIGHT),
             background_color=config.WINDOW_BACKGROUND,
             text_select=True,
+            hidden=start_in_tray,
         )
     except Exception as exc:
         print("Pencere oluşturulamadı.")
@@ -228,6 +230,20 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
 
     _quitting = False
     _window_visible = not start_in_tray
+
+    def is_window_visible() -> bool:
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                from ..instance import find_dikte_window
+
+                hwnd = find_dikte_window()
+                if hwnd:
+                    user32 = ctypes.windll.user32
+                    return bool(user32.IsWindowVisible(hwnd))
+            except Exception:
+                pass
+        return _window_visible
 
     def on_show() -> None:
         nonlocal _window_visible
@@ -245,6 +261,13 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
             window.hide()
         except Exception:
             pass
+
+    def toggle_window() -> None:
+        nonlocal _window_visible
+        if is_window_visible():
+            on_hide()
+        else:
+            on_show()
 
     def on_quit() -> None:
         nonlocal _quitting
@@ -271,7 +294,7 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         on_hide=on_hide,
         on_quit=on_quit,
         get_status_text=get_status_text,
-        is_visible_check=lambda: _window_visible,
+        is_visible_check=is_window_visible,
     )
 
     def on_closing() -> bool:
