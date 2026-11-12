@@ -81,9 +81,9 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] 7a — `text_engine.py`: OpenRouter istemcisi (DPAPI ile şifreli anahtar, ucuz model filtresi, düzenlenebilir sistem promptu) + Temizle/Çevir akışı.
 - [x] 7a — Ayarlar sayfasında **OpenRouter API anahtarı** alanı: gizli yazı, "Kaydet" ve "Sil" düğmeleri, anahtarın DPAPI ile şifrelenip `settings.json` yerine ayrı dosyada tutulması; "Anahtarı test et" düğmesi.
 - [x] 7b — Uygulama içi GGUF kataloğu, HTTP Range ile indirme, duraklat/devam/iptal, llama.cpp ile CPU/RAM veya GPU/VRAM çalıştırma. (`llama-cpp-python` GPU/cu124 kuruldu 2026-11-03; gemma3-4b GPU 1,7 sn yükleme, ~60 tok/s. İlk çağrı ~50 sn CUDA ısınması.)
-- [ ] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Takas + sekmeler hazır; **"⋯" menüsü yok**, eylemler kart üstünde.)
+- [x] 7c — Bellek takası: ses modeli ile metin modeli aynı anda tutulmaz; Modeller sayfasında Metin/Ses sekmeleri ve "⋯" menüsü. (Faz 3.2'de "⋯" menüsü, HF özel modeller ve sil/kaldır eylemleri tamamlandı.)
 - [x] 7d — Arka plan kısayolu + etkin pencereye otomatik yapıştırma.
-- [ ] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; kalite tablosu **kısmen**: 10/10 OK var, tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok.)
+- [x] 7e — Dikte sayfası: Çıktı Dili (TR/EN/DE), "Otomatik çevir" kutusu, Temizle ve Çevir butonları; Playwright ve kalite testleri. (Arayüz + Playwright hazır; 10/10 OK ve morphing animasyon entegrasyonu tamamlandı.)
 - Kural: aynı dilde yalnız temizlik; 3 kelimeden kısa metinde çeviri yok. Dil kararını metin modeli tek çağrıda verir.
 - Kanıt: 220 pytest (2026-11-07 doğrulandı), sahte HTTP sunucusuyla duraklat/devam/iptal testi, güncel Playwright ekran görüntüleri; OpenRouter gerçek çağrı 6/6 (`reports/2026-11-01-openrouter-gercek-test.md`). Tam kalite tablosu ve VRAM ölçümü bekliyor.
 - Senin yapacağın: Ayarlar → Yapay Zeka'dan anahtarı gir; mikrofon, yapıştırma ve indirme testlerini yap.
@@ -160,10 +160,20 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Pytest test süiti: **303 passed, 1 skipped** (40.68 sn).
 - [x] Inno Setup güncel kurucu: `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`), `installer/latest.json` güncellendi, paketli exe selftest ile doğrulandı.
 
+### Aşama 15 — Hata Ayıklama ve Görsel Doğrulama Turu (2026-11-12, 2. Oturum tamamlandı)
+- [x] Tek kopya kilidi (`dikte/instance.py`): Windows Named Mutex (`Local\DikteSingleInstanceMutex`) ile çift açılış engeli; ikinci kopya açıldığında mevcut pencereyi `SW_RESTORE` + `SetForegroundWindow` ile öne getirme.
+- [x] Çift tepsi ikonu engelleme (`dikte/tray.py`): modül düzeyi singleton kilidi (`_tray_lock` + `_active_tray_manager`).
+- [x] Görev çubuğu ve pencere Win32 ikonu: `SetCurrentProcessExplicitAppUserModelID("Dikte.VoxNoteAI.1.6")` ve Win32 `LoadImageW` + `WM_SETICON` (`ICON_SMALL` ve `ICON_BIG`) pencere ikonu izleyicisi (`start_window_icon_watcher`).
+- [x] `design/mikrofon_morph_animasyonu.html` birebir aktarımı: 48 bar ses dalgası, halo halkaları, kırmızı durdur karesine dönüşen morph animasyonu (`sampleCurveY` ve `resizeWaveCanvas` / ResizeObserver ile sekme geçişi boyutu düzeltildi).
+- [x] Sade Dikte.AI ve Klasik Magic UI modları: `dikte_ai` modunda tek sütunlu ferah düzen, üstte `● Model` rozeti, gizli sağ panel ve alt çubuk; `classic` modunda 2 sütunlu sağ panel, alt çubuk, DotPattern ve MagicCard.
+- [x] Ayarlar anında otomatik kaydı: tüm kontrollerde `triggerInstantSettingsSave` ve "Son etkinlikler" listesinde mükerrer `"Ayarlar kaydedildi"` tekilleştirmesi.
+- [x] Header mikrofon SVG ikonu ve tema "Açık / Koyu" pill butonu.
+- [x] Kanıt: **320 passed, 1 skipped** (`pytest -q`, `tests/test_single_instance.py` 9 test, `tests/test_ui_fixes.py` 8 test; 45.42 sn); Playwright koyu/açık tema ve morphing ekran görüntüleri.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri) | pytest, `tests/` (304 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri, tek kopya, UI) | pytest, `tests/` (321 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

@@ -24,6 +24,22 @@ from . import config
 
 logger = logging.getLogger(__name__)
 
+# Aynı süreçte asla birden fazla pystray.Icon çalıştırılmaması için singleton kilit ve referans
+_tray_lock = threading.Lock()
+_active_tray_manager: Optional[SystemTrayManager] = None
+
+
+def get_active_tray_manager() -> Optional[SystemTrayManager]:
+    """Süreç içindeki aktif sistem tepsisi yöneticisini döner."""
+    with _tray_lock:
+        return _active_tray_manager
+
+
+def is_tray_running() -> bool:
+    """Süreçte çalışan bir sistem tepsisi ikonu olup olmadığını döner."""
+    with _tray_lock:
+        return _active_tray_manager is not None and _active_tray_manager.is_running
+
 
 def create_fallback_icon() -> Image.Image:
     """İkon dosyası bulunamazsa koyu arka plan üzerinde mavi ses dalgalı yedek ikon üretir."""
@@ -167,49 +183,68 @@ class SystemTrayManager:
         )
 
     def start(self) -> None:
-        """Tepsi ikonunu arka plan daemon thread'inde başlatır."""
-        if self._is_running:
-            return
+        """Tepsi ikonunu arka plan daemon thread'inde başlatır (singleton garantili)."""
+        global _active_tray_manager
+        with _tray_lock:
+            if self._is_running:
+                return
 
-        if pystray is None:
-            logger.warning("pystray kurulu değil, sistem tepsisi devre dışı")
-            return
+            if _active_tray_manager is not None and _active_tray_manager is not self:
+                if _active_tray_manager.is_running:
+                    logger.warning(
+                        "Aktif bir sistem tepsisi yöneticisi zaten çalışıyor. İkinci bir pystray.Icon başlatılmayacak."
+                    )
+                    return
 
-        menu = self._create_menu()
-        try:
-            self._icon = pystray.Icon(
-                name="Dikte",
-                icon=self._image,
-                title="Dikte",
-                menu=menu,
-            )
-        except Exception as exc:
-            logger.exception("pystray.Icon oluşturulamadı: %s", exc)
-            return
+            if pystray is None:
+                logger.warning("pystray kurulu değil, sistem tepsisi devre dışı")
+                return
 
-        def _runner() -> None:
+            menu = self._create_menu()
             try:
-                self._icon.run()
+                self._icon = pystray.Icon(
+                    name="Dikte",
+                    icon=self._image,
+                    title="Dikte",
+                    menu=menu,
+                )
             except Exception as exc:
-                logger.warning("Sistem tepsisi çalışma hatası: %s", exc)
-            finally:
-                self._is_running = False
+                logger.exception("pystray.Icon oluşturulamadı: %s", exc)
+                return
 
-        self._thread = threading.Thread(
-            target=_runner, name="SystemTrayThread", daemon=True
-        )
-        self._is_running = True
-        self._thread.start()
+            _active_tray_manager = self
+            self._is_running = True
+
+            def _runner() -> None:
+                try:
+                    self._icon.run()
+                except Exception as exc:
+                    logger.warning("Sistem tepsisi çalışma hatası: %s", exc)
+                finally:
+                    self._is_running = False
+                    with _tray_lock:
+                        global _active_tray_manager
+                        if _active_tray_manager is self:
+                            _active_tray_manager = None
+
+            self._thread = threading.Thread(
+                target=_runner, name="SystemTrayThread", daemon=True
+            )
+            self._thread.start()
 
     def stop(self) -> None:
         """Tepsi ikonunu güvenli şekilde durdurur."""
-        self._is_running = False
-        if self._icon is not None:
-            try:
-                self._icon.stop()
-            except Exception as exc:
-                logger.debug("pystray durdurulurken hata: %s", exc)
-            self._icon = None
+        global _active_tray_manager
+        with _tray_lock:
+            self._is_running = False
+            if self._icon is not None:
+                try:
+                    self._icon.stop()
+                except Exception as exc:
+                    logger.debug("pystray durdurulurken hata: %s", exc)
+                self._icon = None
+            if _active_tray_manager is self:
+                _active_tray_manager = None
 
     def update_icon(self, image: Image.Image) -> None:
         """Tepsi simgesini günceller."""

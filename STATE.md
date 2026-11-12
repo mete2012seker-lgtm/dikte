@@ -3,9 +3,18 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 3, Faz 4 ve Faz 5 tamamlandı (2026-11-12):** Tüm yeni özellikler (yeni logo, sistem tepsisi, morphing mikrofon animasyonu, sade Dikte.AI ve klasik Magic UI tasarım dili seçimi, sidebar aç/kapa, 1–3 tuşlu serbest kısayol yakalayıcı, Hugging Face ses/metin model ekleme ve "⋯" menüsü, 5 adımlı Karşılama Sihirbazı, güncelleme rollback ve anında ayar kaydı) uygulandı ve test edildi. **303 passed, 1 skipped** pytest testi geçiyor. Sentetik test sesi ile `--selftest --cpu` kodu 0 ile doğrulandı. `build.ps1` ile `installer\Output\Dikte-Setup-1.6.0.exe` (177.416.509 bayt, SHA256: `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb`) derlendi ve paketli exe başarıyla selftest edildi. Sıradaki adım: Kullanıcı tarafından temiz Windows VM testi ve GitHub Releases yüklemesi.
+**Faz 3, Faz 4, Faz 5 ve Hata Ayıklama / Görsel Doğrulama Turu tamamlandı (2026-11-12, 2. Oturum):** Tüm yeni özellikler, tek kopya kilidi (Named Mutex), çift sistem tepsisi ikon engeli, görev çubuğu / pencere Win32 ikonu (AppUserModelID + WM_SETICON), `design/mikrofon_morph_animasyonu.html` birebir 48 bar ses dalgası ve morphing mikrofonu, Sade Dikte.AI ve Klasik Magic UI tasarım modları, Ayarlar anında otomatik kayıt ve etkinlik tekilleştirme tamamlandı. Test süiti: **320 passed, 1 skipped** (17 yeni regresyon ve UI testi eklendi). Paketli `Dikte-Setup-1.6.0.exe` ve selftest tam doğrulandı. Sıradaki adım: Kullanıcı tarafından temiz Windows VM testi ve GitHub Releases yüklemesi.
 
 ## Biten (kanıtla)
+- **Hata Ayıklama ve Görsel Doğrulama Turu tamamlandı (2026-11-12, 2. Oturum):**
+  - **Tek Kopya Kilidi (Single Instance Mutex):** `dikte/instance.py` eklendi; Windows Named Mutex (`Local\DikteSingleInstanceMutex`) ile uygulamanın aynı anda birden fazla açılması ve çift sistem tepsisi ikonu oluşturması engellendi. İkinci kopya açıldığında mevcut pencereyi Win32 API (`SW_RESTORE` + `SetForegroundWindow`) ile öne getirip sessizce kapanır (`tests/test_single_instance.py`, 9 test).
+  - **Sistem Tepsisi Singleton Kilidi:** `dikte/tray.py` içine modül düzeyi singleton kilidi (`_tray_lock` + `_active_tray_manager`) eklendi, mükerrer tepsi ikonları tamamen önlendi.
+  - **Pencere ve Görev Çubuğu İkonu (Win32):** Görev çubuğunda ve pencere başlığında varsayılan Python logosu yerine `assets/icon.ico` görünmesi sağlandı; `SetCurrentProcessExplicitAppUserModelID("Dikte.VoxNoteAI.1.6")` ve Win32 `LoadImageW` + `WM_SETICON` (`ICON_SMALL` ve `ICON_BIG`) pencere ikonu izleyicisi (`start_window_icon_watcher`) entegre edildi.
+  - **Birebir Mikrofon Morph Animasyonu & 48 Bar Dalga:** `design/mikrofon_morph_animasyonu.html` dosyasındaki 48 barlık ses dalgası, konsantrik halo halkaları ve kırmızı durdur karesine dönüşen morph animasyonu yorum katılmadan birebir `dikte/ui/index.html`, `dikte/ui/style.css` ve `dikte/ui/app.js` içine taşındı (`sampleCurveY` ve sekme geçişinde `resizeWaveCanvas` / ResizeObserver boyutu düzeltildi).
+  - **Sade Dikte.AI ve Klasik Magic UI Geçişi:** `dikte_ai` modunda tek sütunlu ferah düzen, üstte `● Model` rozeti, gizli sağ panel ve alt çubuk; `classic` modunda 2 sütunlu sağ panel, alt çubuk, DotPattern ve MagicCard yapısı tam ayrıştırıldı.
+  - **Ayarlar Anında Kayıt ve Etkinlik Tekilleştirme:** Ayarlar sayfasındaki tüm kontroller anında otomatik kayda (`triggerInstantSettingsSave`) bağlandı ve "Son etkinlikler" listesindeki mükerrer `"Ayarlar kaydedildi"` satırları tekilleştirildi.
+  - **Header ve UI İyileştirmeleri:** Sol üst köşedeki iç içe kutu görüntüsü temiz vektörel mikrofon SVG ikonu ile değiştirildi; sağ üstteki tema düğmesi `"Açık / Koyu"` pill butonuna dönüştürüldü.
+  - **Test Durumu:** **320 passed, 1 skipped** (`tests/test_single_instance.py` 9 test, `tests/test_ui_fixes.py` 8 test; 45.42 sn).
 - **Faz 3, Faz 4 ve Faz 5 tamamlandı (2026-11-12):**
   - **Yeni Logo & İkonlar:** `assets/icon.ico`, `dikte/ui/assets/icon.png` ve `installer/Dikte.ico` `design/download` baz alınarak Pillow ile üretildi; masaüstü kısayolu `C:\Users\aksek\Desktop\Dikte.lnk` güncellendi.
   - **Sistem Tepsisi (System Tray):** `dikte/tray.py` ile `pystray` + `Pillow` menüsü (Göster/Gizle, Dinleme Durumu, Çıkış); `--tray` ve `--minimized` sessiz başlatma bayrakları; pencere kapatıldığında tepsiye gizlenme ve arka planda global kısayol dinleme.
@@ -111,7 +120,7 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **303 passed, 1 skipped** (2026-11-12, Faz 3–4–5 testleri dahil) |
+| `pytest -q` | **320 passed, 1 skipped** (2026-11-12, Hata Ayıklama & Görsel Doğrulama Turu dahil) |
 | Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 177.416.509 bayt, SHA-256 `eaab2ea97ca05dc1fcd30ee2fc4b3731df69faa188ab6512f79a13cf0b1503eb` |
 | Paketli açılış | dist\Dikte\Dikte.exe --selftest --cpu başarıyla çalıştı (exit code 0) |
 | `--selftest` | **Çalışıyor:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` hazır; kod 0 ile geçti |

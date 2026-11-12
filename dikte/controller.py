@@ -17,6 +17,12 @@ from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
 from .history import HistoryError, HistoryStore
 from .hotkey import HotkeyError, HotkeyListener
+from .instance import (
+    DEFAULT_APP_ID,
+    apply_window_icon,
+    set_app_user_model_id,
+    start_window_icon_watcher,
+)
 from .models import ModelError, ModelManager, get_model
 from .paste import paste_if_allowed
 from .secrets import SecretError, SecretStore, mask as mask_key
@@ -107,6 +113,8 @@ class Controller:
         self._memory_provider = memory_provider or diagnostics.read_memory
         self._load_in_background = load_in_background
         self._last_recording_path = Path(last_recording_path or config.LAST_RECORDING)
+
+        set_app_user_model_id(DEFAULT_APP_ID)
 
         self._machine = StateMachine(LOADING)
         self._lock = threading.RLock()
@@ -213,7 +221,10 @@ class Controller:
     # ---------- yaşam döngüsü ----------
 
     def start(self) -> None:
-        """Motoru arka planda yükler ve kısayolu başlatır."""
+        """Motoru arka planda yükler, görev çubuğu/pencere ikonunu zorlar ve kısayolu başlatır."""
+        set_app_user_model_id(DEFAULT_APP_ID)
+        start_window_icon_watcher(daemon=True)
+
         with self._lock:
             if self._closed:
                 return
@@ -225,6 +236,10 @@ class Controller:
             logger.warning("Kısayol başlatılamadı: %s", exc)
             with self._lock:
                 self._add_activity("Kısayol başlatılamadı", str(exc), "err")
+
+    def apply_window_icon(self, hwnd: int | None = None) -> bool:
+        """Pencereye Win32 üzerinden icon.ico atar."""
+        return apply_window_icon(hwnd)
 
     def load_engine(self) -> None:
         with self._engine_lock:

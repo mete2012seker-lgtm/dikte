@@ -15,6 +15,10 @@
     document.documentElement.classList.toggle("light", !dark);
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.setAttribute("data-theme-mode", mode);
+
+    var design = "dikte_ai";
+    try { design = localStorage.getItem("design_style") || "dikte_ai"; } catch (e) {}
+    document.documentElement.setAttribute("data-design", design);
   })();
 </script>
 </head>
@@ -53,12 +57,20 @@
   <aside class="sidebar">
     <div class="brand" id="brandToggle" title="Menüyü daralt / genişlet">
       <div class="brand-logo">
-        <img src="assets/icon.png" alt="Dikte" class="brand-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
-        <svg class="ic" style="display:none"><use href="#i-logo"/></svg>
+        <svg class="brand-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+        </svg>
       </div>
-      <div>
+      <div class="brand-text">
         <div class="brand-name">Dikte</div>
       </div>
+      <button class="sidebar-toggle-btn" id="sidebarCollapseBtn" type="button" aria-label="Menüyü daralt / genişlet" title="Menüyü daralt / genişlet">
+        <svg class="ic sidebar-toggle-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
     </div>
     <nav class="nav">
       <button class="nav-btn is-active" data-page="page-dikte" aria-current="page"><svg class="ic"><use href="#i-mic"/></svg><span>Dikte</span></button>
@@ -75,6 +87,16 @@
     <section class="page is-active" id="page-dikte">
       <div class="page-head">
         <h1 class="page-title">Dikte</h1>
+        <div class="page-head-actions">
+          <div class="active-model-pill dikte-ai-pill">
+            <span class="pill-dot"></span>
+            <span>Model: <strong id="dikteAiModelPill">Model yükleniyor…</strong></span>
+          </div>
+          <button class="theme-btn" id="themeToggle" type="button" aria-label="Karanlık/açık temayı değiştir" title="Temayı Değiştir" aria-pressed="false">
+            <svg class="ic"><use href="#i-sun"/></svg>
+            <span class="theme-btn-label" id="themeBtnLabel">Tema</span>
+          </button>
+        </div>
       </div>
 
       <div class="dikte-layout">
@@ -118,23 +140,23 @@
               <div class="halo-ring halo-ring--outer"></div>
               <div class="halo-ring halo-ring--inner"></div>
             </div>
-            <div class="stage-row">
-              <div class="wave left" id="waveLeft" aria-hidden="true"></div>
-              <div class="mic-wrap">
-                <span class="mic-halo"></span>
-                <span class="mic-ring ring-1"></span>
-                <span class="mic-ring ring-2"></span>
-                <span class="pulse"></span>
-                <span class="pulse delay"></span>
-                <button class="mic-btn" id="micBtn" aria-label="Kaydı başlat" aria-pressed="false">
-                  <div class="icon-morph">
-                    <svg class="ic mic-svg"><use href="#i-mic"/></svg>
-                    <div class="stop-square" aria-hidden="true"></div>
-                  </div>
-                </button>
-              </div>
-              <div class="wave right" id="waveRight" aria-hidden="true"></div>
-            </div>
+            <button
+              class="mic-btn"
+              id="micBtn"
+              type="button"
+              aria-label="Ses kaydını başlat"
+              aria-pressed="false"
+            >
+              <span class="icon-morph">
+                <svg class="mic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="2.5" width="6" height="11" rx="3" />
+                  <path d="M5 10.5a7 7 0 0 0 14 0" />
+                  <line x1="12" y1="17.5" x2="12" y2="21" />
+                  <line x1="8.5" y1="21" x2="15.5" y2="21" />
+                </svg>
+                <span class="stop-square"></span>
+              </span>
+            </button>
             <div class="status-line">
               <span class="status-dot" id="statusDot"></span>
               <span id="statusText" title="">Model yükleniyor…</span>
@@ -144,11 +166,6 @@
         </div>
 
         <aside>
-          <div class="theme-row">
-            <button class="theme-btn" id="themeToggle" type="button" aria-label="Karanlık/açık temayı değiştir" aria-pressed="false">
-              <svg class="ic"><use href="#i-sun"/></svg>
-            </button>
-          </div>
           <div class="card model-card">
             <div class="card-head"><svg class="ic"><use href="#i-chip"/></svg>Aktif model</div>
             <div class="model-inner">
@@ -570,6 +587,7 @@
         </div>
 
         <div class="save-row">
+          <span class="auto-save-label"><svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-check"/></svg> Tüm değişiklikler otomatik kaydedilir</span>
           <span class="dirty" id="settingsDirty" hidden>Kaydedilmedi</span>
           <button class="btn" id="resetSettingsBtn">Varsayılana dön</button>
           <button class="btn btn-primary" id="saveSettingsBtn"><svg class="ic"><use href="#i-check"/></svg>Kaydet</button>

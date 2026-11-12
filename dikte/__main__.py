@@ -17,20 +17,20 @@ from pathlib import Path
 
 from . import config, diagnostics
 from .engine import EngineError, TranscriptionEngine, select_plan
+from .instance import (
+    DEFAULT_APP_ID,
+    SingleInstance,
+    activate_existing_instance,
+    set_app_user_model_id as _set_app_user_model_id,
+)
 from .state import ERROR, PROCESSING, RECORDING, READY, STATE_LABELS
 
+_single_instance_lock: SingleInstance | None = None
 
-def set_app_user_model_id(app_id: str = "VoxNoteAI.Dikte.Desktop.1.6") -> bool:
+
+def set_app_user_model_id(app_id: str = DEFAULT_APP_ID) -> bool:
     """Windows görev çubuğunda uygulamanın kendi ikonunun görünmesini sağlar."""
-    if sys.platform == "win32":
-        try:
-            import ctypes
-
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-            return True
-        except Exception:
-            return False
-    return False
+    return _set_app_user_model_id(app_id)
 
 
 def _print_header() -> None:
@@ -206,6 +206,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="uygulamayı sistem tepsisinde simge durumunda başlat",
     )
     parser.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="uygulamayı ve verileri kaldır",
+    )
+    parser.add_argument(
         "--selftest-dosya",
         type=Path,
         default=config.SELFTEST_WAV,
@@ -215,7 +220,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    set_app_user_model_id()
+    global _single_instance_lock
+    set_app_user_model_id(DEFAULT_APP_ID)
     diagnostics.configure_console()
     diagnostics.setup_logging()
     args = build_parser().parse_args(argv)
@@ -231,6 +237,19 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_selftest(force_device, args.selftest_dosya)
     if args.dikte_testi:
         return cmd_console_test(force_device)
+    if getattr(args, "uninstall", False):
+        from . import uninstall
+
+        return 0 if uninstall.run_uninstaller() else 1
+
+    # Tek kopya (Single Instance) kilidi: Başka kopya açıksa pencereyi öne getir ve çık
+    _single_instance_lock = SingleInstance()
+    if not _single_instance_lock.acquire():
+        import logging
+
+        logging.getLogger(__name__).info("Dikte zaten çalışıyor. Mevcut pencere öne getiriliyor.")
+        activate_existing_instance()
+        sys.exit(0)
 
     start_in_tray = bool(getattr(args, "tray", False) or getattr(args, "minimized", False))
     return cmd_ui(force_device, args.debug, start_in_tray=start_in_tray)

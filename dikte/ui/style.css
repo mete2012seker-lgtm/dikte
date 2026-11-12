@@ -6,6 +6,8 @@
   --text:#E9EEF9; --text2:#A7B2C9; --text3:#6E7B96;
   --ready:#2ED47A; --listening:#4C9BFF; --processing:#F2B23E; --error:#EF5B5B;
   --radius:16px;
+  --morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --morph-duration: 0.85s;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -30,15 +32,27 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
   flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;padding:34px 36px 36px;
   background:radial-gradient(900px 460px at 52% -12%,rgba(41,62,160,.20),transparent 70%),var(--app)
 }
-.brand{display:flex;align-items:center;gap:12px;padding:0 4px 26px}
-.brand-logo{
-  width:52px;height:52px;border-radius:16px;display:grid;place-items:center;color:#fff;
-  background:radial-gradient(120% 120% at 28% 18%,#6E8CFF,#3B4DE0 58%,#282BA4);
-  box-shadow:0 8px 22px rgba(59,77,224,.45)
+.brand{
+  display:flex;align-items:center;gap:12px;padding:0 4px 26px;
+  cursor:pointer;user-select:none;position:relative;
 }
-.brand-logo svg.ic{width:27px;height:27px;stroke-width:2}
-.brand-name{font-size:23px;font-weight:600;letter-spacing:-.3px;line-height:1.2}
+.brand-logo{
+  width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 120% at 28% 18%,#6E8CFF,#3B4DE0 58%,#282BA4);
+  box-shadow:0 4px 14px rgba(59,77,224,.35);overflow:hidden;flex-shrink:0;
+}
+.brand-logo svg.brand-ic{width:22px;height:22px;color:#fff;display:block}
+.brand-img{width:100%;height:100%;border-radius:12px;object-fit:cover;display:block}
+.brand-text{flex:1;min-width:0}
+.brand-name{font-size:21px;font-weight:700;letter-spacing:-.3px;line-height:1.2}
 .brand-tag{font-size:12.5px;color:var(--text3);margin-top:2px}
+.sidebar-toggle-btn{
+  background:transparent;border:0;padding:6px;border-radius:8px;color:var(--text3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:auto;
+  transition:all .18s ease;
+}
+.sidebar-toggle-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.sidebar-toggle-ic{width:16px;height:16px;transition:transform .2s ease}
 .nav{display:flex;flex-direction:column;gap:6px}
 .nav-btn{
   display:flex;align-items:center;gap:14px;height:52px;padding:0 14px;border-radius:12px;
@@ -56,7 +70,17 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
 .led{width:8px;height:8px;border-radius:50%;background:var(--ready);box-shadow:0 0 8px rgba(46,212,122,.8);flex:0 0 auto}
 
 /* ===== Başlık ===== */
-.page-head{margin-bottom:24px}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+.page-head-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.active-model-pill{
+  display:none;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--line);padding:6px 14px;border-radius:999px;
+  font-size:13px;color:var(--text2);font-weight:500;
+}
+.active-model-pill .pill-dot{
+  width:8px;height:8px;border-radius:50%;background-color:#22c55e;
+  box-shadow:0 0 8px rgba(34,197,94,0.6);
+}
 .page-title{margin:0 0 8px;font-size:32px;font-weight:600;letter-spacing:-.5px;line-height:1.2}
 .page-sub{margin:0;font-size:15px;color:var(--text2)}
 
@@ -79,7 +103,7 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
 .select:disabled{opacity:.75;cursor:default}
 .transcript{
   background:var(--inner);border:1px solid var(--line-soft);border-radius:12px;padding:16px 18px;
-  min-height:282px;max-height:320px;overflow:auto;font-size:15.5px;line-height:1.8;outline:none;
+  min-height:170px;max-height:230px;overflow:auto;font-size:15px;line-height:1.7;outline:none;
   transition:border-color .15s,box-shadow .15s;white-space:pre-wrap
 }
 .transcript:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(76,107,255,.13)}
@@ -103,52 +127,102 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
 .btn-ai svg.ic{color:#A99BFF}
 .soon{font-size:9.5px;line-height:1;padding:3px 6px;border-radius:999px;border:1px solid #37496F;color:var(--text3);margin-left:2px}
 
-/* ===== Mikrofon sahnesi ===== */
-.stage{display:flex;flex-direction:column;align-items:center;padding:30px 0 8px}
-.stage-row{display:flex;align-items:center;width:100%;gap:6px}
-.wave{display:flex;align-items:center;gap:5px;height:96px;flex:1;overflow:hidden}
-.wave.left{justify-content:flex-end;mask-image:linear-gradient(90deg,transparent,#000 32%,#000)}
-.wave.right{justify-content:flex-start;mask-image:linear-gradient(270deg,transparent,#000 32%,#000)}
-.wave span{
-  width:3px;border-radius:99px;background:linear-gradient(180deg,#8FB0FF,#3050FF);
-  box-shadow:0 0 6px rgba(76,107,255,.5);transform-origin:center;
-  animation:breathe 3s ease-in-out infinite alternate
+/* ===== Mikrofon Morph Animasyonu & Ses Dalgası (design/mikrofon_morph_animasyonu.html birebir) ===== */
+.stage{
+  position:relative;width:100%;height:320px;display:flex;align-items:center;
+  justify-content:center;overflow:hidden;margin-top:8px;
 }
-@keyframes breathe{from{transform:scaleY(.7)}to{transform:scaleY(1)}}
-.stage.is-listening .wave span{animation-duration:.45s;background:linear-gradient(180deg,#BCD4FF,#3F6BFF);box-shadow:0 0 9px rgba(76,155,255,.75)}
-.stage.is-processing .wave span,.stage.is-loading .wave span{animation-duration:2.2s;opacity:.55}
-.stage.is-error .wave span{animation-play-state:paused;opacity:.5}
-.mic-wrap{position:relative;width:230px;height:230px;flex:0 0 230px;display:grid;place-items:center}
-.mic-halo{position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,rgba(76,107,255,.34),rgba(76,107,255,0) 66%);filter:blur(6px);transition:opacity .25s}
-.mic-ring{position:absolute;border-radius:50%;border:1px solid rgba(143,180,255,.35)}
-.ring-1{inset:20px;border-color:rgba(143,180,255,.22)}
-.ring-2{inset:4px;border-color:rgba(143,180,255,.14)}
-.pulse{position:absolute;inset:16px;border-radius:50%;border:1px solid rgba(143,180,255,.55);opacity:0;pointer-events:none}
-.stage.is-listening .pulse{animation:pulse 1.6s ease-out infinite}
-.stage.is-listening .pulse.delay{animation-delay:.8s}
-@keyframes pulse{0%{transform:scale(.92);opacity:.75}100%{transform:scale(1.4);opacity:0}}
+#waveCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.halo-wrapper{
+  position:absolute;top:43%;left:50%;width:280px;height:280px;transform:translate(-50%,-50%) scale(1);
+  pointer-events:none;z-index:2;
+  transition:transform var(--morph-duration) var(--morph-ease),opacity var(--morph-duration) var(--morph-ease);
+}
+.stage.is-recording .halo-wrapper,.stage.is-listening .halo-wrapper{
+  transform:translate(-50%,calc(-50% + 72px)) scale(0.32);opacity:0;
+}
+.halo-ring{position:absolute;top:50%;left:50%;border-radius:50%;transform:translate(-50%,-50%)}
+.halo-ring--outer{width:264px;height:264px;border:1px solid rgba(100,140,255,.10);box-shadow:0 0 40px rgba(48,86,211,.08)}
+.halo-ring--inner{width:208px;height:208px;border:1px solid rgba(110,150,255,.18);box-shadow:0 0 30px rgba(64,108,255,.12)}
+
+html.light .halo-ring--outer{border-color:rgba(61,91,245,.12);box-shadow:0 0 30px rgba(61,91,245,.06)}
+html.light .halo-ring--inner{border-color:rgba(61,91,245,.20);box-shadow:0 0 20px rgba(61,91,245,.10)}
+
 .mic-btn{
-  position:relative;width:150px;height:150px;border-radius:50%;border:0;cursor:pointer;color:#fff;
-  background:radial-gradient(circle at 50% 34%,#2C4488,#14224A 56%,#0B1329);
-  box-shadow:0 0 0 2px #8FB4FF,0 0 40px rgba(76,107,255,.55),inset 0 0 30px rgba(76,107,255,.35);
-  display:grid;place-items:center;transition:box-shadow .2s,transform .15s
+  position:absolute;top:43%;left:50%;width:156px;height:156px;border-radius:50%;
+  border:1.5px solid rgba(132,168,255,.88);
+  background:radial-gradient(circle at 50% 42%,#243b85 0%,#13204a 58%,#0a1026 100%);
+  box-shadow:0 0 38px rgba(74,118,255,.28),0 0 14px rgba(120,160,255,.22),inset 0 0 26px rgba(100,145,255,.18);
+  transform:translate(-50%,-50%) scale(1);cursor:pointer;outline:none;z-index:3;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform var(--morph-duration) var(--morph-ease),border-color var(--morph-duration) var(--morph-ease),background var(--morph-duration) var(--morph-ease),box-shadow var(--morph-duration) var(--morph-ease);
 }
-.mic-btn svg.ic{width:52px;height:52px;stroke-width:1.5}
-.mic-btn:hover{box-shadow:0 0 0 2px #B7CCFF,0 0 56px rgba(90,120,255,.7),inset 0 0 34px rgba(76,107,255,.45)}
-.mic-btn:active{transform:scale(.985)}
-.mic-btn:focus-visible{outline:3px solid var(--accent-text);outline-offset:6px}
-.stage.is-listening .mic-halo{background:radial-gradient(circle,rgba(76,155,255,.5),rgba(76,107,255,0) 68%)}
-.stage.is-listening .mic-btn{box-shadow:0 0 0 2px #C3D8FF,0 0 64px rgba(90,140,255,.75),inset 0 0 36px rgba(90,140,255,.5)}
-.stage.is-loading .mic-btn{opacity:.8;cursor:wait}
-.stage.is-error .mic-btn{box-shadow:0 0 0 2px var(--error),0 0 40px rgba(239,91,91,.45),inset 0 0 28px rgba(239,91,91,.2)}
-.status-line{display:flex;align-items:center;gap:9px;height:22px;margin-top:10px;font-size:13.5px;color:var(--text);max-width:560px}
-.status-line span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.status-dot{width:9px;height:9px;border-radius:50%;background:var(--ready);box-shadow:0 0 10px rgba(46,212,122,.8)}
-.stage.is-listening .status-dot{background:var(--listening);box-shadow:0 0 12px rgba(76,155,255,.9);animation:blink 1s infinite}
-.stage.is-processing .status-dot,.stage.is-loading .status-dot{background:var(--processing);box-shadow:0 0 12px rgba(242,178,62,.85);animation:blink 1.2s infinite}
-.stage.is-error .status-dot{background:var(--error);box-shadow:0 0 12px rgba(239,91,91,.85)}
-@keyframes blink{50%{opacity:.35}}
-.kbd{margin-top:12px;height:34px;padding:0 14px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;background:var(--inner);color:var(--text2);font-size:11.5px}
+.mic-btn:hover{
+  border-color:rgba(162,190,255,1);
+  box-shadow:0 0 48px rgba(84,130,255,.42),0 0 18px rgba(140,175,255,.3),inset 0 0 30px rgba(120,165,255,.25);
+}
+.mic-btn:active{transform:translate(-50%,-50%) scale(0.96)}
+
+html.light .mic-btn{
+  border-color:rgba(132,168,255,.88);
+  background:radial-gradient(circle at 50% 42%,#243b85 0%,#13204a 58%,#0a1026 100%);
+  box-shadow:0 0 38px rgba(74,118,255,.28),0 0 14px rgba(120,160,255,.22),inset 0 0 26px rgba(100,145,255,.18);
+}
+
+.stage.is-recording .mic-btn,.stage.is-listening .mic-btn{
+  transform:translate(-50%,calc(-50% + 72px)) scale(0.41);
+  border-color:rgba(239,68,68,.65);
+  background:radial-gradient(circle at 50% 45%,#2a121b 0%,#170a12 65%,#0c070c 100%);
+  box-shadow:0 0 42px rgba(239,68,68,.34),0 0 16px rgba(239,68,68,.22),inset 0 0 24px rgba(239,68,68,.16);
+}
+.stage.is-recording .mic-btn:hover,.stage.is-listening .mic-btn:hover{
+  border-color:rgba(248,113,113,.95);
+  box-shadow:0 0 54px rgba(239,68,68,.5),0 0 20px rgba(248,113,113,.32),inset 0 0 28px rgba(239,68,68,.24);
+}
+.stage.is-recording .mic-btn:active,.stage.is-listening .mic-btn:active{
+  transform:translate(-50%,calc(-50% + 72px)) scale(0.38);
+}
+
+.icon-morph{position:relative;width:56px;height:56px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.mic-svg{
+  position:absolute;width:46px;height:46px;color:#c8d6f4;opacity:1;transform:scale(1) rotate(0deg);
+  transition:opacity calc(var(--morph-duration) * 0.55) var(--morph-ease),transform var(--morph-duration) var(--morph-ease);
+}
+.stage.is-recording .mic-svg,.stage.is-listening .mic-svg{
+  opacity:0;transform:scale(0.35) rotate(-18deg);
+}
+.stop-square{
+  position:absolute;width:52px;height:52px;border-radius:12px;
+  background:linear-gradient(145deg,#ff4d5a,#dc2626);
+  box-shadow:0 0 24px rgba(239,68,68,.75);opacity:0;transform:scale(0.25) rotate(18deg);
+  transition:opacity calc(var(--morph-duration) * 0.65) var(--morph-ease),transform var(--morph-duration) var(--morph-ease),border-radius var(--morph-duration) var(--morph-ease);
+}
+.stage.is-recording .stop-square,.stage.is-listening .stop-square{
+  opacity:1;transform:scale(1) rotate(0deg);
+}
+
+.status-line{
+  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;align-items:center;
+  gap:8px;font-size:13px;color:var(--text2);z-index:5;white-space:nowrap;
+}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--ready);box-shadow:0 0 10px rgba(46,212,122,.8);
+  transition:background .25s ease,box-shadow .25s ease;
+}
+.stage.is-listening .status-dot,.stage.is-recording .status-dot{
+  background:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.9);
+}
+.stage.is-processing .status-dot,.stage.is-loading .status-dot,.stage.is-cleaning .status-dot{
+  background:var(--processing);box-shadow:0 0 10px rgba(242,178,62,.8);
+}
+.stage.is-error .status-dot{
+  background:var(--error);box-shadow:0 0 12px rgba(239,91,91,.85);
+}
+.kbd{
+  position:absolute;bottom:2px;left:50%;transform:translateX(-50%);z-index:5;
+  height:20px;padding:0 8px;display:grid;place-items:center;border:1px solid var(--line);
+  border-radius:5px;background:var(--inner);color:var(--text2);font-size:10.5px;
+}
 
 /* ===== Sağ panel: model ===== */
 .model-card{padding:18px 18px 20px;margin-bottom:22px}
@@ -371,7 +445,7 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
 .dirty[hidden]{display:none}
 
 /* ===== Dar ekran ===== */
-@media (max-width:1240px){
+@media (max-width:980px){
   .dikte-layout{grid-template-columns:1fr}
   .timeline{max-height:240px}
 }
@@ -450,16 +524,18 @@ svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;str
 
 /* ---------- v1.4: tema düğmesi, açık tema, view transition ---------- */
 
-.theme-row{display:flex;justify-content:flex-end;margin-bottom:12px}
+.theme-row{display:flex;justify-content:flex-end;align-items:center;margin-bottom:14px;height:36px}
 .theme-btn{
-  width:38px;height:38px;border-radius:999px;display:grid;place-items:center;
-  border:1px solid var(--line);background:var(--card);color:var(--text2);
-  cursor:pointer;transition:border-color .15s,color .15s,transform .15s
+  display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--card);color:var(--text2);font-size:12.5px;
+  font-weight:500;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);
+  transition:all .2s ease;
 }
-.theme-btn:hover{border-color:var(--line-strong);color:var(--text)}
+.theme-btn:hover{border-color:var(--line-strong);color:var(--text);background:var(--card-hover)}
 .theme-btn:active{transform:scale(.96)}
 .theme-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(76,107,255,.18)}
-.theme-btn svg.ic{width:17px;height:17px}
+.theme-btn svg.ic{width:16px;height:16px}
+.theme-btn-label{font-size:12px;font-weight:500}
 
 .theme-seg{gap:6px}
 .seg{
@@ -607,7 +683,6 @@ html.light .uninstall-btn:hover:not(:disabled){background:rgba(217,58,58,.16)}
 
 /* ---------- Faz 3.1 & 3.2: Yan Menü Daralma / Katlama ---------- */
 .brand{cursor:pointer;user-select:none;transition:padding .2s ease}
-.brand-img{width:28px;height:28px;border-radius:8px;object-fit:cover}
 body.sidebar-collapsed .sidebar{width:72px;flex:0 0 72px;padding:22px 10px 18px}
 body.sidebar-collapsed .brand{padding:0 0 26px;justify-content:center}
 body.sidebar-collapsed .brand > div:not(.brand-logo){display:none}
@@ -615,32 +690,148 @@ body.sidebar-collapsed .nav-btn{justify-content:center;padding:0;height:48px}
 body.sidebar-collapsed .nav-btn span{display:none}
 body.sidebar-collapsed .sidebar-foot{display:none}
 
-/* ---------- Faz 3.4: Mikrofon Morfizmi & Canvas Ses Dalgası ---------- */
-.stage{position:relative;overflow:hidden}
-#waveCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-.halo-wrapper{position:absolute;top:50%;left:50%;width:260px;height:260px;transform:translate(-50%,-50%) scale(1);pointer-events:none;z-index:2;transition:transform .75s cubic-bezier(0.22,1,0.36,1),opacity .75s ease}
-.halo-ring{position:absolute;top:50%;left:50%;border-radius:50%;transform:translate(-50%,-50%)}
-.halo-ring--outer{width:250px;height:250px;border:1px solid rgba(100,140,255,.12);box-shadow:0 0 36px rgba(48,86,211,.08)}
-.halo-ring--inner{width:196px;height:196px;border:1px solid rgba(110,150,255,.20);box-shadow:0 0 26px rgba(64,108,255,.12)}
-.stage.is-recording .halo-wrapper{transform:translate(-50%,calc(-50% + 90px)) scale(0.35);opacity:0}
+/* ==================== TASARIM MODELLERİ: Sade Dikte.AI vs Klasik Magic UI ==================== */
 
-.icon-morph{position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.mic-svg{position:absolute;width:28px;height:28px;opacity:1;transform:scale(1) rotate(0deg);transition:opacity .4s ease,transform .6s cubic-bezier(0.22,1,0.36,1)}
-.stop-square{position:absolute;width:24px;height:24px;border-radius:6px;background:linear-gradient(145deg,#ff4d5a,#dc2626);box-shadow:0 0 16px rgba(239,68,68,.7);opacity:0;transform:scale(0.2) rotate(18deg);transition:opacity .4s ease,transform .6s cubic-bezier(0.22,1,0.36,1)}
-.stage.is-recording .mic-svg{opacity:0;transform:scale(0.3) rotate(-18deg)}
-.stage.is-recording .stop-square{opacity:1;transform:scale(1) rotate(0deg)}
-.stage.is-recording .mic-btn{border-color:rgba(239,68,68,.75);background:radial-gradient(circle at 50% 45%,#2a121b 0%,#170a12 65%,#0c070c 100%);box-shadow:0 0 34px rgba(239,68,68,.35)}
+/* Sade Dikte.AI (Default) */
+html[data-design="dikte_ai"]{
+  --radius:18px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
 
-/* ---------- Faz 3.4: Sade Dikte.AI Tasarım Modeli ---------- */
-html[data-design="dikte_ai"]{--radius:18px}
+/* Light Mode: Dikte.AI (design/dikte-ai.html uyarlaması) */
 html[data-design="dikte_ai"].light{
   --bg:#F4F6F9; --app:#F4F6F9; --side:#FFFFFF; --card:#FFFFFF; --inner:#EEF1F5;
-  --line:#E5E9F0; --line-soft:#ECEFF5; --line-strong:#D5DDE8;
+  --line:#E5E9F0; --line-soft:#ECEFF5; --line-strong:#CBD5E1;
   --text:#1A1F2C; --text2:#64748B; --text3:#94A3B8;
+  --accent:#253243; --accent-hover:#1B2532; --accent-text:#FFFFFF;
 }
-html[data-design="dikte_ai"].light .card{box-shadow:0 4px 24px rgba(15,23,42,0.04);border-color:rgba(226,232,240,0.7)}
-html[data-design="dikte_ai"].light .sidebar{border-right-color:#E5E9F0}
-html[data-design="dikte_ai"].light .nav-btn.is-active{background:#EAEDF2;color:#1A1F2C;border-color:transparent;box-shadow:none;font-weight:600}
+html[data-design="dikte_ai"].light .sidebar{
+  background:#FFFFFF;border-right:1px solid #E5E9F0;
+}
+html[data-design="dikte_ai"].light .card{
+  background:#FFFFFF;box-shadow:0 4px 24px rgba(15,23,42,0.04);
+  border:1px solid rgba(226,232,240,0.7);border-radius:18px;
+}
+html[data-design="dikte_ai"].light .transcript{
+  background:#EEF1F5;border:1px solid transparent;color:#1A1F2C;border-radius:12px;
+}
+html[data-design="dikte_ai"].light .transcript:focus{
+  border-color:#CBD5E1;background:#F1F4F8;
+}
+html[data-design="dikte_ai"].light .nav-btn{
+  color:#334155;border-radius:10px;
+}
+html[data-design="dikte_ai"].light .nav-btn:hover{
+  background:#F3F5F8;color:#1A1F2C;
+}
+html[data-design="dikte_ai"].light .nav-btn.is-active{
+  background:#EAEDF2;color:#1A1F2C;font-weight:600;border-color:transparent;
+  box-shadow:none;position:relative;
+}
+html[data-design="dikte_ai"].light .nav-btn.is-active::before{
+  content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;
+  background-color:#253243;border-radius:0 4px 4px 0;
+}
+
+/* Dark Mode: Dikte.AI (Ferah, minimal, net kontrast) */
+html[data-design="dikte_ai"].dark{
+  --bg:#070B16; --app:#070B16; --side:#0A0F1D; --card:#0D1424; --inner:rgba(15,23,42,0.65);
+  --line:rgba(148,163,184,0.14); --line-soft:rgba(148,163,184,0.08); --line-strong:rgba(148,163,184,0.28);
+  --text:#F8FAFC; --text2:#94A3B8; --text3:#64748B;
+  --accent:#3B82F6; --accent-hover:#2563EB; --accent-text:#FFFFFF;
+}
+html[data-design="dikte_ai"].dark .workspace{
+  background:radial-gradient(circle at 50% 48%,#0C142A 0%,#070B17 45%,#050811 85%);
+}
+html[data-design="dikte_ai"].dark .sidebar{
+  background:#0A0F1D;border-right:1px solid rgba(148,163,184,0.12);
+}
+html[data-design="dikte_ai"].dark .card{
+  background:#0D1424;border:1px solid rgba(148,163,184,0.14);
+  box-shadow:0 8px 32px rgba(0,0,0,0.35);border-radius:18px;
+}
+html[data-design="dikte_ai"].dark .transcript{
+  background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.16);
+  color:#F8FAFC;border-radius:12px;
+}
+html[data-design="dikte_ai"].dark .transcript:focus{
+  border-color:rgba(148,163,184,0.35);background:rgba(15,23,42,0.85);
+}
+html[data-design="dikte_ai"].dark .nav-btn{
+  color:#94A3B8;border-radius:10px;
+}
+html[data-design="dikte_ai"].dark .nav-btn:hover{
+  background:rgba(30,41,59,0.4);color:#F8FAFC;
+}
+html[data-design="dikte_ai"].dark .nav-btn.is-active{
+  background:rgba(30,41,59,0.7);color:#F8FAFC;font-weight:600;border-color:transparent;
+  box-shadow:none;position:relative;
+}
+html[data-design="dikte_ai"].dark .nav-btn.is-active::before{
+  content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;
+  background-color:#3B82F6;border-radius:0 4px 4px 0;
+}
+
+/* In Dikte.AI mode, disable dot pattern and heavy shiny magic borders */
+html[data-design="dikte_ai"] #page-dikte::before{
+  opacity: 0 !important;
+}
+html[data-design="dikte_ai"] .fx-on .card::after,
+html[data-design="dikte_ai"] .fx-on .m-card::after,
+html[data-design="dikte_ai"] .fx-on .h-item::after{
+  opacity: 0 !important;
+}
+html[data-design="dikte_ai"] #page-dikte .dikte-layout{
+  grid-template-columns:1fr;
+  max-width:920px;
+  margin:0 auto;
+}
+html[data-design="dikte_ai"] #page-dikte .dikte-layout aside{
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 372px;
+  height: 300px;
+  opacity: 0;
+  pointer-events: auto;
+}
+html[data-design="dikte_ai"] .active-model-pill{
+  display:inline-flex !important;
+}
+html[data-design="dikte_ai"] .statusbar{
+  display:none !important;
+}
+html[data-design="dikte_ai"] .app{
+  height:100vh;
+}
+html[data-design="dikte_ai"] .nav-btn[data-page="page-ayarlar"]{
+  margin-top:auto;
+}
+
+/* Klasik Magic UI v1.4 */
+html[data-design="classic"]{
+  --radius:14px;
+}
+html[data-design="classic"] #page-dikte .dikte-layout{
+  grid-template-columns:minmax(0,1fr) 372px;
+}
+html[data-design="classic"] #page-dikte .dikte-layout aside{
+  display:block !important;
+}
+html[data-design="classic"] .statusbar{
+  display:flex !important;
+}
+html[data-design="classic"] .active-model-pill{
+  display:none !important;
+}
+
+/* Auto-save notification row */
+.auto-save-label{
+  display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);
+}
+.auto-save-label svg.ic{
+  color:var(--ready);width:14px;height:14px;
+}
 
 /* ---------- Faz 4.3 & 4.4: Modeller Menüsü & HF Modalları ---------- */
 .model-menu-wrap{position:relative;display:inline-block}

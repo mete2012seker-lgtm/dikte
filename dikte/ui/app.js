@@ -80,36 +80,61 @@
       api.settings_save({ sidebar_collapsed: isCollapsed }).catch(() => {});
     }
   }
+  const sidebarCollapseBtn = $("#sidebarCollapseBtn");
   if (brandToggle) {
     brandToggle.addEventListener("click", () => toggleSidebar(undefined, true));
   }
+  if (sidebarCollapseBtn) {
+    sidebarCollapseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSidebar(undefined, true);
+    });
+  }
 
   /* ---------- Faz 3.4: Tasarım Dili (dikte_ai / classic) ---------- */
-  let designStyle = document.documentElement.getAttribute("data-design") || "dikte_ai";
+  let designStyle = "dikte_ai";
+  try {
+    designStyle = localStorage.getItem("design_style") || document.documentElement.getAttribute("data-design") || "dikte_ai";
+  } catch (e) {
+    designStyle = document.documentElement.getAttribute("data-design") || "dikte_ai";
+  }
+
   function setDesignStyle(style, persist) {
     designStyle = (style === "classic") ? "classic" : "dikte_ai";
+    try { localStorage.setItem("design_style", designStyle); } catch (e) {}
     document.documentElement.setAttribute("data-design", designStyle);
+    document.body.classList.toggle("design-dikte-ai", designStyle === "dikte_ai");
+    document.body.classList.toggle("design-classic", designStyle === "classic");
     $$("#designStyleGroup [data-design-choice]").forEach((btn) => {
       btn.classList.toggle("is-active", btn.dataset.designChoice === designStyle);
     });
-    if (persist && hasApi("settings_save")) {
-      api.settings_save({ design_style: designStyle }).catch(() => {});
+    if (persist) {
+      if (hasApi("ai_settings_save")) {
+        api.ai_settings_save({ design_style: designStyle }).catch(() => {});
+      }
+      if (hasApi("settings_save")) {
+        api.settings_save({ design_style: designStyle }).catch(() => {});
+      }
     }
   }
+  window.setDesignStyle = setDesignStyle;
   $$("#designStyleGroup [data-design-choice]").forEach((btn) => {
     btn.addEventListener("click", () => setDesignStyle(btn.dataset.designChoice, true));
   });
   setDesignStyle(designStyle, false);
 
-  /* ---------- Faz 3.4: Mikrofon Morfizmi & Canvas Ses Dalgaları ---------- */
+  /* ---------- Faz 3.4: Mikrofon Morfizmi & Canvas Ses Dalgaları (design/mikrofon_morph_animasyonu.html birebir) ---------- */
   const waveCanvas = $("#waveCanvas");
   let waveCtx = waveCanvas ? waveCanvas.getContext("2d") : null;
   let isRecordingState = false;
-  let morphValue = 0;
+  let morphValue = 0; // current eased 0..1
   let morphFrom = 0;
   let morphTo = 0;
   let morphStartTime = 0;
-  const MORPH_DURATION_MS = 750;
+  const MORPH_DURATION_MS = 850;
+
+  const BARS_PER_SIDE = 24;
+  const TOTAL_BARS = BARS_PER_SIDE * 2;
 
   const leftProfile = [
     0.07, 0.08, 0.08, 0.11, 0.15, 0.12, 0.20, 0.25,
@@ -122,34 +147,69 @@
     0.28, 0.18, 0.14, 0.12, 0.09, 0.08, 0.08, 0.06
   ];
   const idleHeights = [...leftProfile, ...rightProfile];
-  const currentHeights = idleHeights.map((h) => h * 54);
+  const currentHeights = idleHeights.map((h) => h * 64);
 
   function resizeWaveCanvas() {
     if (!waveCanvas || !stage) return;
     const rect = stage.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     waveCanvas.width = rect.width * dpr;
     waveCanvas.height = rect.height * dpr;
     if (waveCtx) waveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   window.addEventListener("resize", resizeWaveCanvas);
-  setTimeout(resizeWaveCanvas, 100);
+  if (typeof ResizeObserver !== "undefined" && stage) {
+    const ro = new ResizeObserver(() => resizeWaveCanvas());
+    ro.observe(stage);
+  }
+  setTimeout(resizeWaveCanvas, 50);
 
+  // Exact cubic-bezier(0.22, 1, 0.36, 1) matching CSS --morph-ease
+  function sampleCurveX(t, x1, x2) {
+    return ((1 - 3 * x2 + 3 * x1) * t * t * t) + ((3 * x2 - 6 * x1) * t * t) + (3 * x1 * t);
+  }
+  function sampleCurveY(t, y1, y2) {
+    return ((1 - 3 * y2 + 3 * y1) * t * t * t) + ((3 * y2 - 6 * y1) * t * t) + (3 * y1 * t);
+  }
+  function sampleCurveDerivativeX(t, x1, x2) {
+    return (3 * (1 - 3 * x2 + 3 * x1) * t * t) + (2 * (3 * x2 - 6 * x1) * t) + (3 * x1);
+  }
   function easeMorph(x) {
-    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const x1 = 0.22, y1 = 1, x2 = 0.36, y2 = 1;
+    let t = x;
+    for (let i = 0; i < 6; i++) {
+      const err = sampleCurveX(t, x1, x2) - x;
+      const d = sampleCurveDerivativeX(t, x1, x2);
+      if (Math.abs(err) < 1e-5 || Math.abs(d) < 1e-6) break;
+      t -= err / d;
+    }
+    return sampleCurveY(Math.max(0, Math.min(1, t)), y1, y2);
   }
   function lerp(a, b, t) { return a + (b - a) * t; }
 
-  function drawRoundedBar(ctx, x, centerY, width, height, alpha) {
+  function drawRoundedBar(ctx, x, centerY, width, height, alpha, glowStrength) {
     const radius = width / 2;
     const top = centerY - height / 2;
+
+    const grad = ctx.createLinearGradient(0, top, 0, top + height);
+    grad.addColorStop(0, `rgba(74, 108, 247, ${0.75 * alpha})`);
+    grad.addColorStop(0.5, `rgba(116, 152, 255, ${1 * alpha})`);
+    grad.addColorStop(1, `rgba(59, 89, 212, ${0.75 * alpha})`);
+
     ctx.save();
-    ctx.fillStyle = `rgba(90, 130, 255, ${0.85 * alpha})`;
-    ctx.shadowColor = `rgba(74, 108, 247, ${0.45 * alpha})`;
-    ctx.shadowBlur = 8 * alpha;
+    ctx.fillStyle = grad;
+    ctx.shadowColor = `rgba(88, 130, 255, ${0.55 * glowStrength})`;
+    ctx.shadowBlur = 10 * glowStrength;
+
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x - width / 2, top, width, height, radius);
-    else ctx.rect(x - width / 2, top, width, height);
+    if (ctx.roundRect) {
+      ctx.roundRect(x - width / 2, top, width, height, radius);
+    } else {
+      ctx.rect(x - width / 2, top, width, height);
+    }
     ctx.fill();
     ctx.restore();
   }
@@ -159,34 +219,71 @@
       if (morphValue !== morphTo) {
         const elapsed = Math.max(0, now - morphStartTime);
         const rawT = Math.min(1, elapsed / MORPH_DURATION_MS);
-        morphValue = lerp(morphFrom, morphTo, easeMorph(rawT));
+        const easedT = easeMorph(rawT);
+        morphValue = lerp(morphFrom, morphTo, easedT);
+        if (rawT >= 1) morphValue = morphTo;
       }
-      const rect = stage.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
-      waveCtx.clearRect(0, 0, W, H);
 
-      const isClassic = document.documentElement.getAttribute("data-design") === "classic";
-      if (!isClassic && W > 100) {
-        const centerY = H / 2 - 20;
-        const totalBars = idleHeights.length;
-        const barWidth = 4;
-        const spacing = (W * 0.82) / totalBars;
-        const startX = (W - (totalBars * spacing)) / 2 + spacing / 2;
+      const m = morphValue;
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      if (w > 0 && h > 0) {
+        const centerX = w / 2;
+        const centerY = h * 0.43;
+        const scale = Math.min(1, w / 860);
 
-        const timeSec = now * 0.003;
-        for (let i = 0; i < totalBars; i++) {
-          const baseH = idleHeights[i] * 60;
-          let targetH = baseH;
-          if (isRecordingState) {
-            const waveA = Math.sin(timeSec * 2.5 + i * 0.3) * 22;
-            const waveB = Math.cos(timeSec * 4.0 - i * 0.2) * 14;
-            targetH = Math.max(8, baseH * 0.4 + Math.abs(waveA + waveB) * 1.6);
+        waveCtx.clearRect(0, 0, w, h);
+
+        const timeSec = now * 0.001;
+        const barWidth = lerp(3.6, 4.2, m) * Math.max(0.72, scale);
+
+        const idleStep = 9.8 * scale;
+        const idleInnerGap = 132 * scale;
+
+        const activeStep = 9.4 * scale;
+        const activeStartX = centerX - ((TOTAL_BARS - 1) * activeStep) / 2;
+
+        for (let i = 0; i < TOTAL_BARS; i++) {
+          const isLeft = i < BARS_PER_SIDE;
+
+          let idleX;
+          if (isLeft) {
+            const distFromInner = (BARS_PER_SIDE - 1) - i;
+            idleX = centerX - idleInnerGap - distFromInner * idleStep;
+          } else {
+            const distFromInner = i - BARS_PER_SIDE;
+            idleX = centerX + idleInnerGap + distFromInner * idleStep;
           }
-          currentHeights[i] = lerp(currentHeights[i], targetH, 0.15);
-          const x = startX + i * spacing;
-          const alpha = 0.5 + 0.5 * (currentHeights[i] / 70);
-          drawRoundedBar(waveCtx, x, centerY, barWidth, Math.max(6, currentHeights[i]), alpha);
+
+          const activeX = activeStartX + i * activeStep;
+          const x = lerp(idleX, activeX, m);
+
+          const sideDist = isLeft
+            ? (BARS_PER_SIDE - 1 - i) / (BARS_PER_SIDE - 1)
+            : (i - BARS_PER_SIDE) / (BARS_PER_SIDE - 1);
+          const ambientWave1 = Math.sin(timeSec * 2.4 - sideDist * 5.2);
+          const ambientWave2 = Math.cos(timeSec * 1.5 + sideDist * 3.1) * 0.5;
+          const ambientFactor = 0.82 + 0.34 * ((ambientWave1 + ambientWave2 + 1.5) / 3.0);
+          const ambientFloor = (1 - sideDist * 0.75) * (4 + 4 * Math.sin(timeSec * 2.8 - sideDist * 4.5));
+          let idleH = Math.max(4, (idleHeights[i] * 72 * ambientFactor + ambientFloor) * scale);
+
+          const normCenter = Math.abs(i - (TOTAL_BARS - 1) / 2) / ((TOTAL_BARS - 1) / 2);
+          const centerEnvelope = Math.pow(1 - normCenter * 0.78, 1.35);
+
+          const wave1 = Math.sin(timeSec * 5.2 - i * 0.34);
+          const wave2 = Math.sin(timeSec * 8.7 + i * 0.52) * 0.6;
+          const wave3 = Math.cos(timeSec * 3.1 - i * 0.18) * 0.5;
+          const syllablePulse = 0.55 + 0.45 * Math.sin(timeSec * 2.6 + Math.sin(timeSec * 1.3));
+          const combined = (wave1 + wave2 + wave3 + 2.1) / 4.2;
+          let activeH = (12 + combined * 118 * centerEnvelope * syllablePulse) * scale;
+
+          const targetH = lerp(idleH, activeH, m);
+          currentHeights[i] = lerp(currentHeights[i], targetH, 0.24);
+
+          const alpha = lerp(0.88, 1.0, m);
+          const glow = lerp(0.45, 0.95, m);
+
+          drawRoundedBar(waveCtx, x, centerY, barWidth, Math.max(4, currentHeights[i]), alpha, glow);
         }
       }
     }
@@ -248,12 +345,15 @@
 
   function updateThemeControls() {
     const dark = document.documentElement.classList.contains("dark");
-    const toggle = $("#themeToggle");
-    if (toggle) {
+    $$(".theme-btn").forEach((toggle) => {
       const use = toggle.querySelector("use");
       if (use) use.setAttribute("href", dark ? "#i-sun" : "#i-moon");
       toggle.setAttribute("aria-pressed", dark ? "true" : "false");
       toggle.title = dark ? "Açık temaya geç" : "Koyu temaya geç";
+    });
+    const label = $("#themeBtnLabel");
+    if (label) {
+      label.textContent = dark ? "Açık" : "Koyu";
     }
     $$("[data-theme-choice]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.themeChoice === themeMode);
@@ -267,8 +367,12 @@
       localStorage.setItem("theme", themeMode);
     } catch (error) {}
     updateThemeControls();
-    if (persist && hasApi("ai_settings_save")) saveAi({ theme: themeMode });
+    if (persist) {
+      if (hasApi("ai_settings_save")) saveAi({ theme: themeMode });
+      triggerInstantSettingsSave();
+    }
   }
+  window.setTheme = setTheme;
 
   function toggleTheme(anchor) {
     if (themeTransitioning) return;
@@ -339,6 +443,7 @@
   }
 
   function buildWave(element, count, towardRight) {
+    if (!element) return;
     element.innerHTML = "";
     for (let i = 0; i < count; i++) {
       const t = i / (count - 1);
@@ -370,6 +475,9 @@
       else button.removeAttribute("aria-current");
     });
 
+    if (pageId === "page-dikte") {
+      requestAnimationFrame(resizeWaveCanvas);
+    }
     if (pageId === "page-gecmis") loadHistory();
     if (pageId === "page-modeller") {
       loadModels();
@@ -431,9 +539,15 @@
       applySettingsAvailability(state);
     }
   }
+  window.applyState = applyState;
 
   function applyModel(snapshot) {
-    modelName.textContent = snapshot.model || (snapshot.state === "error" ? "Model yok" : "Model yükleniyor…");
+    const rawModel = snapshot.model || (snapshot.state === "error" ? "Model yok" : "Model yükleniyor…");
+    modelName.textContent = rawModel;
+    const dikteAiModelPill = $("#dikteAiModelPill");
+    if (dikteAiModelPill) {
+      dikteAiModelPill.textContent = snapshot.model || "—";
+    }
     device.textContent = snapshot.device || "—";
 
     const state = snapshot.state;
@@ -471,18 +585,34 @@
   }
 
   function renderActivity(items) {
-    const key = JSON.stringify(items);
-    if (key === lastActivity) return;
-    lastActivity = key;
-    activityList.innerHTML = "";
     if (!items || !items.length) {
+      lastActivity = "";
+      activityList.innerHTML = "";
       const empty = document.createElement("div");
       empty.className = "activity-empty";
       empty.textContent = "Henüz etkinlik yok.";
       activityList.appendChild(empty);
       return;
     }
-    items.forEach((item, index) => {
+    // Deduplicate repetitive "Ayarlar kaydedildi" entries:
+    // Only keep the most recent "Ayarlar kaydedildi" entry in the timeline!
+    let foundSettingsSaved = false;
+    const cleanItems = [];
+    for (const item of items) {
+      if (item && item.title === "Ayarlar kaydedildi") {
+        if (!foundSettingsSaved) {
+          cleanItems.push(item);
+          foundSettingsSaved = true;
+        }
+      } else {
+        cleanItems.push(item);
+      }
+    }
+    const key = JSON.stringify(cleanItems);
+    if (key === lastActivity) return;
+    lastActivity = key;
+    activityList.innerHTML = "";
+    cleanItems.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "tl-item";
       row.style.setProperty("--i", String(Math.min(index, 5)));
@@ -1607,18 +1737,27 @@
   $("#textProvider").addEventListener("change", async () => {
     const ai = await saveAi({ text_provider: $("#textProvider").value });
     if (ai && ai.provider === "openrouter") loadOpenRouterModels(false);
+    triggerInstantSettingsSave();
   });
-  $("#inputLang").addEventListener("change", () => saveAi({ input_language: $("#inputLang").value }));
-  $("#outputLangSettings").addEventListener("change", () => saveAi({ output_language: $("#outputLangSettings").value }));
+  $("#inputLang").addEventListener("change", () => {
+    saveAi({ input_language: $("#inputLang").value });
+    triggerInstantSettingsSave();
+  });
+  $("#outputLangSettings").addEventListener("change", () => {
+    saveAi({ output_language: $("#outputLangSettings").value });
+    triggerInstantSettingsSave();
+  });
   $("#autoPasteSwitch").addEventListener("click", () => {
     const on = !switchOnEl($("#autoPasteSwitch"));
     setSwitchEl($("#autoPasteSwitch"), on);
     saveAi({ auto_paste: on });
+    triggerInstantSettingsSave();
   });
   $("#autoTranslateSettings").addEventListener("click", () => {
     const on = !switchOnEl($("#autoTranslateSettings"));
     setSwitchEl($("#autoTranslateSettings"), on);
     saveAi({ auto_translate: on });
+    triggerInstantSettingsSave();
   });
   $("#systemPrompt").addEventListener("change", () => saveAi({ system_prompt: $("#systemPrompt").value }));
   $("#systemPromptReset").addEventListener("click", () => {
@@ -1682,10 +1821,9 @@
     }
   });
 
-  const themeToggleBtn = $("#themeToggle");
-  if (themeToggleBtn) {
-    themeToggleBtn.addEventListener("click", () => toggleTheme(themeToggleBtn));
-  }
+  $$(".theme-btn").forEach((btn) => {
+    btn.addEventListener("click", () => toggleTheme(btn));
+  });
   $$("[data-theme-choice]").forEach((button) => {
     button.addEventListener("click", () => setTheme(button.dataset.themeChoice, true));
   });
@@ -1730,6 +1868,7 @@
     const next = !(aiState && aiState.effects !== false);
     const ai = await saveAi({ effects: next });
     if (ai) applyEffects(next);
+    triggerInstantSettingsSave();
   });
 
   /* MagicCard: fareyi izleyen kart ışığı */
@@ -1836,6 +1975,50 @@
       console.error("Ayarlar okunamadı:", error);
       toast("Ayarlar okunamadı.", "error");
     }
+  }
+
+  /* ---------- Faz 3.5: Ayarlarda Anında Otomatik Kaydetme ---------- */
+  let instantSaveTimer = null;
+  function triggerInstantSettingsSave() {
+    clearTimeout(instantSaveTimer);
+    instantSaveTimer = setTimeout(async () => {
+      const payload = {
+        save_history: switchOn(),
+        hotkey: $("#hotkeySelect") ? $("#hotkeySelect").value : "right_ctrl",
+        design_style: designStyle,
+        sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
+        theme: themeMode,
+        output_language: $("#outputLangSettings") ? $("#outputLangSettings").value : "tr",
+        auto_translate: switchOnEl($("#autoTranslateSettings")),
+        input_language: $("#inputLang") ? $("#inputLang").value : "auto",
+        auto_paste: switchOnEl($("#autoPasteSwitch")),
+        text_provider: $("#textProvider") ? $("#textProvider").value : "none",
+        effects: switchOnEl($("#effectsSwitch")),
+        autostart: switchOnEl($("#autostartSwitch")),
+        update_check_on_start: switchOnEl($("#updateAutoSwitch")),
+      };
+      if ($("#systemPrompt")) {
+        payload.system_prompt = $("#systemPrompt").value;
+      }
+      try {
+        if (hasApi("ai_settings_save")) {
+          await api.ai_settings_save(payload);
+        }
+        if (hasApi("settings_save")) {
+          await api.settings_save({
+            hotkey: payload.hotkey,
+            save_history: payload.save_history,
+            design_style: payload.design_style,
+            sidebar_collapsed: payload.sidebar_collapsed,
+          });
+        }
+        settingsDirty = false;
+        const dirty = $("#settingsDirty");
+        if (dirty) dirty.hidden = true;
+      } catch (e) {
+        console.warn("Otomatik kaydetme hatası:", e);
+      }
+    }, 400);
   }
 
   $("#hotkeySelect").addEventListener("change", () => {
@@ -2004,6 +2187,7 @@
         setSwitchEl($("#autostartSwitch"), next);
         if (uninstallState) uninstallState.autostart = next;
         toast(next ? "Windows açılışında başlatılacak." : "Windows açılışında başlatılmayacak.", "info");
+        triggerInstantSettingsSave();
       } else {
         toast((result && result.message) || "Kaydedilemedi.", "warn");
       }
@@ -2115,6 +2299,7 @@
       if (result && result.ok) {
         setSwitchEl($("#updateAutoSwitch"), next);
         toast(next ? "Açılışta sürüm denetlenecek." : "Açılışta sürüm denetlenmeyecek.", "info");
+        triggerInstantSettingsSave();
       } else {
         toast((result && result.message) || "Kaydedilemedi.", "warn");
       }
@@ -2277,24 +2462,6 @@
     });
   }
 
-  /* ---------- Faz 3.5: Ayarlarda Anında Otomatik Kaydetme ---------- */
-  let instantSaveTimer = null;
-  function triggerInstantSettingsSave() {
-    clearTimeout(instantSaveTimer);
-    instantSaveTimer = setTimeout(() => {
-      if (!hasApi("settings_save")) return;
-      const payload = {
-        save_history: switchOn(),
-        hotkey: $("#hotkeySelect") ? $("#hotkeySelect").value : "right_ctrl",
-        design_style: designStyle,
-        sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
-      };
-      api.settings_save(payload).then(() => {
-        const dirty = $("#settingsDirty");
-        if (dirty) dirty.hidden = true;
-      }).catch(() => {});
-    }, 600);
-  }
 
   /* ---------- Faz 5.1: Önceki Sürümlere Dön (Rollback) ---------- */
   const rollbackSelect = $("#rollbackSelect");
