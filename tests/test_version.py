@@ -22,7 +22,7 @@ def test_user_agent_surumu_config_ile_ayni():
 def test_inno_eski_surumu_icermez():
     iss = (ROOT / "installer" / "Dikte.iss").read_text(encoding="utf-8")
     assert "1.3.0" not in iss
-    assert "1.6.0" in iss  # yedek sürüm; build.ps1 version.iss ile üstüne yazar
+    assert config.APP_VERSION in iss  # yedek sürüm; build.ps1 version.iss ile üstüne yazar
 
 
 def test_latest_json_surumu_config_ile_ayni():

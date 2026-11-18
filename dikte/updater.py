@@ -21,6 +21,7 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 from . import config
@@ -316,7 +317,7 @@ def verify_sha256(path: Path, expected: str) -> bool:
     return ok
 
 
-def apply(installer_path: Path) -> None:
+def apply(installer_path: Path, on_launched: Callable[[], None] | None = None) -> None:
     """Kurucuyu sessiz kipte başlatır; uygulama kapanır, kurulum devam eder."""
     path = Path(installer_path)
     if not path.exists():
@@ -326,3 +327,5 @@ def apply(installer_path: Path) -> None:
         cwd=str(path.parent),
         close_fds=True,
     )
+    if on_launched is not None:
+        on_launched()

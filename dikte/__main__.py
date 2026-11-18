@@ -224,6 +224,12 @@ def main(argv: list[str] | None = None) -> int:
     set_app_user_model_id(DEFAULT_APP_ID)
     diagnostics.configure_console()
     diagnostics.setup_logging()
+    try:
+        from . import error_reporter
+
+        error_reporter.install_global_hooks()
+    except Exception:
+        error_reporter = None
     args = build_parser().parse_args(argv)
     force_device = "cpu" if args.cpu else None
 
@@ -240,7 +246,12 @@ def main(argv: list[str] | None = None) -> int:
     if getattr(args, "uninstall", False):
         from . import uninstall
 
-        return 0 if uninstall.run_uninstaller() else 1
+        try:
+            uninstall.run_uninstaller()
+            return 0
+        except uninstall.UninstallError as exc:
+            print(f"HATA: {exc}")
+            return 1
 
     # Tek kopya (Single Instance) kilidi: Başka kopya açıksa pencereyi öne getir ve çık
     _single_instance_lock = SingleInstance()
@@ -252,7 +263,19 @@ def main(argv: list[str] | None = None) -> int:
         sys.exit(0)
 
     start_in_tray = bool(getattr(args, "tray", False) or getattr(args, "minimized", False))
-    return cmd_ui(force_device, args.debug, start_in_tray=start_in_tray)
+    if error_reporter is not None:
+        try:
+            error_reporter.mark_running_start()
+        except Exception:
+            pass
+    try:
+        return cmd_ui(force_device, args.debug, start_in_tray=start_in_tray)
+    finally:
+        if error_reporter is not None:
+            try:
+                error_reporter.mark_clean_shutdown()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

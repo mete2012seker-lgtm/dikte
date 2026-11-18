@@ -424,7 +424,27 @@ class Downloader:
         try:
             response = self._opener(request, timeout=60)
         except urllib.error.HTTPError as exc:
-            raise TextModelError(_friendly_http_error(exc)) from exc
+            if exc.code == 416 and existing > 0:
+                if spec.size_bytes == 0 and existing > 1024 and _has_gguf_magic(part):
+                    try:
+                        os.replace(part, final)
+                    except OSError as replace_exc:
+                        raise TextModelError("Model dosyası taşınamadı; dosya kilitli olabilir.") from replace_exc
+                    return {"completed": True, "paused": False, "cancelled": False, "size": existing}
+                try:
+                    part.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                existing = 0
+                retry_request = urllib.request.Request(_url(spec), headers={"User-Agent": USER_AGENT})
+                try:
+                    response = self._opener(retry_request, timeout=60)
+                except urllib.error.HTTPError as retry_exc:
+                    raise TextModelError(_friendly_http_error(retry_exc)) from retry_exc
+                except Exception as retry_exc:
+                    raise TextModelError("Model sunucusuna ulaşılamadı.") from retry_exc
+            else:
+                raise TextModelError(_friendly_http_error(exc)) from exc
         except Exception as exc:
             raise TextModelError("Model sunucusuna ulaşılamadı.") from exc
 
@@ -471,13 +491,6 @@ class Downloader:
                         break
             except Exception:
                 pass
-            if progress is not None and hasattr(progress, "__closure__") and progress.__closure__:
-                for cell in progress.__closure__:
-                    val = cell.cell_contents
-                    if hasattr(val, "_text_download") and isinstance(val._text_download, dict):
-                        val._text_download["total"] = effective_total
-                    elif isinstance(val, dict) and "total" in val and "bytes" in val:
-                        val["total"] = effective_total
 
         mode = "ab" if resume_from else "wb"
         written = resume_from
@@ -552,8 +565,11 @@ class LocalTextModel:
             if not prefer_gpu:
                 raise TextModelError("Metin modeli yüklenemedi.") from exc
             logger.warning("GPU yüklemesi başarısız, CPU deneniyor: %s", exc)
-            self._llm = Llama(model_path=str(path), n_gpu_layers=0, n_ctx=4096, verbose=False)
-            self.device = "CPU"
+            try:
+                self._llm = Llama(model_path=str(path), n_gpu_layers=0, n_ctx=4096, verbose=False)
+                self.device = "CPU"
+            except Exception as cpu_exc:
+                raise TextModelError("Metin modeli yüklenemedi.") from cpu_exc
         self.model_name = name
         return self.device
 
@@ -579,6 +595,12 @@ class LocalTextModel:
         self._llm = None
         self.model_name = None
         self.device = None
+        try:
+            import gc
+
+            gc.collect()
+        except Exception:
+            pass
 
 
 class TextModelManager:

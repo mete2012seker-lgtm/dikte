@@ -98,10 +98,10 @@ def autostart_enabled() -> bool:
     except ImportError:
         return False
     try:
-        run_key = winreg.OpenKey(
+        with winreg.OpenKey(
             winreg.HKEY_CURRENT_USER, config.AUTOSTART_RUN_KEY, 0, winreg.KEY_QUERY_VALUE
-        )
-        winreg.QueryValueEx(run_key, config.AUTOSTART_VALUE)
+        ) as run_key:
+            winreg.QueryValueEx(run_key, config.AUTOSTART_VALUE)
         return True
     except OSError:
         return False

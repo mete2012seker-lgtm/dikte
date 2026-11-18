@@ -187,6 +187,7 @@ class TranscriptionEngine:
 
     def use_cpu_fallback(self) -> EngineInfo:
         """GPU çevirisi çalışmazsa aynı modeli CPU/int8 ile, olmazsa small ile dener."""
+        self.unload()
         candidates = []
         if self.model_name:
             candidates.append(self.model_name)

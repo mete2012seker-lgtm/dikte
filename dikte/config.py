@@ -9,7 +9,7 @@ from pathlib import Path
 
 APP_NAME = "Dikte"
 APP_TITLE = "Dikte — VoxNote AI"
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Dikte_is1"
 AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_VALUE = "Dikte"
@@ -93,6 +93,7 @@ MODEL_LABELS = {
 SAMPLE_RATE = 16_000
 CHANNELS = 1
 MIN_RECORD_SECONDS = 0.4
+MAX_RECORD_SECONDS = 600
 POLL_MS = 200
 
 WINDOW_WIDTH = 1600

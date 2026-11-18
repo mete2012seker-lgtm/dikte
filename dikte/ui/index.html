@@ -51,6 +51,7 @@
   <symbol id="i-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A8 8 0 0 1 12 6a8 8 0 0 1 8 8c0 .6-.1 1.2-.2 1.7"/><path d="M6.2 7.3A8 8 0 1 0 17 17.9"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/></symbol>
 </svg>
 
 <div class="app">
@@ -82,6 +83,19 @@
   </aside>
 
   <main class="workspace">
+
+    <div class="diag-banner" id="diagBanner" role="alert" hidden>
+      <div class="diag-banner-ico"><svg class="ic"><use href="#i-alert"/></svg></div>
+      <div class="diag-banner-body">
+        <div class="diag-banner-title" id="diagBannerTitle">Sistem uyarısı</div>
+        <div class="diag-banner-sub" id="diagBannerSub"></div>
+      </div>
+      <div class="diag-banner-actions">
+        <button class="btn btn-primary btn-sm" id="diagOpenBtn" type="button">Çözüm Önerilerini Gör</button>
+        <button class="btn btn-sm" id="diagCopyBtn" type="button">Raporu Kopyala</button>
+        <button class="btn btn-sm" id="diagDismissBtn" type="button">Kapat</button>
+      </div>
+    </div>
 
     <!-- ===== 1. DİKTE ===== -->
     <section class="page is-active" id="page-dikte">
@@ -586,6 +600,21 @@
           </div>
         </div>
 
+        <div class="card set-card" id="diagCard">
+          <div class="card-head"><svg class="ic"><use href="#i-alert"/></svg>Sorun Giderme ve Tanılama</div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Sistem Tanılama ve Hata Raporu</div>
+              <div class="set-desc">Uygulama günlüklerini ve donanım durumunu tarayıp sade Türkçe çözüm önerileri alın veya kişisel veriler temizlenmiş rapor oluşturun.</div>
+            </div>
+            <div class="set-control diag-card-actions">
+              <button class="btn btn-primary" id="diagScanBtn" type="button">Sorunları Tara ve Göster</button>
+              <button class="btn" id="diagQuickCopyBtn" type="button">Hata Raporunu Kopyala</button>
+              <button class="btn" id="diagExportBtn" type="button">.txt Olarak Kaydet</button>
+            </div>
+          </div>
+        </div>
+
         <div class="save-row">
           <span class="auto-save-label"><svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-check"/></svg> Tüm değişiklikler otomatik kaydedilir</span>
           <span class="dirty" id="settingsDirty" hidden>Kaydedilmedi</span>
@@ -640,6 +669,36 @@
     <div class="modal-foot">
       <button class="btn" id="customModelCancel" type="button">İptal</button>
       <button class="btn btn-primary" id="customModelSubmit" type="button">Modeli Ekle</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sistem Tanılama ve Hata Raporu Modalı -->
+<div class="modal-backdrop" id="diagModal" hidden>
+  <div class="modal-card diag-modal-card" role="dialog" aria-modal="true" aria-labelledby="diagModalTitle">
+    <div class="modal-head">
+      <div class="modal-title"><svg class="ic"><use href="#i-alert"/></svg><span id="diagModalTitle">Sistem Tanılama</span></div>
+      <button class="modal-close" id="diagModalCloseX" type="button" aria-label="Kapat"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="modal-body diag-modal-body">
+      <p class="diag-desc" id="diagModalDesc">Sistem durumu inceleniyor…</p>
+      <div class="diag-section" id="diagModalStepsWrap" hidden>
+        <div class="diag-section-title">Önerilen Çözüm Adımları</div>
+        <ol class="diag-steps" id="diagModalSteps"></ol>
+      </div>
+      <div class="diag-section">
+        <div class="diag-section-title">Sistem Özeti</div>
+        <div class="diag-summary" id="diagModalSummary"></div>
+      </div>
+      <div class="diag-section">
+        <div class="diag-section-title">Son Günlük Kayıtları (Maskelenmiş)</div>
+        <pre class="diag-log" id="diagModalLog"></pre>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="diagModalCopyBtn" type="button">Raporu Panoya Kopyala</button>
+      <button class="btn" id="diagModalExportBtn" type="button">.txt Dosyasına Kaydet</button>
+      <button class="btn" id="diagModalClose" type="button">Kapat</button>
     </div>
   </div>
 </div>

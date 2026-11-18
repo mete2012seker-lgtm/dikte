@@ -25,7 +25,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 # Aynı süreçte asla birden fazla pystray.Icon çalıştırılmaması için singleton kilit ve referans
-_tray_lock = threading.Lock()
+_tray_lock = threading.RLock()
 _active_tray_manager: Optional[SystemTrayManager] = None
 
 
@@ -100,12 +100,14 @@ class SystemTrayManager:
         get_status_text: Optional[Callable[[], str]] = None,
         icon_path: Optional[Path | str] = None,
         is_visible_check: Optional[Callable[[], bool]] = None,
+        on_copy_diagnostics: Optional[Callable[[], None]] = None,
     ) -> None:
         self.on_show = on_show or (lambda: None)
         self.on_hide = on_hide or (lambda: None)
         self.on_quit = on_quit or (lambda: None)
         self.get_status_text = get_status_text or (lambda: "Durum: Dinlemeye hazır")
         self.is_visible_check = is_visible_check
+        self.on_copy_diagnostics = on_copy_diagnostics
         self.icon_path = icon_path
 
         self._image = load_icon_image(icon_path)
@@ -116,7 +118,8 @@ class SystemTrayManager:
 
     @property
     def is_running(self) -> bool:
-        return self._is_running
+        with _tray_lock:
+            return self._is_running
 
     def toggle_visibility(self) -> None:
         """Pencere görünürse gizler, gizliyse gösterir."""
@@ -162,10 +165,17 @@ class SystemTrayManager:
             logger.debug("get_status_text hatası: %s", exc)
             return "Durum: Dinlemeye hazır"
 
+    def _on_copy_diagnostics_click(self, icon=None, item=None) -> None:
+        if self.on_copy_diagnostics is not None:
+            try:
+                self.on_copy_diagnostics()
+            except Exception as exc:
+                logger.warning("on_copy_diagnostics çağrısında hata: %s", exc)
+
     def _create_menu(self) -> Menu:
         if Menu is None or MenuItem is None:
             return None
-        return Menu(
+        items = [
             MenuItem(
                 "Göster / Gizle",
                 self._on_toggle_click,
@@ -176,11 +186,21 @@ class SystemTrayManager:
                 None,
                 enabled=False,
             ),
+        ]
+        if self.on_copy_diagnostics is not None:
+            items.append(
+                MenuItem(
+                    "Tanılama Raporu Kopyala",
+                    self._on_copy_diagnostics_click,
+                )
+            )
+        items.append(
             MenuItem(
                 "Çıkış",
                 self._on_quit_click,
-            ),
+            )
         )
+        return Menu(*items)
 
     def start(self) -> None:
         """Tepsi ikonunu arka plan daemon thread'inde başlatır (singleton garantili)."""
@@ -214,16 +234,17 @@ class SystemTrayManager:
 
             _active_tray_manager = self
             self._is_running = True
+            icon = self._icon
 
             def _runner() -> None:
                 try:
-                    self._icon.run()
+                    icon.run()
                 except Exception as exc:
                     logger.warning("Sistem tepsisi çalışma hatası: %s", exc)
                 finally:
-                    self._is_running = False
                     with _tray_lock:
                         global _active_tray_manager
+                        self._is_running = False
                         if _active_tray_manager is self:
                             _active_tray_manager = None
 
@@ -237,28 +258,33 @@ class SystemTrayManager:
         global _active_tray_manager
         with _tray_lock:
             self._is_running = False
-            if self._icon is not None:
-                try:
-                    self._icon.stop()
-                except Exception as exc:
-                    logger.debug("pystray durdurulurken hata: %s", exc)
-                self._icon = None
+            icon = self._icon
+            self._icon = None
             if _active_tray_manager is self:
                 _active_tray_manager = None
+        if icon is not None:
+            try:
+                icon.stop()
+            except Exception as exc:
+                logger.debug("pystray durdurulurken hata: %s", exc)
 
     def update_icon(self, image: Image.Image) -> None:
         """Tepsi simgesini günceller."""
-        self._image = image
-        if self._icon is not None:
+        with _tray_lock:
+            self._image = image
+            icon = self._icon
+        if icon is not None:
             try:
-                self._icon.icon = image
+                icon.icon = image
             except Exception as exc:
                 logger.debug("İkon güncelleme hatası: %s", exc)
 
     def notify(self, title: str, message: str) -> None:
         """Masaüstü bildirimi gönderir."""
-        if self._icon is not None and hasattr(self._icon, "notify"):
+        with _tray_lock:
+            icon = self._icon
+        if icon is not None and hasattr(icon, "notify"):
             try:
-                self._icon.notify(message, title)
+                icon.notify(message, title)
             except Exception as exc:
                 logger.debug("Bildirim gönderme hatası: %s", exc)

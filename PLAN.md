@@ -179,10 +179,17 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Dağıtım ve genel düzeltmeler: `Dikte.spec` (`pynvml`, `tests/data`), `installer/Dikte.iss` (`CloseApplications=yes`), `dikte_ai` modunda boş tıklama yutma engeli (`pointer-events: none;`), 3 argümanlı rollback çağrısı.
 - [x] Kanıt: **343 passed, 1 skipped** (`pytest -q`, 46.74 sn).
 
+### Aşama 17 — v1.6.1: OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Faz A/B Stabilite (2026-11-18 tamamlandı)
+- [x] OpenWhispr araştırması, gömülü hata tespit aracı tasarımı, mimari/mantıksal denetim ve stabilite yol haritası (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`).
+- [x] Gömülü Hata Tespit ve Log Kopyalama Aracı (`dikte/error_reporter.py`, `dikte/diagnostics.py`): `RotatingFileHandler`, `faulthandler`, `sys/threading.excepthook`, `running.lock`, gizlilik maskelemesi, 10+ Türkçe teşhis kuralı, `#diagBanner` / `#diagModal` / `#diagCard`, tepside rapor kopyalama ve `MessageBoxW` başsız uyarı.
+- [x] Faz A/B stabilite düzeltmeleri: `_engine_lock` → `_lock` kilit sırası, `ai_cancel()` token izolasyonu (`_ai_task_token`) + `_seq += 1`, non-blocking `HotkeyListener` kuyruğu + kanonik tuş, `AudioRecorder` tampon kilidi + `MAX_RECORD_SECONDS = 600`, `tray.py`/`bridge.py` kapanış/kilit tekilleştirme, `--uninstall` çıkış kodu, `updater.apply()` sonrası kapanış, `text_models.py` HTTP 416 + CPU fallback sarmalama, ilk açılış sihirbazı ve atomik ayar kaydı.
+- [x] Dağıtım ve sürüm **1.6.1**: `Dikte.spec` içine `collect_all("faster_whisper")` (`silero_vad_v6.onnx`) eklendi; `Dikte-Setup-1.6.1.exe` (178.515.604 bayt) derlendi, `latest.json` güncellendi, `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu 0 ile doğrulandı.
+- [x] Kanıt: **369 passed, 1 skipped** (`pytest -q`, 86.43 sn).
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, dosya işlemleri, tek kopya, UI) | pytest, `tests/` (344 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, hata tespit, stabilite, tek kopya, UI) | pytest, `tests/` (370 test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

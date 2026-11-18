@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import sys
+import threading
 
 from .. import config
 
@@ -193,6 +195,43 @@ class Api:
     def update_cancel(self) -> dict:
         return self._controller.update_cancel()
 
+    # ---------- tanılama & hata raporu ----------
+
+    def diagnostics_get(self) -> dict:
+        return self._controller.diagnostics_get()
+
+    def diagnostics_copy(self) -> dict:
+        return self._controller.diagnostics_copy()
+
+    def diagnostics_export(self) -> dict:
+        return self._controller.diagnostics_export()
+
+    def diagnostics_dismiss_crash(self) -> dict:
+        return self._controller.diagnostics_dismiss_crash()
+
+    def diagnostics_log_js_error(self, payload: dict | None = None) -> dict:
+        return self._controller.diagnostics_log_js_error(payload)
+
+
+def _report_ui_crash(title: str, user_msg: str, exc: BaseException) -> None:
+    """Arayüz başlatma/çalıştırma hatasında acil rapor yazar ve mesaj kutusu gösterir."""
+    try:
+        from .. import error_reporter
+    except Exception:
+        return
+    report_path = None
+    try:
+        report_path = error_reporter.write_emergency_report(exc)
+    except Exception:
+        pass
+    msg = user_msg
+    if report_path is not None:
+        msg = f"{user_msg}\n\nRapor dosyası:\n{report_path}"
+    try:
+        error_reporter.show_emergency_dialog(title, msg)
+    except Exception:
+        pass
+
 
 def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) -> int:
     try:
@@ -201,6 +240,11 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         print("Arayüz kütüphanesi (pywebview) yüklenemedi.")
         print("Kurulum için: .venv\\Scripts\\python.exe -m pip install -r requirements.txt")
         logger.exception("pywebview yüklenemedi")
+        _report_ui_crash(
+            "Dikte Başlatılamadı",
+            "Arayüz kütüphanesi (pywebview) yüklenemedi.",
+            exc,
+        )
         return 1
 
     from ..controller import Controller
@@ -224,12 +268,35 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
     except Exception as exc:
         print("Pencere oluşturulamadı.")
         logger.exception("Pencere hatası: %s", exc)
+        _report_ui_crash(
+            "Dikte Pencere Hatası",
+            "Uygulama penceresi oluşturulamadı. Microsoft Edge WebView2 kurulu olduğundan emin olun.",
+            exc,
+        )
         return 1
 
     api.set_window(window)
 
     _quitting = False
     _window_visible = not start_in_tray
+    _shutdown_done = False
+    _shutdown_lock = threading.Lock()
+
+    def _do_shutdown() -> None:
+        nonlocal _quitting, _shutdown_done
+        with _shutdown_lock:
+            if _shutdown_done:
+                return
+            _shutdown_done = True
+            _quitting = True
+        try:
+            tray_mgr.stop()
+        except Exception:
+            pass
+        try:
+            controller.shutdown()
+        except Exception:
+            pass
 
     def is_window_visible() -> bool:
         if sys.platform == "win32":
@@ -273,14 +340,21 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         nonlocal _quitting
         _quitting = True
         try:
-            tray_mgr.stop()
-        except Exception:
-            pass
-        try:
             window.destroy()
         except Exception:
             pass
-        controller.shutdown()
+        _do_shutdown()
+
+    def on_copy_diagnostics() -> None:
+        try:
+            res = controller.diagnostics_copy()
+            msg = res.get("message", "Tanılama raporu panoya kopyalandı.")
+        except Exception as exc:
+            msg = f"Tanılama raporu kopyalanamadı: {exc}"
+        try:
+            tray_mgr.notify("Dikte", msg)
+        except Exception:
+            pass
 
     def get_status_text() -> str:
         try:
@@ -289,13 +363,22 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         except Exception:
             return "Durum: Dinlemeye hazır"
 
-    tray_mgr = SystemTrayManager(
-        on_show=on_show,
-        on_hide=on_hide,
-        on_quit=on_quit,
-        get_status_text=get_status_text,
-        is_visible_check=is_window_visible,
-    )
+    tray_kwargs: dict = {
+        "on_show": on_show,
+        "on_hide": on_hide,
+        "on_quit": on_quit,
+        "get_status_text": get_status_text,
+        "is_visible_check": is_window_visible,
+    }
+    try:
+        if "on_copy_diagnostics" in inspect.signature(SystemTrayManager.__init__).parameters:
+            tray_kwargs["on_copy_diagnostics"] = on_copy_diagnostics
+    except (TypeError, ValueError):
+        pass
+    tray_mgr = SystemTrayManager(**tray_kwargs)
+
+    if hasattr(controller, "set_exit_handler"):
+        controller.set_exit_handler(on_quit)
 
     def on_closing() -> bool:
         nonlocal _quitting, _window_visible
@@ -309,13 +392,7 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         return True
 
     def on_closed() -> None:
-        nonlocal _quitting
-        _quitting = True
-        try:
-            tray_mgr.stop()
-        except Exception:
-            pass
-        controller.shutdown()
+        _do_shutdown()
 
     try:
         window.events.closing += on_closing
@@ -344,14 +421,14 @@ def run_ui(controller=None, debug: bool = False, start_in_tray: bool = False) ->
         logger.exception("Arayüz başlatılamadı: %s", exc)
         print("Arayüz başlatılamadı. Microsoft Edge WebView2 çalışma zamanının kurulu olduğunu kontrol et.")
         print("İndirme: https://developer.microsoft.com/microsoft-edge/webview2/")
+        _report_ui_crash(
+            "Dikte Arayüz Hatası",
+            "Arayüz başlatılamadı. Microsoft Edge WebView2 çalışma zamanının kurulu olduğunu kontrol edin.",
+            exc,
+        )
         return 1
     finally:
-        _quitting = True
-        try:
-            tray_mgr.stop()
-        except Exception:
-            pass
-        controller.shutdown()
+        _do_shutdown()
     return 0
 
 

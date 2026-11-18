@@ -12,6 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config, diagnostics, openrouter, text_engine, uninstall, updater
+try:
+    from . import error_reporter
+except ImportError:
+    error_reporter = None  # type: ignore[assignment]
 from .audio import AudioError, AudioRecorder, Recording
 from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
@@ -92,6 +96,7 @@ class Controller:
         model_lister=None,
         text_downloader=None,
         paster=None,
+        on_exit=None,
     ) -> None:
         self.engine = engine if engine is not None else TranscriptionEngine()
         self.recorder = recorder if recorder is not None else AudioRecorder()
@@ -149,7 +154,13 @@ class Controller:
         self._key_cache: tuple[bool, str | None] | None = None
         self._ai_cancel_event = threading.Event()
         self._ai_worker: threading.Thread | None = None
+        self._ai_task_token = 0
+        self._local_ai_lock = threading.Lock()
+        self._engine_thread: threading.Thread | None = None
         self._update_cancel_event = threading.Event()
+        self._on_exit = on_exit
+        self._last_startup_error: str | None = None
+        self._diag_cache: tuple[float, dict | None] = (0.0, None)
 
         self._save_history = bool(self.settings.get("save_history", True))
         self._hotkey_id = str(self.settings.get("hotkey", DEFAULT_HOTKEY))
@@ -220,6 +231,10 @@ class Controller:
 
     # ---------- yaşam döngüsü ----------
 
+    def set_exit_handler(self, fn) -> None:
+        """Güncelleme/kaldırma sonrası uygulamayı temiz kapatacak geri çağrıyı kaydeder."""
+        self._on_exit = fn
+
     def start(self) -> None:
         """Motoru arka planda yükler, görev çubuğu/pencere ikonunu zorlar ve kısayolu başlatır."""
         set_app_user_model_id(DEFAULT_APP_ID)
@@ -228,13 +243,17 @@ class Controller:
         with self._lock:
             if self._closed:
                 return
-        if self._load_in_background:
-            threading.Thread(target=self.load_engine, name="motor-yukle", daemon=True).start()
+            if self._load_in_background:
+                self._engine_thread = threading.Thread(
+                    target=self.load_engine, name="motor-yukle", daemon=True
+                )
+                self._engine_thread.start()
         try:
             self.hotkey.start()
         except Exception as exc:
             logger.warning("Kısayol başlatılamadı: %s", exc)
             with self._lock:
+                self._last_startup_error = f"Kısayol başlatılamadı: {exc}"
                 self._add_activity("Kısayol başlatılamadı", str(exc), "err")
 
     def apply_window_icon(self, hwnd: int | None = None) -> bool:
@@ -322,6 +341,7 @@ class Controller:
                 self._text_download_thread,
                 self._hotkey_thread,
                 self._ai_worker,
+                self._engine_thread,
             ]
         try:
             self.hotkey.stop()
@@ -436,9 +456,10 @@ class Controller:
                     else "İşleniyor, bitince tekrar dene."
                 )
                 return {"ok": False, "state": state, "message": message}
+            needs_prepare = not self._whisper_loaded or bool(self._text_runtime.model_name)
 
         # Metin modeli yüklüyse boşaltıp ses modelini geri getir (VRAM takası).
-        if not self._whisper_loaded or bool(self._text_runtime.model_name):
+        if needs_prepare:
             self._prepare_whisper()
         with self._lock:
             if self._machine.state != READY:
@@ -503,32 +524,37 @@ class Controller:
 
     def _transcribe_path(self, path: Path):
         """GPU çevirisi çökerse bir kez CPU yedeğini dener."""
-        if not self._whisper_loaded or bool(self._text_runtime.model_name):
-            self._prepare_whisper()
-        input_lang = str(self.settings.get("input_language", "tr"))
-
-        def do_transcribe():
-            try:
-                return self.engine.transcribe(path, language=input_lang)
-            except TypeError:
-                return self.engine.transcribe(path)
-
-        try:
-            return do_transcribe()
-        except EngineError as exc:
-            can_fallback = (
-                self._info is not None
-                and self._info.device == "GPU"
-                and hasattr(self.engine, "use_cpu_fallback")
-            )
-            if not can_fallback:
-                raise
-            logger.warning("GPU çevirisi başarısız (%s), CPU deneniyor", exc)
-            info = self.engine.use_cpu_fallback()
+        with self._engine_lock:
             with self._lock:
-                self._info = info
-                self._add_activity("GPU kullanılamadı", "CPU moduna geçildi", "warn")
-            return do_transcribe()
+                needs_prepare = not self._whisper_loaded or bool(self._text_runtime.model_name)
+            if needs_prepare:
+                self._prepare_whisper()
+            input_lang = str(self.settings.get("input_language", "tr"))
+
+            def do_transcribe():
+                try:
+                    return self.engine.transcribe(path, language=input_lang)
+                except TypeError:
+                    return self.engine.transcribe(path)
+
+            try:
+                return do_transcribe()
+            except EngineError as exc:
+                with self._lock:
+                    info_ref = self._info
+                can_fallback = (
+                    info_ref is not None
+                    and info_ref.device == "GPU"
+                    and hasattr(self.engine, "use_cpu_fallback")
+                )
+                if not can_fallback:
+                    raise
+                logger.warning("GPU çevirisi başarısız (%s), CPU deneniyor", exc)
+                info = self.engine.use_cpu_fallback()
+                with self._lock:
+                    self._info = info
+                    self._add_activity("GPU kullanılamadı", "CPU moduna geçildi", "warn")
+                return do_transcribe()
 
     def _keep_last_recording(self, source: Path | None) -> None:
         if not source:
@@ -627,6 +653,8 @@ class Controller:
     def refresh_last(self) -> dict:
         """Son kaydın sesini tekrar çevirir."""
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             if self._machine.state != READY:
                 return {
                     "ok": False,
@@ -639,21 +667,23 @@ class Controller:
             self._error = None
         self._prepare_whisper()
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             if self._machine.state != READY:
                 return {
                     "ok": False,
                     "state": self._machine.state,
                     "message": self._error or "Ses modeli hazır değil.",
                 }
-            self._set_state(PROCESSING)
-        self._worker = threading.Thread(
-            target=self._refresh_worker,
-            args=(path,),
-            name="yenile",
-            daemon=True,
-        )
-        self._worker.start()
-        return {"ok": True, "state": PROCESSING}
+            self._set_state(CLEANING)
+            self._worker = threading.Thread(
+                target=self._refresh_worker,
+                args=(path,),
+                name="yenile",
+                daemon=True,
+            )
+            self._worker.start()
+        return {"ok": True, "state": CLEANING}
 
     def _refresh_worker(self, path: Path) -> None:
         try:
@@ -701,7 +731,7 @@ class Controller:
                 self._add_activity("Yenileme hatası", self._error, "err")
         finally:
             with self._lock:
-                if self._machine.state == PROCESSING:
+                if self._machine.state in (PROCESSING, CLEANING):
                     self._set_state(READY)
 
     # ---------- pano ve anlık görüntü ----------
@@ -719,7 +749,7 @@ class Controller:
         with self._lock:
             info = self._info
             state = self._machine.state
-            return {
+            snap = {
                 "state": state,
                 "status": STATE_LABELS.get(state, state),
                 "seq": self._seq,
@@ -748,12 +778,14 @@ class Controller:
                 "download": dict(self._download) if self._download else None,
                 "ai": self._ai_payload(),
             }
+        snap["diagnostics"] = self._diagnostics_summary()
+        return snap
 
     def wait_until_ready(self, timeout: float = 5.0) -> bool:
         """Testler ve konsol aracı için: işlem bitene kadar bekler."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if self.snapshot()["state"] != PROCESSING:
+            if self.snapshot()["state"] not in (PROCESSING, CLEANING):
                 return True
             time.sleep(0.02)
         return False
@@ -935,6 +967,8 @@ class Controller:
         except ModelError as exc:
             return {"ok": False, "message": str(exc)}
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             state = self._machine.state
             if state in (RECORDING, PROCESSING):
                 return {"ok": False, "message": "Kayıt veya çeviri sürerken model değiştirilemez."}
@@ -951,13 +985,13 @@ class Controller:
             )
             self._error = None
             self._set_state(LOADING)
-
-        threading.Thread(
-            target=self._activate_worker,
-            args=(name, old_model),
-            name="model-yukle",
-            daemon=True,
-        ).start()
+            self._engine_thread = threading.Thread(
+                target=self._activate_worker,
+                args=(name, old_model),
+                name="model-yukle",
+                daemon=True,
+            )
+            self._engine_thread.start()
         return {"ok": True, "state": LOADING}
 
     def _activate_worker(self, name: str, old_model: str | None) -> None:
@@ -1153,7 +1187,7 @@ class Controller:
         pause_ev = pause_event or self._text_pause
         cancel_ev = cancel_event or self._text_cancel
 
-        def on_progress(written: int) -> None:
+        def on_progress(written: int, total: int = 0) -> None:
             with self._lock:
                 if self._text_download_token != token:
                     return
@@ -1161,9 +1195,11 @@ class Controller:
                 if not download or download.get("name") != name:
                     return
                 download["bytes"] = written
-                total = download.get("total") or 0
-                if total:
-                    download["percent"] = max(0, min(99, int(written / total * 100)))
+                if total and total > 0:
+                    download["total"] = total
+                eff_total = download.get("total") or 0
+                if eff_total:
+                    download["percent"] = max(0, min(99, int(written / eff_total * 100)))
 
         try:
             result = self._text_downloader.download(
@@ -1273,15 +1309,17 @@ class Controller:
             if self._machine.state != READY:
                 return {"ok": False, "message": "Şu anda model değiştirilemez, lütfen bekle."}
             self._set_state(LOADING)
-        try:
-            self._unload_whisper()
-            device = self._text_runtime.load(name, prefer_gpu=True)
-        except Exception as exc:
-            logger.warning("Metin modeli yüklenemedi: %s", exc)
-            with self._lock:
-                self._set_state(READY)
-                self._add_activity("Metin modeli yüklenemedi", str(exc), "err")
-            return {"ok": False, "message": str(exc) or "Metin modeli yüklenemedi."}
+        with self._engine_lock:
+            try:
+                self._unload_whisper()
+                device = self._text_runtime.load(name, prefer_gpu=True)
+            except Exception as exc:
+                logger.warning("Metin modeli yüklenemedi: %s", exc)
+                with self._lock:
+                    if self._machine.state == LOADING:
+                        self._set_state(READY)
+                    self._add_activity("Metin modeli yüklenemedi", str(exc), "err")
+                return {"ok": False, "message": str(exc) or "Metin modeli yüklenemedi."}
 
         try:
             self.settings.save(text_model=name)
@@ -1409,8 +1447,11 @@ class Controller:
             changes["effects"] = bool(payload["effects"])
         if "theme" in payload:
             changes["theme"] = str(payload["theme"])
+        old_active_model = str(self.settings.get("active_model", AUTO_MODEL))
+        new_active_model = None
         if "active_model" in payload:
-            changes["active_model"] = str(payload["active_model"])
+            new_active_model = str(payload["active_model"])
+            changes["active_model"] = new_active_model
 
         try:
             data = self.settings.save(**changes)
@@ -1426,6 +1467,20 @@ class Controller:
             self._save_history = bool(data.get("save_history", True))
             self._hotkey_id = str(data.get("hotkey", DEFAULT_HOTKEY))
             self._add_activity("Ayarlar kaydedildi", "Kısayol ve geçmiş tercihi güncellendi.", "info")
+
+        if new_active_model is not None and new_active_model != old_active_model:
+            if new_active_model == AUTO_MODEL:
+                if hasattr(self.engine, "set_model"):
+                    self.engine.set_model(AUTO_MODEL)
+            else:
+                try:
+                    if self.models.installed(new_active_model):
+                        self.model_activate(new_active_model)
+                    elif hasattr(self.engine, "set_model"):
+                        self.engine.set_model(new_active_model)
+                except Exception:
+                    logger.warning("Seçilen ses modeli etkinleştirilemedi", exc_info=True)
+
         return {"ok": True, "message": "Ayarlar kaydedildi.", "settings": self.settings_get()}
 
     # ---------- yapay zeka (temizle / çevir) ----------
@@ -1518,14 +1573,14 @@ class Controller:
             if self._machine.state in (RECORDING, PROCESSING, LOADING, CLEANING):
                 return {"ok": False, "message": "İşlem sürerken ayarlar kaydedilemez."}
         changes = {key: value for key, value in payload.items() if key in self.AI_SETTING_KEYS}
-        try:
-            self.settings.save(**changes)
-        except SettingsError as exc:
-            return {"ok": False, "message": str(exc)}
         if "autostart" in changes:
             result = self.autostart_set(bool(changes["autostart"]))
             if not result.get("ok"):
                 return result
+        try:
+            self.settings.save(**changes)
+        except SettingsError as exc:
+            return {"ok": False, "message": str(exc)}
         return {"ok": True, "message": "Ayarlar kaydedildi.", "ai": self.ai_state()}
 
     # ---------- uygulama (otomatik başlatma / kaldırma) ----------
@@ -1600,6 +1655,20 @@ class Controller:
             "message": f"Yeni sürüm: {result.get('version', '')}",
         }
 
+    def _schedule_exit_after_apply(self) -> None:
+        on_exit = getattr(self, "_on_exit", None)
+        if not callable(on_exit):
+            return
+
+        def _trigger_exit() -> None:
+            try:
+                time.sleep(0.25)
+                on_exit()
+            except Exception:
+                logger.warning("Güncelleme sonrası çıkış tetiklenemedi", exc_info=True)
+
+        threading.Thread(target=_trigger_exit, name="guncelle-cikis", daemon=True).start()
+
     def update_apply(self) -> dict:
         """Denetim, indirme, SHA-256 doğrulama ve sessiz kurulum tek sonuç üzerinden yürür."""
         try:
@@ -1610,8 +1679,21 @@ class Controller:
             return {"ok": False, "code": "no_update", "message": "Yeni sürüm yok."}
         sha = result.get("sha256", "")
         url = result.get("url", "")
+        cancel_ev = getattr(self, "_update_cancel_event", None)
+        if cancel_ev is not None:
+            cancel_ev.clear()
         try:
-            path = updater.download(url)
+            import inspect
+            kwargs: dict = {}
+            try:
+                sig = inspect.signature(updater.download)
+                if "cancel_event" in sig.parameters and cancel_ev is not None:
+                    kwargs["cancel_event"] = cancel_ev
+                if "sha256" in sig.parameters and sha:
+                    kwargs["sha256"] = sha
+            except (TypeError, ValueError):
+                pass
+            path = updater.download(url, **kwargs)
         except updater.UpdaterError as exc:
             logger.info("Güncelleme indirilemedi (%s)", exc.code)
             return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "İndirme başarısız. Bağlantını kontrol et.")}
@@ -1621,6 +1703,9 @@ class Controller:
             updater.apply(path)
         except updater.UpdaterError as exc:
             return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Kurulum başlatılamadı.")}
+        sched = getattr(self, "_schedule_exit_after_apply", None)
+        if callable(sched):
+            sched()
         return {"ok": True, "message": "Kurulum başlatıldı; uygulama kapanacak."}
 
     def update_list_releases(self) -> dict:
@@ -1679,6 +1764,9 @@ class Controller:
         except Exception as exc:
             return {"ok": False, "message": f"Kurulum başlatılamadı: {exc}"}
 
+        sched = getattr(self, "_schedule_exit_after_apply", None)
+        if callable(sched):
+            sched()
         return {"ok": True, "message": f"Sürüm {version} kurulumu başlatıldı; uygulama kapanacak."}
 
     # ---------- karşılama sihirbazı (Faz 4.4) ----------
@@ -1726,18 +1814,20 @@ class Controller:
             changes["design_style"] = str(payload["design_style"])
         if "active_model" in payload:
             changes["active_model"] = str(payload["active_model"])
-        if "hotkey" in payload:
-            changes["hotkey"] = str(payload["hotkey"])
         if "save_history" in payload:
             changes["save_history"] = bool(payload["save_history"])
 
-        if "hotkey" in payload and payload["hotkey"] != self._hotkey_id:
-            set_key = getattr(self.hotkey, "set_key", None)
-            if set_key is not None:
-                try:
-                    set_key(payload["hotkey"])
-                except Exception as exc:
-                    logger.warning("Sihirbazda kısayol ayarlanamadı: %s", exc)
+        if "hotkey" in payload:
+            new_hotkey = str(payload["hotkey"])
+            if new_hotkey != self._hotkey_id:
+                set_key = getattr(self.hotkey, "set_key", None)
+                if set_key is not None:
+                    try:
+                        set_key(new_hotkey)
+                    except Exception as exc:
+                        logger.warning("Sihirbazda kısayol ayarlanamadı: %s", exc)
+                        return {"ok": False, "message": f"Kısayol ayarlanamadı: {exc}"}
+            changes["hotkey"] = new_hotkey
 
         if "active_model" in payload and payload["active_model"] != AUTO_MODEL:
             try:
@@ -1849,8 +1939,9 @@ class Controller:
         return self._run_text(text, translate=True)
 
     def ai_cancel(self) -> dict:
-        self._ai_cancel_event.set()
         with self._lock:
+            self._ai_task_token += 1
+            self._ai_cancel_event.set()
             if self._machine.state == CLEANING:
                 self._set_state(READY)
                 self._add_activity("Yapay zeka iptal edildi", "İşlem kullanıcı tarafından durduruldu.", "warn")
@@ -1864,19 +1955,24 @@ class Controller:
 
     def ai_start_task(self, mode: str, text: str) -> dict:
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             if self._machine.state != READY:
                 return {"ok": False, "message": "Şu anda işlenemez, lütfen bekle."}
             if self._provider() == "none":
                 return {"ok": False, "code": "provider_off", "message": text_engine.CODE_MESSAGES["provider_off"]}
             self._ai_cancel_event.clear()
+            self._ai_task_token += 1
+            task_token = self._ai_task_token
             self._set_state(CLEANING)
 
         def worker() -> None:
             translate = (mode == "translate")
             try:
                 res = self._process_text(text, translate)
-                if self._ai_cancel_event.is_set():
-                    return
+                with self._lock:
+                    if task_token != self._ai_task_token or self._ai_cancel_event.is_set():
+                        return
                 copy_ok = True
                 try:
                     self._clipper(res.text)
@@ -1891,8 +1987,10 @@ class Controller:
                     except Exception as exc:
                         logger.warning("Otomatik yapıştırma hatası: %s", exc)
                 with self._lock:
-                    if not self._ai_cancel_event.is_set():
+                    if task_token == self._ai_task_token and not self._ai_cancel_event.is_set():
                         self._latest = res.text
+                        self._seq += 1
+                        self._replace_last = True
                         self._add_activity(
                             "Metin çevrildi" if translate and not res.unchanged else "Metin düzenlendi",
                             f"{text_engine.count_words(res.text)} kelime",
@@ -1903,15 +2001,16 @@ class Controller:
             except Exception as exc:
                 logger.warning("AI async hatası: %s", exc)
                 with self._lock:
-                    if not self._ai_cancel_event.is_set():
+                    if task_token == self._ai_task_token and not self._ai_cancel_event.is_set():
                         self._add_activity("Metin işlenemedi", str(exc), "err")
             finally:
                 with self._lock:
-                    if self._machine.state == CLEANING:
+                    if task_token == self._ai_task_token and self._machine.state == CLEANING:
                         self._set_state(READY)
 
-        self._ai_worker = threading.Thread(target=worker, name="ai-task", daemon=True)
-        self._ai_worker.start()
+        with self._lock:
+            self._ai_worker = threading.Thread(target=worker, name="ai-task", daemon=True)
+            self._ai_worker.start()
         return {"ok": True, "state": CLEANING}
 
     def _run_text(self, text: str, translate: bool) -> dict:
@@ -1974,6 +2073,8 @@ class Controller:
             message = "Metin değişmedi; model çeviri yapmadı. Farklı bir model dene."
         with self._lock:
             self._latest = result.text
+            self._seq += 1
+            self._replace_last = True
             self._add_activity(
                 "Metin çevrildi" if translate and not result.unchanged else "Metin düzenlendi",
                 f"{text_engine.count_words(result.text)} kelime",
@@ -2019,50 +2120,52 @@ class Controller:
             raise text_engine.TextEngineError(
                 "local_load", "Yerel metin motoru (llama.cpp) kurulu değil. OpenRouter sağlayıcısını seç."
             )
-        if self._text_runtime.model_name != name:
-            self._unload_whisper()
-            try:
-                device = self._text_runtime.load(name, prefer_gpu=True)
-            except Exception as exc:
-                raise text_engine.TextEngineError("local_load") from exc
-            with self._lock:
-                self._add_activity("Metin modeli yüklendi", f"{spec.label} · {device}", "info")
-
         target = str(self.settings.get("output_language", "tr"))
         prompt = str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT)
         budget = max(512, text_engine.count_words(text) * 8 + 256)
         messages = text_engine.build_messages(text, target, translate, prompt, strict=False)
         last_error = None
-        for attempt in range(2):
-            raw = self._text_runtime.generate(
-                messages[0]["content"], messages[1]["content"], max_tokens=budget
-            )
-            candidate = text_engine.strip_response(raw)
-            try:
-                text_engine.validate_output(text, candidate, translate, target)
-            except text_engine.TextEngineError as exc:
-                last_error = exc
-                if attempt == 0:
-                    messages = text_engine.build_messages(
-                        text, target, translate, prompt, strict=True
+        with self._engine_lock:
+            with self._local_ai_lock:
+                if self._text_runtime.model_name != name:
+                    self._unload_whisper()
+                    try:
+                        device = self._text_runtime.load(name, prefer_gpu=True)
+                    except Exception as exc:
+                        raise text_engine.TextEngineError("local_load") from exc
+                    with self._lock:
+                        self._add_activity("Metin modeli yüklendi", f"{spec.label} · {device}", "info")
+
+                for attempt in range(2):
+                    raw = self._text_runtime.generate(
+                        messages[0]["content"], messages[1]["content"], max_tokens=budget
                     )
-                    budget = max(1024, budget * 2)
-                    continue
-                raise
-            same = (
-                translate
-                and text_engine.count_words(text) >= 3
-                and candidate.strip().lower() == text.strip().lower()
-            )
-            if same and attempt == 0:
-                messages = text_engine.build_messages(
-                    text, target, translate, prompt, strict=True
-                )
-                budget = max(1024, budget * 2)
-                continue
-            return text_engine.TextResult(
-                text=candidate, translated=bool(translate) and not same, unchanged=same
-            )
+                    candidate = text_engine.strip_response(raw)
+                    try:
+                        text_engine.validate_output(text, candidate, translate, target)
+                    except text_engine.TextEngineError as exc:
+                        last_error = exc
+                        if attempt == 0:
+                            messages = text_engine.build_messages(
+                                text, target, translate, prompt, strict=True
+                            )
+                            budget = max(1024, budget * 2)
+                            continue
+                        raise
+                    same = (
+                        translate
+                        and text_engine.count_words(text) >= 3
+                        and candidate.strip().lower() == text.strip().lower()
+                    )
+                    if same and attempt == 0:
+                        messages = text_engine.build_messages(
+                            text, target, translate, prompt, strict=True
+                        )
+                        budget = max(1024, budget * 2)
+                        continue
+                    return text_engine.TextResult(
+                        text=candidate, translated=bool(translate) and not same, unchanged=same
+                    )
         raise last_error or text_engine.TextEngineError("bad_response")
 
     def _auto_ai_text(self, text: str) -> str:
@@ -2114,6 +2217,80 @@ class Controller:
             self.history.update_text(self._last_history_id, text)
         except Exception as exc:
             logger.warning("Geçmiş güncellenemedi: %s", exc)
+
+    def _diagnostics_summary(self) -> dict | None:
+        if error_reporter is None:
+            return None
+        now = time.monotonic()
+        cached_at, cached_val = self._diag_cache
+        if cached_val is not None and now - cached_at < 1.5:
+            return cached_val
+        try:
+            val = error_reporter.analyze_errors(self)
+        except Exception as exc:
+            logger.debug("Tanılama özeti alınamadı: %s", exc)
+            return None
+        self._diag_cache = (now, val)
+        return val
+
+    def diagnostics_get(self) -> dict:
+        if error_reporter is None:
+            return {"ok": False, "message": "Tanılama modülü yüklenemedi."}
+        try:
+            return error_reporter.get_diagnostics_payload(self)
+        except Exception as exc:
+            logger.warning("Tanılama raporu alınamadı: %s", exc)
+            return {"ok": False, "message": str(exc)}
+
+    def diagnostics_copy(self) -> dict:
+        if error_reporter is None:
+            return {"ok": False, "message": "Tanılama modülü yüklenemedi."}
+        try:
+            report = error_reporter.format_report_text(self)
+        except Exception as exc:
+            logger.warning("Tanılama raporu oluşturulamadı: %s", exc)
+            return {"ok": False, "message": str(exc)}
+        try:
+            self._clipper(report)
+        except Exception as exc:
+            try:
+                self._default_clipper(report)
+            except Exception as exc2:
+                return {"ok": False, "text": report, "message": f"Panoya kopyalanamadı: {exc2 or exc}"}
+        return {"ok": True, "text": report, "message": "Tanılama raporu panoya kopyalandı."}
+
+    def diagnostics_export(self) -> dict:
+        if error_reporter is None:
+            return {"ok": False, "message": "Tanılama modülü yüklenemedi."}
+        try:
+            path = error_reporter.export_report(self)
+            return {
+                "ok": True,
+                "path": str(path),
+                "message": f"Tanılama raporu kaydedildi: {path.name}",
+            }
+        except Exception as exc:
+            logger.warning("Tanılama raporu dışa aktarılamadı: %s", exc)
+            return {"ok": False, "message": str(exc)}
+
+    def diagnostics_dismiss_crash(self) -> dict:
+        if error_reporter is not None:
+            try:
+                error_reporter.dismiss_crash()
+            except Exception:
+                logger.debug("Çökme bildirimi kapatılamadı", exc_info=True)
+        self._diag_cache = (0.0, None)
+        return {"ok": True}
+
+    def diagnostics_log_js_error(self, payload: dict | None = None) -> dict:
+        if error_reporter is None:
+            return {"ok": False, "message": "Tanılama modülü yüklenemedi."}
+        try:
+            res = error_reporter.record_js_error(payload)
+        except Exception as exc:
+            return {"ok": False, "message": str(exc)}
+        self._diag_cache = (0.0, None)
+        return res
 
     # ---------- yardımcılar ----------
 

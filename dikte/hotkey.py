@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections import deque
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -212,6 +213,45 @@ def key_to_tokens(key) -> set[str]:
     return tokens
 
 
+_PASTE_RELATED_TOKENS = frozenset({
+    "v",
+    "ctrl",
+    "left_ctrl",
+    "right_ctrl",
+    "shift",
+    "left_shift",
+    "right_shift",
+    "alt",
+    "left_alt",
+    "right_alt",
+})
+
+
+def _is_pasting() -> bool:
+    try:
+        from .paste import is_pasting
+
+        return bool(is_pasting())
+    except Exception:
+        return False
+
+
+def _canonical_key_id(key) -> tuple:
+    """pynput Key/KeyCode nesnesi için modifier+char değişiminden etkilenmeyen kimlik üretir."""
+    if key is None:
+        return ("none", None)
+    vk = getattr(key, "vk", None)
+    name = getattr(key, "name", None)
+    if name is not None:
+        name = str(name).lower()
+    if vk is not None or name is not None:
+        return ("key", vk, name)
+    char = getattr(key, "char", None)
+    if char is not None:
+        return ("char", str(char).lower())
+    return ("obj", repr(key))
+
+
 class HotkeyListener:
     """1-3 tuşlu global kısayol dinleyicisi."""
 
@@ -228,124 +268,164 @@ class HotkeyListener:
         self._listener = None
         self._pressed = False
         self._keys_lock = threading.Lock()
-        self._pressed_keys: dict[object, set[str]] = {}
+        self._lifecycle_lock = threading.RLock()
+        self._pressed_keys: dict[tuple, set[str]] = {}
+        self._event_cond = threading.Condition()
+        self._event_queue: deque[str | None] = deque()
+        self._worker_thread: threading.Thread | None = None
+        self._worker_running = False
 
     @property
     def key(self) -> str:
         return self._key
 
+    def _enqueue_event(self, event: str) -> None:
+        with self._event_cond:
+            self._event_queue.append(event)
+            self._event_cond.notify()
+
+    def _event_worker(self) -> None:
+        while True:
+            with self._event_cond:
+                while not self._event_queue and self._worker_running:
+                    self._event_cond.wait(timeout=0.5)
+                if not self._event_queue and not self._worker_running:
+                    break
+                event = self._event_queue.popleft()
+            if event is None:
+                break
+            if event == "press":
+                try:
+                    self._on_press()
+                except Exception:
+                    logger.exception("Kısayol basılma işleyicisi hata verdi")
+            elif event == "release":
+                try:
+                    self._on_release()
+                except Exception:
+                    logger.exception("Kısayol bırakılma işleyicisi hata verdi")
+
     def configure(self, key: str) -> None:
         """Dinleyiciyi başlatmadan tuşu ayarlar (açılışta kullanılır)."""
         if not is_valid_hotkey(key):
             raise HotkeyError("Bu tuş kısayol olarak kullanılamaz.")
-        self._key = normalize_hotkey(key)
-        self._target_tokens = set(parse_hotkey(self._key))
+        with self._lifecycle_lock:
+            self._key = normalize_hotkey(key)
+            self._target_tokens = set(parse_hotkey(self._key))
 
     def set_key(self, key: str) -> None:
         """Tuşu değiştirir; dinleyici çalışıyorsa yeniden başlatır."""
         if not is_valid_hotkey(key):
             raise HotkeyError("Bu tuş kısayol olarak kullanılamaz.")
         normalized = normalize_hotkey(key)
-        if normalized == self._key and self._listener is not None:
-            return
-        was_running = self._listener is not None
-        if was_running:
-            self.stop()
-        with self._keys_lock:
-            previous = self._key
-            self._key = normalized
-            self._target_tokens = set(parse_hotkey(self._key))
-        try:
-            self.start()
-        except HotkeyError:
-            with self._keys_lock:
-                self._key = previous
-                self._target_tokens = set(parse_hotkey(self._key))
+        with self._lifecycle_lock:
+            if normalized == self._key and self._listener is not None:
+                return
+            was_running = self._listener is not None
             if was_running:
-                try:
-                    self.start()
-                except HotkeyError:
-                    logger.exception("Eski kısayol geri yüklenemedi")
-            raise
+                self.stop()
+            with self._keys_lock:
+                previous = self._key
+                self._key = normalized
+                self._target_tokens = set(parse_hotkey(self._key))
+            try:
+                self.start()
+            except HotkeyError:
+                with self._keys_lock:
+                    self._key = previous
+                    self._target_tokens = set(parse_hotkey(self._key))
+                if was_running:
+                    try:
+                        self.start()
+                    except HotkeyError:
+                        logger.exception("Eski kısayol geri yüklenemedi")
+                raise
 
     def start(self) -> None:
-        if self._listener is not None:
-            return
-        try:
-            from pynput import keyboard
-        except Exception as exc:
-            raise HotkeyError("Klavye dinleyicisi yüklenemedi (pynput).") from exc
-
-        if not self._target_tokens:
-            raise HotkeyError("Seçilen kısayol tuşu geçersiz.")
-
-        with self._keys_lock:
-            self._pressed_keys.clear()
-            self._pressed = False
-
-        def on_press(key) -> None:
-            try:
-                from .paste import is_pasting
-
-                if is_pasting():
-                    return
-            except Exception:
-                pass
-
-            tokens = key_to_tokens(key)
-            if not tokens:
+        with self._lifecycle_lock:
+            if self._listener is not None:
                 return
-            should_trigger = False
-            with self._keys_lock:
-                self._pressed_keys[key] = tokens
-                active = {tok for toks in self._pressed_keys.values() for tok in toks}
-                if self._target_tokens.issubset(active) and not self._pressed:
-                    self._pressed = True
-                    should_trigger = True
-
-            if should_trigger:
-                try:
-                    self._on_press()
-                except Exception:
-                    logger.exception("Kısayol basılma işleyicisi hata verdi")
-
-        def on_release(key) -> None:
             try:
-                from .paste import is_pasting
+                from pynput import keyboard
+            except Exception as exc:
+                raise HotkeyError("Klavye dinleyicisi yüklenemedi (pynput).") from exc
 
-                if is_pasting():
-                    return
-            except Exception:
-                pass
+            if not self._target_tokens:
+                raise HotkeyError("Seçilen kısayol tuşu geçersiz.")
 
-            should_release = False
             with self._keys_lock:
-                tokens = self._pressed_keys.pop(key, None)
-                if tokens is None:
-                    to_remove = [k for k in self._pressed_keys if k == key]
-                    for k in to_remove:
-                        self._pressed_keys.pop(k, None)
-                active = {tok for toks in self._pressed_keys.values() for tok in toks}
-                if self._pressed and not self._target_tokens.issubset(active):
-                    self._pressed = False
-                    should_release = True
+                self._pressed_keys.clear()
+                self._pressed = False
 
-            if should_release:
-                try:
-                    self._on_release()
-                except Exception:
-                    logger.exception("Kısayol bırakılma işleyicisi hata verdi")
+            with self._event_cond:
+                self._event_queue.clear()
+                self._worker_running = True
+            self._worker_thread = threading.Thread(
+                target=self._event_worker, name="HotkeyEventWorker", daemon=True
+            )
+            self._worker_thread.start()
 
-        try:
-            self._listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-            self._listener.daemon = True
-            self._listener.start()
-        except Exception as exc:
-            self._listener = None
-            raise HotkeyError(
-                "Kısayol dinleyicisi başlatılamadı. Antivirüs engelliyor olabilir."
-            ) from exc
-        logger.info("Kısayol dinleyicisi hazır: %s", format_hotkey_label(self._key))
+            def on_press(key) -> None:
+                tokens = key_to_tokens(key)
+                if not tokens:
+                    return
+                if _is_pasting() and (tokens & _PASTE_RELATED_TOKENS):
+                    return
+
+                key_id = _canonical_key_id(key)
+                should_trigger = False
+                with self._keys_lock:
+                    self._pressed_keys[key_id] = tokens
+                    active = {tok for toks in self._pressed_keys.values() for tok in toks}
+                    if self._target_tokens.issubset(active) and not self._pressed:
+                        self._pressed = True
+                        should_trigger = True
+
+                if should_trigger:
+                    self._enqueue_event("press")
+
+            def on_release(key) -> None:
+                tokens = key_to_tokens(key)
+                if _is_pasting() and tokens and (tokens & _PASTE_RELATED_TOKENS):
+                    return
+
+                key_id = _canonical_key_id(key)
+                should_release = False
+                with self._keys_lock:
+                    removed = self._pressed_keys.pop(key_id, None)
+                    if removed is None and tokens:
+                        to_remove = [k for k, toks in self._pressed_keys.items() if toks == tokens]
+                        for k in to_remove:
+                            self._pressed_keys.pop(k, None)
+                    active = {tok for toks in self._pressed_keys.values() for tok in toks}
+                    if self._pressed and not self._target_tokens.issubset(active):
+                        self._pressed = False
+                        should_release = True
+
+                if should_release:
+                    self._enqueue_event("release")
+
+            try:
+                self._listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+                self._listener.daemon = True
+                self._listener.start()
+            except Exception as exc:
+                self._listener = None
+                self._stop_worker()
+                raise HotkeyError(
+                    "Kısayol dinleyicisi başlatılamadı. Antivirüs engelliyor olabilir."
+                ) from exc
+            logger.info("Kısayol dinleyicisi hazır: %s", format_hotkey_label(self._key))
+
+    def _stop_worker(self) -> None:
+        with self._event_cond:
+            self._worker_running = False
+            self._event_queue.append(None)
+            self._event_cond.notify_all()
+        worker = self._worker_thread
+        self._worker_thread = None
+        if worker is not None and worker is not threading.current_thread():
+            worker.join(timeout=1.0)
 
     def reset_state(self) -> None:
         """Pencere odak kaybı veya beklenmeyen durumlarda basılı durumunu sıfırlar."""
@@ -357,18 +437,22 @@ class HotkeyListener:
                 should_release = True
 
         if should_release:
-            try:
-                self._on_release()
-            except Exception:
-                logger.exception("Kısayol sıfırlama bırakma hatası")
+            if self._worker_running:
+                self._enqueue_event("release")
+            else:
+                try:
+                    self._on_release()
+                except Exception:
+                    logger.exception("Kısayol sıfırlama bırakma hatası")
 
     def stop(self) -> None:
-        listener = self._listener
-        self._listener = None
-        self.reset_state()
-        if listener is None:
-            return
-        try:
-            listener.stop()
-        except Exception:
-            pass
+        with self._lifecycle_lock:
+            listener = self._listener
+            self._listener = None
+            if listener is not None:
+                try:
+                    listener.stop()
+                except Exception:
+                    pass
+            self.reset_state()
+            self._stop_worker()

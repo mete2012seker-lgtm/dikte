@@ -141,44 +141,56 @@ def test_hotkey_listener_combo_lifecycle(monkeypatch):
     sim_press = captured_callbacks["on_press"]
     sim_release = captured_callbacks["on_release"]
 
+    import time
+
+    def wait_until(pred, timeout=1.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if pred():
+                return True
+            time.sleep(0.01)
+        return pred()
+
     k_ctrl = DummyKey("ctrl_l")
     k_shift = DummyKey("shift_l")
     k_d = DummyKeyCode(char="\x04", vk=68)
 
     # 1. Ctrl'ye basıldı -> henüz tetiklenmemeli
     sim_press(k_ctrl)
+    time.sleep(0.02)
     assert press_count == 0
 
     # 2. Shift'e basıldı -> henüz tetiklenmemeli
     sim_press(k_shift)
+    time.sleep(0.02)
     assert press_count == 0
 
     # 3. D'ye basıldı -> hedef 'ctrl+shift+d' tamamlandı -> tetiklenmeli!
     sim_press(k_d)
-    assert press_count == 1
+    assert wait_until(lambda: press_count == 1)
     assert listener._pressed is True
 
     # 4. D bırakıldı -> hedeften biri eksildi -> release tetiklenmeli!
     sim_release(k_d)
-    assert release_count == 1
+    assert wait_until(lambda: release_count == 1)
     assert listener._pressed is False
 
     # 5. D tekrar basıldı -> tekrar press tetiklenmeli
     sim_press(k_d)
-    assert press_count == 2
+    assert wait_until(lambda: press_count == 2)
     assert listener._pressed is True
 
     # 6. Ctrl bırakıldı -> release tetiklenmeli
     sim_release(k_ctrl)
-    assert release_count == 2
+    assert wait_until(lambda: release_count == 2)
     assert listener._pressed is False
 
     # 7. reset_state testi
     sim_press(k_ctrl)
     sim_press(k_d)  # Shift ve Ctrl basılıydı, D de basıldı -> tekrar press
-    assert press_count == 3
+    assert wait_until(lambda: press_count == 3)
     listener.reset_state()
     assert listener._pressed is False
-    assert release_count == 3
+    assert wait_until(lambda: release_count == 3)
 
     listener.stop()

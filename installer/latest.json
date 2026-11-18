@@ -1,7 +1,7 @@
 {
-  "version": "1.6.0",
-  "url": "https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.0/Dikte-Setup-1.6.0.exe",
-  "sha256": "74d92d7ff6ebced7b295769ed4e7c1a7aa6607ecc85d2c7324f31644ffe8bf31",
-  "notes": "Dikte 1.6.0: otomatik güncelleme, kaldırma (modelleri koruma seçeneği) ve kurucu paketi.",
-  "published": "2026-11-09T12:00:00Z"
+  "version": "1.6.1",
+  "url": "https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.1/Dikte-Setup-1.6.1.exe",
+  "sha256": "ad2d1ea4fd1e87c382b25f548ad572d0762ba6897a68e5781aaefe58a5d0889a",
+  "notes": "Dikte 1.6.1: Gömülü hata tespit ve tek tıkla log kopyalama aracı (error_reporter), GPU/VRAM kilit ve AI iptal izolasyonu, gecikmesiz klavye hook kuyruğu, ses tamponu koruması, ilk açılış sihirbazı ve güncelleme kararlılığı.",
+  "published": "2026-11-18T14:38:00Z"
 }

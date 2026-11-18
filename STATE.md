@@ -3,9 +3,19 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**Faz 3, Faz 4, Faz 5, Görsel Doğrulama ve Sistem Tepsisi / Otomatik Yapıştırma / Arayüz Sağlamlaştırma Turu tamamlandı (2026-11-12, 3. Oturum):** Tüm yeni özellikler, tek kopya kilidi (Named Mutex), sistem tepsisinden otomatik yapıştırma (`SendInput` + basılı olmayan Alt tuşunun menü çubuğuna odak çalmasını engelleme + `KEYEVENTF_EXTENDEDKEY` + `is_pasting()` koruması), Dikte Türkçe çeviri doğruluğu (sabit `"tr"`, Türkçe `initial_prompt`, Silero VAD optimizasyonu ve sıfır gecikmeli kayıt), yan menü daralmasında büzüşmeyen 40x40px logo ve geçiş animasyonu, Metin Modelleri sağ detay paneli (GGUF özellikleri, boyut, VRAM, dosya/klasör ve aksiyon butonları), otomatik çeviri / çıktı dili kararlılığı (`<think>` etiketi temizliği, genişletilmiş dil tespiti, 2 denemeli yerel yeniden deneme, 250ms polling koruması ve sağlayıcı toast uyarısı), dağıtım düzeltmeleri (`Dikte.spec` pynvml/test verisi, Inno `CloseApplications=yes`, görünmez tıklama engelleyicinin kaldırılması, 3 argümanlı rollback) tamamlandı. Test süiti: **343 passed, 1 skipped** (%100 başarı). Sıradaki adım: Kullanıcı tarafından temiz Windows VM testi ve GitHub Releases yüklemesi.
+**v1.6.1 — OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Faz A/B Stabilite Sertleştirmesi tamamlandı (2026-11-18):**
+- 4 paralel `Gemini 4 Hydrogen (Medium)` ajanı ile OpenWhispr dersi + gömülü hata tespit aracı tasarımı + mimari/mantıksal denetim raporu (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`) hazırlandı.
+- Faz A (Acil çökme/kilit) ve Faz B (Gömülü Hata Tespit ve Log Kopyalama Aracı + Kısa Vade Stabilite) uygulandı ve ikinci göz denetimiyle doğrulandı.
+- PyInstaller `Dikte.spec` içine `collect_all("faster_whisper")` (`silero_vad_v6.onnx` varlıkları) eklendi; sürüm **1.6.1**'e yükseltildi ve `installer\Output\Dikte-Setup-1.6.1.exe` (178.515.604 bayt) derlenip `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu 0 ile doğrulandı.
+- Tam test süiti: **369 passed, 1 skipped** (Playwright Edge arayüz testleri + yerel HTTP indirme testleri dahil). Sıradaki adım: GitHub Release (`v1.6.1`) yüklemesi ve kullanıcı kabul testi.
 
 ## Biten (kanıtla)
+- **v1.6.1 OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Faz A/B Stabilite (2026-11-18):**
+  - **OpenWhispr Analizi & Denetim (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`):** Pano yedekleme/geri yükleme, Özel Sözlük, tepsi modu Floating Pill ve mikrofon/RMS dersleri çıkarıldı; 16 mimari/mantıksal bulgu satır kanıtıyla belgelendi.
+  - **Gömülü Hata Tespit & Log Kopyalama Aracı (`dikte/error_reporter.py`, `dikte/diagnostics.py`):** `RotatingFileHandler` (2 MB × 3), `faulthandler` (`native_crash.log`), `sys/threading.excepthook`, `running.lock` beklenmedik kapanma tespiti, gizlilik maskelemesi (API anahtarları/kullanıcı yolu hariç; `history.json`/`secrets.json`/`last.wav`/`_latest` asla okunmaz), 10+ Türkçe çözüm kuralı, `#diagBanner`, `#diagModal`, Ayarlar → **Sorun Giderme ve Tanılama** kartı, tepside `"Tanılama Raporu Kopyala"`, JS `error`/`unhandledrejection` köprüsü ve başsız açılış hatası için `MessageBoxW`.
+  - **Faz A/B Çökme, Kilit ve Akış Düzeltmeleri:** `_engine_lock` → `_lock` kilit sırası (`_transcribe_path`, `_local_process_text`, `text_model_activate`), `ai_cancel()` için `_ai_task_token` + `_seq += 1`, `HotkeyListener` hook thread'inden işçi kuyruğuna devir + kanonik tuş kimliği, `AudioRecorder` `_chunks_lock` + `MAX_RECORD_SECONDS = 600`, `tray.py` & `bridge.py` kapanış/kilit tekilleştirme, `--uninstall` çıkış kodu düzeltmesi, `updater.apply()` sonrası temiz kapanış (`_schedule_exit_after_apply`), `text_models.py` HTTP 416 + `__closure__` kaldırma + CPU fallback sarmalama, `uninstall.py` `with winreg.OpenKey`, ilk açılış sihirbazı, atomik ayar kaydı ve `applyModel()` `cleaning` durumu.
+  - **Paketleme Düzeltmesi (`Dikte.spec`):** `collect_all("faster_whisper")` eklenerek `silero_vad_v6.onnx` eksikliği giderildi; `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu 0 ile doğrulandı.
+  - **Kurucu & Testler:** `Dikte-Setup-1.6.1.exe` (178.515.604 bayt, SHA-256: `ad2d1ea4fd1e87c382b25f548ad572d0762ba6897a68e5781aaefe58a5d0889a`); `installer/latest.json` güncellendi; tam süit **369 passed, 1 skipped**.
 - **Sistem Tepsisi, Otomatik Yapıştırma, Arayüz ve Model Sağlamlaştırma Turu (2026-11-12, 3. Oturum):**
   - **Sistem Tepsisi & Global Kısayol Otomatik Yapıştırma:** `dikte/paste.py` ve `dikte/hotkey.py` Windows düzeyinde güçlendirildi; `SendInput` + `MapVirtualKeyW` ile güvenli tuş gönderimi yapıldı. Değiştirici tuşların bırakılması `GetAsyncKeyState` ile beklendi ve yalnızca hâlâ basılı olan tuşlara `KEYEVENTF_KEYUP` gönderildi (böylece basılı olmayan `Alt` tuşuna keyup gönderilip hedef uygulamanın Dosya/Düzen menü çubuğuna odak kaptırması engellendi). `VK_RCONTROL` ve `VK_RMENU` için `KEYEVENTF_EXTENDEDKEY` eklendi. `is_pasting()` bayrağı ile `HotkeyListener`'ın yapay `Ctrl+V`'yi kısayol basılışı sanıp kendini yeniden tetiklemesi engellendi. Uygulama sistem tepsisinde gizliyken (`IsWindowVisible(hwnd) == 0`) yapıştırmanın engellenmemesi sağlandı.
   - **Dikte Çeviri Doğruluğu & Sıfır Gecikme:** `dikte/engine.py` ve `data/settings.json` güncellendi; girdi dili `"tr"` olarak sabitlendi. Whisper motoruna Türkçe `initial_prompt` ("Türkçe sesli dikte kaydı, doğru imla ve noktalama ile.") ve Silero VAD filtre parametreleri (`speech_pad_ms=400`, `min_silence_duration_ms=500`, `threshold=0.35`) eklendi. `controller.py` içinde Whisper zaten yüklüyse kaydın sıfır gecikmeyle başlaması sağlandı.
@@ -70,12 +80,12 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 
 ## Sıradaki ilk adım
 1. **Kullanıcı Kurulum & Dağıtım Testi:**
-   - `installer\Output\Dikte-Setup-1.6.0.exe` dosyasını gerçek makinede / temiz Windows VM'de kurup test etmek.
-   - Masaüstü kısayolu, sistem tepsisi simgesi ve arka planda global kısayol (`Ctrl+Shift+D` vb.) bas-konuş çalışmasını doğrulamak.
-   - GitHub Releases üzerinde v1.6.0 release oluşturup `latest.json` ve `Dikte-Setup-1.6.0.exe` dosyalarını yüklemek.
+   - `installer\Output\Dikte-Setup-1.6.1.exe` dosyasını gerçek makinede / temiz Windows VM'de kurup test etmek.
+   - Masaüstü kısayolu, sistem tepsisi simgesi, arka planda global kısayol bas-konuş ve Ayarlar → **Sorun Giderme ve Tanılama** kartını doğrulamak.
+   - GitHub Releases üzerinde `v1.6.1` release'inde `installer/latest.json` ve `Dikte-Setup-1.6.1.exe` varlıklarının yayımlandığını doğrulamak.
 
 ## Açık sorunlar
-- **Güncelleme Yayın Adresi:** GitHub Releases üzerinde v1.6.0 yüklenene kadar `latest.json` 404 verecektir; ilk release yüklendiğinde otomatik güncelleme ve rollback aktifleşecektir.
+- **Güncelleme Yayın Adresi:** GitHub Releases üzerinde `v1.6.1` release varlıkları (`latest.json` ve `Dikte-Setup-1.6.1.exe`) yayımlanana kadar uzaktan güncelleme uç noktası eski/404 yanıtı verebilir.
 - **Temiz VM / Kullanıcı Kabul Testi:** Gerçek UAC ortamında admin kurulum, kaldırma (modelleri koru / tümünü sil bayrağı) ve sistem tepsisinden sessiz açılış kullanıcı tarafından test edilmelidir.
 - **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; bellek takas mantığı kodda hazır, kullanıcı gerçek donanımda ağır modellerle deneyebilir.
 - **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn ısınma sürebilir; sonraki çağrılar ~60 tok/s hızındadır.
@@ -127,9 +137,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **343 passed, 1 skipped** (2026-11-12, Sistem Tepsisi / Otomatik Yapıştırma / Arayüz Sağlamlaştırma dahil) |
-| Kurucu (build.ps1) | **Üretildi:** dist\Dikte + installer\Output\Dikte-Setup-1.6.0.exe, 177.467.632 bayt, SHA-256 `74d92d7ff6ebced7b295769ed4e7c1a7aa6607ecc85d2c7324f31644ffe8bf31` (Masaüstü: `C:\Users\aksek\Desktop\Dikte-Setup-1.6.0.exe`) |
-| Paketli açılış | dist\Dikte\Dikte.exe --selftest --cpu başarıyla çalıştı (exit code 0) |
+| `pytest -q` | **369 passed, 1 skipped** (2026-11-18, v1.6.1: `test_error_reporter.py` 18 + `test_stability_fixes.py` 8 + Playwright UI 37 + indirme 10 dahil) |
+| Kurucu (build.ps1) | **Üretildi:** `dist\Dikte` + `installer\Output\Dikte-Setup-1.6.1.exe`, 178.515.604 bayt, SHA-256 `ad2d1ea4fd1e87c382b25f548ad572d0762ba6897a68e5781aaefe58a5d0889a` |
+| Paketli açılış | `dist\Dikte\Dikte.exe --selftest --cpu` başarıyla çalıştı (`PKG_EXIT=0`, Silero VAD + Whisper Small CPU) |
 | `--selftest` | **Çalışıyor:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` hazır; kod 0 ile geçti |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |

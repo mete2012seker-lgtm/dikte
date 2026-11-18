@@ -33,7 +33,8 @@ Akış:
 | `dikte/hotkey.py` | pynput ile seçilebilir kısayol dinleyicisi (1–3 tuş serbest kombinasyon), `is_pasting()` yapay olay koruması ve `_keys_lock` kilit güvenliği | Hazır |
 | `dikte/clipboard.py` | pyperclip ile panoya kopyalama | Hazır |
 | `dikte/controller.py` | Durum geçişleri, worker thread, geçmiş, model yönetimi, ayarlar, yenile, snapshot | Hazır |
-| `dikte/diagnostics.py` | UTF-8 konsol, CUDA DLL yolu (cublas/cudnn/cudart), VRAM/RAM, Türkçe hata metinleri, log | Hazır |
+| `dikte/diagnostics.py` | UTF-8 konsol, döndürmeli log (`RotatingFileHandler`), CUDA DLL yolu (cublas/cudnn/cudart), VRAM/RAM, Türkçe hata metinleri | Hazır |
+| `dikte/error_reporter.py` | Gömülü hata tespit ve log kopyalama aracı: `faulthandler`, `sys/threading.excepthook`, `running.lock` çökme tespiti, gizlilik maskelemesi (API anahtarı/kullanıcı yolu hariç, konuşma metni asla okunmaz), 10+ Türkçe hata kuralı, `.txt` dışa aktarma, `MessageBoxW` | Hazır |
 | `dikte/instance.py` | Windows Named Mutex (`Local\DikteSingleInstanceMutex`), çift kopya engelleme, mevcut pencereyi öne getirme (`SW_RESTORE` + `SetForegroundWindow`), `AppUserModelID` ve Win32 `WM_SETICON` pencere ikonu izleyicisi | Hazır |
 | `dikte/tray.py` | Sistem tepsisi (SystemTrayManager): pystray + Pillow, menü (Göster/Gizle, Durum, Çıkış), bildirim, modül düzeyi singleton kilidi | Hazır |
 | `dikte/updater.py` | GitHub Releases listeleme, sürüm karşılaştırma, rollback, indirme ve sessiz kurucu çalıştırma | Hazır |
@@ -43,7 +44,9 @@ Akış:
 | `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), Magic UI efektleri, Sade Dikte.AI teması, morphing mikrofon | Hazır |
 | `dikte/ui/app.js` | Sayfa yönlendirici, durum yansıtma, geçmiş/modeller/ayarlar, yenile, temizle/çevir, tema geçişi, anında ayar kaydı, serbest kısayol kaydedici, sihirbaz | Hazır |
 | `design/v2/` | v1.4 efekt dokümantasyonu: ui-spec.md + 10 ekran görüntüsü (koyu/açık × 4 sayfa + modeller-ses) | Hazır |
-| `tests/test_single_instance.py` | Named Mutex kilidi, ikinci kopya algılama, pencere öne getirme ve Win32 ikonu testleri (9 test) | 343 test geçti |
+| `tests/test_error_reporter.py` | `RotatingFileHandler`, API anahtarı/yol maskeleme, gizlilik değişmezi, `running.lock` çökme algılama, 12 Türkçe hata kuralı, `.txt` rapor ve JS hata hız sınırı testleri (18 test) | Geçti |
+| `tests/test_stability_fixes.py` | `_ai_task_token` + `_seq`, `_engine_lock` serileştirme, `HotkeyListener` kuyruk/kanonik tuş, `AudioRecorder` kilidi + süre sınırı, `LocalTextModel` CPU sarmalama, HTTP 416, `--uninstall` kodu, `Controller.diagnostics_*` (8 test) | Geçti |
+| `tests/test_single_instance.py` | Named Mutex kilidi, ikinci kopya algılama, pencere öne getirme ve Win32 ikonu testleri (9 test) | Geçti |
 | `tests/test_ui_fixes.py` | Sade Dikte.AI ve Klasik mod DOM yapısı, mikrofon morphing sınıfları, anında ayar kaydı, etkinlik tekilleştirme, logo boyutu ve metin modeli detay paneli testleri (10 test) | 343 test geçti |
 | `tests/test_tray_and_icon.py` | İkon dosyaları, fallback ikon, sistem tepsisi menü/toggle/thread ve selftest dosyaları testi | 343 test geçti |
 | `tests/test_hotkey.py` | 1–3 tuşlu serbest kısayol doğrulama ve normalizasyon testleri | 343 test geçti |
@@ -62,7 +65,7 @@ Akış:
 | `tests/test_models.py` | Katalog, boyut, HF özel modeller, indirme iptali, silme | 343 test geçti |
 | `tests/test_ui.py` | Playwright + sahte köprü: 4 sayfa, sihirbaz, HF modal, rollback, wave canvas, metin model detayları (38 test) | 343 test geçti |
 | `tests/test_paste.py` | Kendi pencereyi atlama, gizli tepsi penceresi, şartlı modifier keyup, extended tuş bayrağı | 343 test geçti |
-| `tests/test_version.py` | Tek sürüm kaynağı (1.6.0), latest.json, User-Agent uyumu | 343 test geçti |
+| `tests/test_version.py` | Tek sürüm kaynağı (1.6.1), latest.json, User-Agent uyumu | Geçti |
 | `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |
@@ -81,12 +84,12 @@ Akış:
 | `dikte/updater.py` | Sürüm denetimi (`latest.json`), sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama (özet yoksa reddeder), sessiz kurulum; `UPDATE_URL` = GitHub Releases | Faz 1 (2026-11-09) |
 | `dikte/config.py` | `APP_VERSION` (tek sürüm kaynağı), yollar (paketli sürümde %LOCALAPPDATA%\Dikte), `UPDATE_URL`, `KEEP_MODELS_FLAG` | Faz 1 |
 | `run_dikte.py` | PyInstaller giriş noktası (`dikte.__main__.main` çağırır) | Yeni (2026-11-09) |
-| `Dikte.spec` | PyInstaller onedir: `run_dikte.py`, `collect_all("llama_cpp")`, `dikte/ui` verisi, ikon | Düzeltildi (2026-11-09) |
+| `Dikte.spec` | PyInstaller onedir: `run_dikte.py`, `collect_all("llama_cpp")` + `collect_all("faster_whisper")` (`silero_vad_v6.onnx`), `dikte/ui` verisi, ikon | Güncellendi (2026-11-18) |
 | `build.ps1` | Sürümü okur, `installer/version.iss` üretir, PyInstaller + ISCC çalıştırır, boyut ve SHA-256 yazar | Yeni (2026-11-09) |
-| `installer/Dikte.iss` | Inno Setup 6: `{autopf}\Dikte`, admin, yeni AppId, HKCU Run temizliği, `[UninstallDelete]` + `[Code]` ile modelleri koruma | Derlendi (2026-11-09) |
+| `installer/Dikte.iss` | Inno Setup 6: `{autopf}\Dikte`, admin, yeni AppId, HKCU Run temizliği, `[UninstallDelete]` + `[Code]` ile modelleri koruma | Derlendi (2026-11-18) |
 | `installer/Dikte.ico` | Basit uygulama ikonu (kurucu ve exe) | Yeni (2026-11-09) |
 | `installer/version.iss` | `build.ps1` üretir (`config.APP_VERSION`); git dışı | Otomatik |
-| `installer/latest.json` | Yayınlanan sürüm 1.6.0; kurucu URL ve SHA-256 gerçek değerlerle | Güncellendi (2026-11-09) |
+| `installer/latest.json` | Yayınlanan sürüm 1.6.1; kurucu URL ve SHA-256 gerçek değerlerle | Güncellendi (2026-11-18) |
 | `tests/test_updater.py` | Sürüm, denetim, indirme, SHA ve uçtan uca sahte akış (20 test) | Genişletildi |
 | `tests/test_uninstall.py` | Kurulum kontrolü, veri boyutu, autostart, kaldırıcı çağrısı (12 test) | Yeni (2026-11-09) |
 | `tests/test_version.py` | Paket, User-Agent, Inno, latest.json sürüm tutarlılığı | Yeni (2026-11-09) |
@@ -179,3 +182,4 @@ Akış:
 - 2026-11-11: Faz 2 (11 veri kaybı ve çökme hatası) TDD ile uygulandı ve `Model: "flash"` alt ajanıyla denetlendi (**263 passed, 1 skipped**). Masaüstüne `Dikte.lnk` kısayolu eklendi; sistem tepsisi ve pencere kapalıyken arka planda çalışma Faz 3.2 kapsamına alındı.
 - 2026-11-12: Faz 3, Faz 4 ve Faz 5 tamamlandı (yeni logo, pystray sistem tepsisi, 1–3 tuşlu serbest kısayol, HF özel modelleri `data/custom_models.json`, 5 adımlı Karşılama Sihirbazı, güncelleme rollback ve anında ayar kaydı). **303 passed, 1 skipped** pytest geçti, `Dikte-Setup-1.6.0.exe` derlendi.
 - 2026-11-12 (2. Oturum — Hata Ayıklama & Görsel Doğrulama Turu): `dikte/instance.py` Named Mutex ile tek kopya kilidi ve çift tepsi ikonu engellemesi eklendi; görev çubuğu / pencere Win32 AppUserModelID + WM_SETICON uygulandı; `design/mikrofon_morph_animasyonu.html` 48 bar ses dalgası ve morphing mikrofon birebir CSS/Canvas/JS olarak taşındı; Sade Dikte.AI ve Klasik mod tam ayrıştırıldı; anında ayar kaydı ve etkinlik tekilleştirme yapıldı (**320 passed, 1 skipped**).
+- 2026-11-18 (v1.6.1 — OpenWhispr Analizi, Gömülü Hata Tespit Aracı & Faz A/B Stabilite): 4 paralel `Gemini 4 Hydrogen (Medium)` ajanı ile OpenWhispr dersi + kod denetimi (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`) çıkarıldı; ardından Faz A/B düzeltmeleri (`_engine_lock`, `_ai_task_token` + `_seq`, non-blocking `HotkeyListener` + kanonik tuş, `AudioRecorder` kilidi + `MAX_RECORD_SECONDS`, `tray.py`/`bridge.py` kapanış tekilleştirme, `--uninstall` kodu, `updater.apply` sonrası kapanış, ilk açılış sihirbazı, tek atomik ayar kaydı) ve `dikte/error_reporter.py` + `#diagBanner`/`#diagModal`/`#diagCard` + tepsi rapor kopyalama eklendi. Sürüm **1.6.1**'e yükseltildi.

@@ -81,6 +81,15 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Polling ve Arayüz Yarış Durumu:** Arayüz her 250 ms'de bir sunucudan güncel durumu yoklarken (polling), kullanıcının o sırada arayüzde tıkladığı bir checkbox veya dil seçimi henüz sunucuya kaydedilmeden gelen eski durumla üzerine yazılabilir. Bir `aiSaveInFlight` sayacı ve kısa bir koruma gecikmesi eklemek, kullanıcının yaptığı anlık ayarların eski verilerce ezilmesini önler.
 5. **Whisper Türkçe İpuçları (Prompt & VAD):** Whisper modeline Türkçe için `initial_prompt` ("Türkçe sesli dikte kaydı...") vermek modelin Türkçe imla ve noktalama başarısını belirgin şekilde artırır. Ayrıca konuşma olmayan sessiz bölgeleri kırpan Silero VAD filtresinde eşik (`threshold: 0.35`) ve konuşma öncesi/sonrası tampon (`speech_pad_ms: 400`) değerlerini optimize etmek fısıltı veya nefes seslerinin sahte kelimeler üretmesini engeller.
 
+## 2026-11-18 — v1.6.1: OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Stabilite Sertleştirmesi
+
+1. **Windows Klavye Kancası (Hook) Süre Sınırı:** `pynput` dinleyicisi Windows'un düşük seviye klavye kancası (`WH_KEYBOARD_LL`) üzerinde çalışır; bu kancada kayıt başlatmak veya bip sesi çalmak gibi geciken işler yapılırsa Windows ~300 ms içinde kancayı sessizce düşürür. Olayı hemen bir arka plan kuyruğuna devretmek kısayolun kilitlenmesini önler.
+2. **İki Model Arası Tek Kilit Sırası (`_engine_lock` → `_lock`):** Whisper ve yerel `llama.cpp` modelleri aynı GPU belleğini paylaştığı için ikisinin yükleme/boşaltma işlemlerini tek bir kilit sırasıyla korumak, eşzamanlı kullanımda C++ çökmesini (segfault) ve bellek taşmasını önler.
+3. **Token İzolasyonu (`_ai_task_token`):** İptal edilen bir yapay zeka görevi arka planda hemen durmayabilir; her göreve artan bir sıra numarası (token) vermek, eski görevin `finally:` bloğunun yeni başlatılan görevin durumunu bozmasını engeller.
+4. **Döndürmeli Log (`RotatingFileHandler`) ve Çökme İşaretçisi (`running.lock`):** Sınırsız büyüyen tek log dosyası yerine 2 MB × 3 döndürmeli log, `faulthandler` ve açılışta konup temiz kapanışta silinen `running.lock` dosyası sayesinde önceki oturumdaki ani çökmeler otomatik yakalanır.
+5. **Gizlilik Korumalı Tanılama (Sanitizer):** Hata raporu üretirken konuşma geçmişi, ses dosyası ve API anahtarları kesinlikle rapora alınmaz; olası anahtar desenleri ve Windows kullanıcı adı maskelenip kullanıcıya sade Türkçe çözüm adımları sunulur.
+
+
 
 
 

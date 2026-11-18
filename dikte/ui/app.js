@@ -112,11 +112,10 @@
       btn.classList.toggle("is-active", btn.dataset.designChoice === designStyle);
     });
     if (persist) {
-      if (hasApi("ai_settings_save")) {
-        api.ai_settings_save({ design_style: designStyle }).catch(() => {});
-      }
       if (hasApi("settings_save")) {
         api.settings_save({ design_style: designStyle }).catch(() => {});
+      } else if (hasApi("ai_settings_save")) {
+        api.ai_settings_save({ design_style: designStyle }).catch(() => {});
       }
     }
   }
@@ -372,7 +371,6 @@
     updateThemeControls();
     if (persist) {
       if (hasApi("ai_settings_save")) saveAi({ theme: themeMode });
-      triggerInstantSettingsSave();
     }
   }
   window.setTheme = setTheme;
@@ -554,7 +552,7 @@
     device.textContent = snapshot.device || "—";
 
     const state = snapshot.state;
-    const isReady = state === "ready" || state === "recording" || state === "processing";
+    const isReady = state === "ready" || state === "recording" || state === "processing" || state === "cleaning";
     readyText.textContent = isReady ? "Evet" : state === "loading" ? "Yükleniyor" : "Hayır";
     readyLed.style.background = isReady ? "var(--ready)" : state === "loading" ? "var(--processing)" : "var(--error)";
     readyLed.style.boxShadow = isReady
@@ -672,6 +670,7 @@
 
     applyModel(snapshot);
     applyAi(snapshot.ai);
+    applyDiagnostics(snapshot.diagnostics);
     renderActivity(snapshot.activity || []);
 
     if (Number(snapshot.seq) > lastSeq && snapshot.latest_text) {
@@ -712,11 +711,17 @@
     if (polling) setTimeout(pollOnce, 250);
   }
 
+  let wizardCheckedOnStart = false;
+
   function startPolling() {
     if (polling || !window.pywebview || !window.pywebview.api) return;
     api = window.pywebview.api;
     polling = true;
     pollOnce();
+    if (!wizardCheckedOnStart) {
+      wizardCheckedOnStart = true;
+      checkWelcomeWizard(null);
+    }
   }
 
   window.addEventListener("pywebviewready", startPolling);
@@ -1780,7 +1785,7 @@
     const label = kind === "translate" ? $("#translateLabel") : $("#cleanLabel");
     const original = label ? label.textContent : "";
     aiBusy = true;
-    button.disabled = true;
+    if (button) button.disabled = true;
     if (label) label.textContent = kind === "translate" ? "Çevriliyor…" : "Temizleniyor…";
     try {
       const result = await api[name](text);
@@ -1919,27 +1924,22 @@
   $("#textProvider").addEventListener("change", async () => {
     const ai = await saveAi({ text_provider: $("#textProvider").value });
     if (ai && ai.provider === "openrouter") loadOpenRouterModels(false);
-    triggerInstantSettingsSave();
   });
   $("#inputLang").addEventListener("change", () => {
     saveAi({ input_language: $("#inputLang").value });
-    triggerInstantSettingsSave();
   });
   $("#outputLangSettings").addEventListener("change", () => {
     saveAi({ output_language: $("#outputLangSettings").value });
-    triggerInstantSettingsSave();
   });
   $("#autoPasteSwitch").addEventListener("click", () => {
     const on = !switchOnEl($("#autoPasteSwitch"));
     setSwitchEl($("#autoPasteSwitch"), on);
     saveAi({ auto_paste: on });
-    triggerInstantSettingsSave();
   });
   $("#autoTranslateSettings").addEventListener("click", () => {
     const on = !switchOnEl($("#autoTranslateSettings"));
     setSwitchEl($("#autoTranslateSettings"), on);
     saveAi({ auto_translate: on });
-    triggerInstantSettingsSave();
   });
   $("#systemPrompt").addEventListener("change", () => saveAi({ system_prompt: $("#systemPrompt").value }));
   $("#systemPromptReset").addEventListener("click", () => {
@@ -2050,7 +2050,6 @@
     const next = !(aiState && aiState.effects !== false);
     const ai = await saveAi({ effects: next });
     if (ai) applyEffects(next);
-    triggerInstantSettingsSave();
   });
 
   /* MagicCard: fareyi izleyen kart ışığı */
@@ -2171,38 +2170,20 @@
   function triggerInstantSettingsSave() {
     clearTimeout(instantSaveTimer);
     instantSaveTimer = setTimeout(async () => {
+      if (!hasApi("settings_save")) return;
       const currentHotkey = ($("#hotkeySelect") && $("#hotkeySelect").value)
         ? $("#hotkeySelect").value
         : ((settingsState && settingsState.hotkey) || "right_ctrl");
       const payload = {
-        save_history: switchOn(),
         hotkey: currentHotkey,
+        save_history: switchOn(),
         design_style: designStyle,
         sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
-        theme: themeMode,
-        output_language: $("#outputLangSettings") ? $("#outputLangSettings").value : "tr",
-        auto_translate: switchOnEl($("#autoTranslateSettings")),
-        input_language: $("#inputLang") ? $("#inputLang").value : "auto",
-        auto_paste: switchOnEl($("#autoPasteSwitch")),
-        text_provider: $("#textProvider") ? $("#textProvider").value : "none",
-        effects: switchOnEl($("#effectsSwitch")),
-        autostart: switchOnEl($("#autostartSwitch")),
-        update_check_on_start: switchOnEl($("#updateAutoSwitch")),
       };
-      if ($("#systemPrompt")) {
-        payload.system_prompt = $("#systemPrompt").value;
-      }
       try {
-        if (hasApi("ai_settings_save")) {
-          await api.ai_settings_save(payload);
-        }
-        if (hasApi("settings_save")) {
-          await api.settings_save({
-            hotkey: payload.hotkey,
-            save_history: payload.save_history,
-            design_style: payload.design_style,
-            sidebar_collapsed: payload.sidebar_collapsed,
-          });
+        const result = await api.settings_save(payload);
+        if (result && result.ok) {
+          settingsState = result.settings || settingsState;
         }
         settingsDirty = false;
         const dirty = $("#settingsDirty");
@@ -2253,7 +2234,8 @@
     setSwitch(true);
     updateHotkeyPreview();
     markDirty();
-    toast("Varsayılanlar seçildi. Uygulamak için Kaydet'e bas.", "info");
+    triggerInstantSettingsSave();
+    toast("Varsayılanlar seçildi ve otomatik kaydediliyor.", "info");
   });
 
   $("#clearHistoryBtn").addEventListener("click", async () => {
@@ -2379,7 +2361,6 @@
         setSwitchEl($("#autostartSwitch"), next);
         if (uninstallState) uninstallState.autostart = next;
         toast(next ? "Windows açılışında başlatılacak." : "Windows açılışında başlatılmayacak.", "info");
-        triggerInstantSettingsSave();
       } else {
         toast((result && result.message) || "Kaydedilemedi.", "warn");
       }
@@ -2491,7 +2472,6 @@
       if (result && result.ok) {
         setSwitchEl($("#updateAutoSwitch"), next);
         toast(next ? "Açılışta sürüm denetlenecek." : "Açılışta sürüm denetlenmeyecek.", "info");
-        triggerInstantSettingsSave();
       } else {
         toast((result && result.message) || "Kaydedilemedi.", "warn");
       }
@@ -2699,12 +2679,15 @@
         if (rel.is_current) opt.disabled = true;
         rollbackSelect.appendChild(opt);
       });
-      rollbackSelect.addEventListener("change", () => {
-        if (rollbackBtn) rollbackBtn.disabled = !rollbackSelect.value;
-      });
     } catch (e) {
       if (rollbackSelect) rollbackSelect.innerHTML = '<option value="">Sürümler alınamadı</option>';
     }
+  }
+
+  if (rollbackSelect) {
+    rollbackSelect.addEventListener("change", () => {
+      if (rollbackBtn) rollbackBtn.disabled = !rollbackSelect.value;
+    });
   }
 
   if (rollbackBtn) {
@@ -2757,12 +2740,26 @@
     if (step === 2) {
       const hwTitle = $("#wizardHwTitle");
       const hwDesc = $("#wizardHwDesc");
-      if (hwTitle && modelsState) {
-        const hasGpu = modelsState.device === "GPU";
+      const paintHw = (hasGpu) => {
+        if (!hwTitle || !hwDesc) return;
         hwTitle.textContent = hasGpu ? "NVIDIA GPU Algılandı" : "Standart CPU Modu";
         hwDesc.textContent = hasGpu
           ? "GPU hızlandırma aktif. CUDA bileşenleri ile maksimum performans."
           : "NVIDIA ekran kartı bulunamadı. Dikte CPU ile optimize çalışacak.";
+      };
+      if (hasApi("wizard_status")) {
+        api.wizard_status().then((st) => {
+          if (st) {
+            const hasGpu = Boolean(st.has_gpu || st.device === "GPU");
+            paintHw(hasGpu);
+          } else if (modelsState) {
+            paintHw(modelsState.device === "GPU");
+          }
+        }).catch(() => {
+          if (modelsState) paintHw(modelsState.device === "GPU");
+        });
+      } else if (modelsState) {
+        paintHw(modelsState.device === "GPU");
       }
     }
   }
@@ -2831,7 +2828,7 @@
   }
 
   async function checkWelcomeWizard(settings) {
-    if (!welcomeWizard) return;
+    if (!welcomeWizard || !welcomeWizard.hidden) return;
     if (settings && settings.setup_done === false) {
       welcomeWizard.hidden = false;
       showWizardStep(1);
@@ -2847,6 +2844,260 @@
       } catch (e) {}
     }
   }
+
+  /* ---------- Yerleşik Hata Tanılama ve Log Raporlama ---------- */
+  const diagBanner = $("#diagBanner");
+  const diagBannerTitle = $("#diagBannerTitle");
+  const diagBannerSub = $("#diagBannerSub");
+  const diagOpenBtn = $("#diagOpenBtn");
+  const diagCopyBtn = $("#diagCopyBtn");
+  const diagDismissBtn = $("#diagDismissBtn");
+
+  const diagModal = $("#diagModal");
+  const diagModalTitle = $("#diagModalTitle");
+  const diagModalDesc = $("#diagModalDesc");
+  const diagModalStepsWrap = $("#diagModalStepsWrap");
+  const diagModalSteps = $("#diagModalSteps");
+  const diagModalSummary = $("#diagModalSummary");
+  const diagModalLog = $("#diagModalLog");
+  const diagModalCopyBtn = $("#diagModalCopyBtn");
+  const diagModalExportBtn = $("#diagModalExportBtn");
+  const diagModalClose = $("#diagModalClose");
+  const diagModalCloseX = $("#diagModalCloseX");
+
+  const diagScanBtn = $("#diagScanBtn");
+  const diagQuickCopyBtn = $("#diagQuickCopyBtn");
+  const diagExportBtn = $("#diagExportBtn");
+
+  let lastDiag = null;
+  let dismissedDiagKey = null;
+
+  function diagKeyOf(diag) {
+    if (!diag) return "";
+    return [diag.code || "", diag.crash_detected ? "1" : "0", diag.summary_title || ""].join("|");
+  }
+
+  function applyDiagnostics(diag) {
+    if (!diagBanner) return;
+    if (!diag || !diag.has_issue) {
+      lastDiag = diag || null;
+      dismissedDiagKey = null;
+      diagBanner.hidden = true;
+      diagBanner.classList.remove("is-error");
+      return;
+    }
+    lastDiag = diag;
+    const key = diagKeyOf(diag);
+    if (dismissedDiagKey && dismissedDiagKey === key) {
+      diagBanner.hidden = true;
+      return;
+    }
+    diagBanner.classList.toggle("is-error", diag.severity === "error");
+    if (diagBannerTitle) diagBannerTitle.textContent = diag.summary_title || "Sistem uyarısı";
+    if (diagBannerSub) diagBannerSub.textContent = diag.explanation || "";
+    diagBanner.hidden = false;
+  }
+
+  function addSummaryChip(label, value, tone) {
+    if (!diagModalSummary) return;
+    const chip = document.createElement("span");
+    chip.className = "diag-chip" + (tone ? " " + tone : "");
+    const strong = document.createElement("strong");
+    strong.textContent = label + ":";
+    const val = document.createElement("span");
+    val.textContent = value;
+    chip.append(strong, val);
+    diagModalSummary.appendChild(chip);
+  }
+
+  function renderDiagModal(payload) {
+    const diag = (payload && payload.diagnosis) || payload || {};
+    const sys = (payload && payload.system_summary) || {};
+
+    if (diagModalTitle) {
+      diagModalTitle.textContent = diag.summary_title || "Sistem Tanılama Raporu";
+    }
+    if (diagModalDesc) {
+      diagModalDesc.textContent = diag.explanation || "Sistem ve günlük kayıtları incelendi.";
+    }
+    if (diagModalSteps && diagModalStepsWrap) {
+      diagModalSteps.innerHTML = "";
+      const steps = Array.isArray(diag.steps) ? diag.steps : [];
+      if (steps.length) {
+        steps.forEach((step) => {
+          const li = document.createElement("li");
+          li.textContent = String(step);
+          diagModalSteps.appendChild(li);
+        });
+        diagModalStepsWrap.hidden = false;
+      } else {
+        diagModalStepsWrap.hidden = true;
+      }
+    }
+    if (diagModalSummary) {
+      diagModalSummary.innerHTML = "";
+      addSummaryChip("Sürüm", sys.app_version ? "v" + sys.app_version : "—");
+      const cudaCount = Number(sys.cuda_devices || 0);
+      addSummaryChip(
+        "GPU/CUDA",
+        cudaCount > 0 ? "Hazır (" + cudaCount + ")" : "CPU modu",
+        cudaCount > 0 ? "is-ok" : ""
+      );
+      const pyavText = sys.pyav_version ? String(sys.pyav_version) : "—";
+      addSummaryChip(
+        "PyAV",
+        pyavText,
+        sys.pyav_compatible === false ? "is-err" : sys.pyav_compatible === true ? "is-ok" : ""
+      );
+      addSummaryChip(
+        "llama.cpp",
+        sys.llama_cpp_available ? "Hazır" : "Yok",
+        sys.llama_cpp_available ? "is-ok" : "is-warn"
+      );
+      let micText = "—";
+      let micTone = "";
+      if (typeof sys.sounddevice_input === "boolean") {
+        micText = sys.sounddevice_input ? "Hazır" : "Bulunamadı";
+        micTone = sys.sounddevice_input ? "is-ok" : "is-err";
+      } else if (sys.sounddevice_input) {
+        micText = String(sys.sounddevice_input);
+      }
+      addSummaryChip("Mikrofon", micText, micTone);
+    }
+    if (diagModalLog) {
+      const tail = (payload && payload.log_tail) || "";
+      diagModalLog.textContent = tail.trim() ? tail : "Günlük kaydı bulunamadı.";
+    }
+  }
+
+  async function openDiagModal() {
+    if (!diagModal) return;
+    if (hasApi("diagnostics_get")) {
+      try {
+        const res = await api.diagnostics_get();
+        renderDiagModal(res || {});
+      } catch (e) {
+        renderDiagModal({ diagnosis: lastDiag || {} });
+        toast("Tanılama raporu alınamadı.", "error");
+      }
+    } else {
+      renderDiagModal({ diagnosis: lastDiag || {} });
+    }
+    diagModal.hidden = false;
+  }
+
+  function closeDiagModal() {
+    if (diagModal) diagModal.hidden = true;
+  }
+
+  async function copyDiagnosticsReport() {
+    if (hasApi("diagnostics_copy")) {
+      try {
+        const res = await api.diagnostics_copy();
+        if (res && res.ok) {
+          if (res.text && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(res.text).catch(() => {});
+          }
+          toast(res.message || "Tanılama raporu panoya kopyalandı.");
+          return;
+        }
+        if (res && res.text && navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(res.text);
+          toast("Tanılama raporu panoya kopyalandı.");
+          return;
+        }
+        toast((res && res.message) || "Rapor kopyalanamadı.", "warn");
+      } catch (e) {
+        toast("Rapor kopyalanamadı.", "error");
+      }
+      return;
+    }
+    if (diagModalLog && diagModalLog.textContent && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(diagModalLog.textContent);
+        toast("Tanılama raporu panoya kopyalandı.");
+      } catch (e) {
+        toast("Rapor kopyalanamadı.", "error");
+      }
+    }
+  }
+
+  async function exportDiagnosticsReport() {
+    if (!hasApi("diagnostics_export")) {
+      toast("Uygulama bağlantısı hazır değil.", "info");
+      return;
+    }
+    try {
+      const res = await api.diagnostics_export();
+      if (res && res.ok) {
+        toast(res.message || ("Rapor kaydedildi: " + (res.path || "")));
+      } else {
+        toast((res && res.message) || "Rapor kaydedilemedi.", "warn");
+      }
+    } catch (e) {
+      toast("Rapor kaydedilemedi.", "error");
+    }
+  }
+
+  if (diagOpenBtn) diagOpenBtn.addEventListener("click", openDiagModal);
+  if (diagCopyBtn) diagCopyBtn.addEventListener("click", copyDiagnosticsReport);
+  if (diagDismissBtn) {
+    diagDismissBtn.addEventListener("click", () => {
+      if (diagBanner) diagBanner.hidden = true;
+      dismissedDiagKey = diagKeyOf(lastDiag);
+      if (lastDiag && lastDiag.crash_detected && hasApi("diagnostics_dismiss_crash")) {
+        api.diagnostics_dismiss_crash().catch(() => {});
+      }
+    });
+  }
+  if (diagScanBtn) diagScanBtn.addEventListener("click", openDiagModal);
+  if (diagQuickCopyBtn) diagQuickCopyBtn.addEventListener("click", copyDiagnosticsReport);
+  if (diagExportBtn) diagExportBtn.addEventListener("click", exportDiagnosticsReport);
+  if (diagModalCopyBtn) diagModalCopyBtn.addEventListener("click", copyDiagnosticsReport);
+  if (diagModalExportBtn) diagModalExportBtn.addEventListener("click", exportDiagnosticsReport);
+  if (diagModalClose) diagModalClose.addEventListener("click", closeDiagModal);
+  if (diagModalCloseX) diagModalCloseX.addEventListener("click", closeDiagModal);
+  if (diagModal) {
+    diagModal.addEventListener("click", (e) => {
+      if (e.target === diagModal) closeDiagModal();
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && diagModal && !diagModal.hidden) {
+      closeDiagModal();
+    }
+  });
+
+  const jsErrorThrottle = new Map();
+  function forwardJsError(message, source, line) {
+    if (!hasApi("diagnostics_log_js_error")) return;
+    const msg = String(message || "Bilinmeyen arayüz hatası").slice(0, 500);
+    const src = String(source || "").slice(0, 200);
+    const ln = Number(line || 0) || 0;
+    const key = msg + "|" + src + "|" + ln;
+    const now = Date.now();
+    const prev = jsErrorThrottle.get(key) || 0;
+    if (now - prev < 30000) return;
+    if (jsErrorThrottle.size > 50) jsErrorThrottle.clear();
+    jsErrorThrottle.set(key, now);
+    try {
+      api.diagnostics_log_js_error({ message: msg, source: src, line: ln }).catch(() => {});
+    } catch (e) {}
+  }
+
+  window.addEventListener("error", (event) => {
+    forwardJsError(
+      event && event.message ? event.message : "Script hatası",
+      event && event.filename ? event.filename : "",
+      event && event.lineno ? event.lineno : 0
+    );
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event ? event.reason : null;
+    const msg = reason && reason.message ? reason.message : String(reason || "Yakalanmayan Promise hatası");
+    forwardJsError(msg, "unhandledrejection", 0);
+  });
 
   showPage("page-dikte");
 })();

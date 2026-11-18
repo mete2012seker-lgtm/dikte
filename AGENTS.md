@@ -4,7 +4,7 @@ Bu dosya projenin kalıcı hafızasıdır. Her oturumun başında `/asama-baslat
 
 ## Proje
 Dikte: Windows masaüstü sesli dikte uygulaması. Sağ Ctrl basılı tutulur, konuşma kaydedilir, bırakılınca faster-whisper ile yazıya çevrilir; metin isteğe bağlı olarak temizlenip Türkçe/İngilizce/Almanca çıktıya çevrilir. Arayüz: pywebview + HTML/CSS/JS.
-Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1 ve v1.2 tamamlandı. Faz 1 (yayın zinciri, sürüm 1.6.0, kurucu), Faz 2 (11 veri kaybı/çökme hatası) tamamlandı. Faz 3, Faz 4 ve Faz 5 (yeni logo, pystray sistem tepsisi, 1–3 tuşlu serbest kısayol, HF modelleri, sihirbaz, rollback), 2026-11-12 Hata Ayıklama / Görsel Doğrulama Turu ve Sistem Tepsisi / Otomatik Yapıştırma / Arayüz Sağlamlaştırma Turu başarıyla tamamlandı (**343 passed, 1 skipped**). Kurucu `installer\Output\Dikte-Setup-1.6.0.exe` derlendi ve paketli selftest kodu 0 ile doğrulandı.
+Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte Geçmişi, Modeller, Ayarlar). v1–v1.6.0 tamamlandı; 2026-11-18'de **v1.6.1** (OpenWhispr analizi, `error_reporter.py` gömülü hata tespit/log kopyalama aracı, Faz A/B stabilite sertleştirmesi ve `Dikte.spec` `faster_whisper` paketleme düzeltmesi) tamamlandı (**369 passed, 1 skipped**). Kurucu `installer\Output\Dikte-Setup-1.6.1.exe` derlendi ve paketli selftest çıkış kodu 0 ile doğrulandı.
 
 ## Dosyalar
 | Dosya              | Ne için                                                                                                                        |
@@ -49,13 +49,12 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - Doküman iddiası kanıt sayılmaz. En kritik 3 iddia kod satırından bizzat doğrulanır; test sahtesi bir hatayı gizliyorsa bu ayrıca "test maskesi" olarak yazılır.
 - Çıktı sırası: blocker → yüksek → orta → düşük; sonunda fazlı düzeltme planı, kabul ölçütleri ve doğrulanamayanlar bölümü.
 
-## Swarm Koordinatör Sistemi (`swarm` aracı zorunlu)
-- **Ana Model (Koordinatör):** Orta veya kolay zorluktaki hiçbir kodu kendisi yazmaz; yalnızca en zor mimari düğümlere, karmaşık köprü protokollerine veya bir işçinin 3 denemede çözemediği kritik hatalara müdahale eder.
-- **İş Bölümü ve Paralellik:** Kodlama, test ve doküman işleri `invoke_subagent` yerine doğrudan yerleşik **`swarm` aracı (`swarm{action:"add", model:"gemini-3.8-flash-medium", ...}`)** ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür.
-- **Dosya Sahipliği:** İşe başlamadan önce dosyalar çakışmayacak şekilde (her işçiye özel dosya sahipliği vererek) bölünür (ör. `icon-tray`, `data-layer`, `controller-api`, `ui-frontend`, `verifier`) ve aynı anda paralel başlatılır (`monitor` ile birlikte). İki ajanın aynı anda aynı dosyayı düzenlemesine izin verilmez.
-- **Pano ve Yaşam Döngüsü:** İşçiler işini bitirdiğinde panoda `@verifier` ve `@coordinator`'ı etiketler. Koordinatör ara adımlarda `swarm_wait` ile bekler, `read_board` ile süreci denetler, verifier raporuyla doğrular ve iş bitince `swarm{action:"kill"}` ile işçileri kapatır.
-- **Alt Ajan Modeli:** Tüm swarm işçileri daima `gemini-3.8-flash-medium` (`Model: "flash"`) ile çalıştırılır.
-- Plan dosyası, bu düzeni kullandığını ve hangi kanıtlara dayandığını başında yazar.
+## Ajan ve Swarm Çalışma Düzeni
+- **Tek Ajan Önceliği:** İş dallanmıyorsa, kolaysa veya tek bir ajanın yapması daha uygunsa alt ajan ya da swarm çağrılmaz; ana ajan görevi doğrudan kendisi tamamlar.
+- **Paralel İş Bölümü (`swarm`):** İş gerçekten bağımsız kollara ayrılıyorsa yerleşik `swarm` aracı ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür. Başlamadan önce dosyalar çakışmayacak şekilde bölünür (her işçiye özel dosya sahipliği); iki ajanın aynı anda aynı dosyayı düzenlemesine izin verilmez.
+- **Alt Ajan / İşçi Modeli:** Alt ajanlar ve swarm işçileri **Gemini 4 Hydrogen** (`gemini-4-hydrogen-low` / `medium` / `high` / `xhigh`) ile çalıştırılır; düşünme seviyesi işin zorluğuna göre serbestçe belirlenir. Zorunlu olmadıkça başka model seçilmez.
+- **Kritik Hata Danışmanı (`Claude Opus 5.5 Medium`):** Ana ajanın kendi başına çözemediği aşırı kritik bir hata veya düğüm çıkarsa `claude-opus-5-5-medium` alt ajan olarak çağrılabilir. **Kesin sınır:** Opus 5.5 Medium asla kod yazmaz, uzun dosyaları analiz etmez; yalnızca söz konusu kritik hatanın nasıl çözüleceğini söyler, başka bir şey söylemez.
+- **Pano ve Yaşam Döngüsü:** Swarm kullanıldığında işçiler işini bitirince `@verifier` ve `@coordinator`'ı etiketler. Koordinatör `swarm_wait` ile bekler, `read_board` ile denetler, doğrulama sonrası `swarm{action:"kill"}` ile işçileri kapatır. Plan dosyası, swarm kullanıldıysa bunu başında yazar.
 
 ## Soru sorma
 - Soru sormak için `question` aracını kullan.
@@ -145,6 +144,12 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
     - **Logo, Sistem Tepsisi ve Menü Yapısı (Ajan Kararları):** Yeni logo kaynağı `design/download` (ses dalgalı mavi ikon) alınarak `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
     - **Tek Kopya Kilidi ve Win32 Pencere İkonu (2026-11-12, 2. Oturum):** Uygulamanın birden fazla kopyasının çalışması ve çift sistem tepsisi ikonu oluşması `dikte/instance.py` içindeki Windows Named Mutex (`Local\DikteSingleInstanceMutex`) ile engellenir; ikinci kopya ilk pencereyi öne getirir. Görev çubuğu ve pencere başlığında Python logosu yerine `assets/icon.ico` görünmesi için Win32 `SetCurrentProcessExplicitAppUserModelID` ve `WM_SETICON` kullanılır.
     - **Birebir Mikrofon Morph Animasyonu & Tasarım Modları (2026-11-12, 2. Oturum):** Dikte ekranında `design/mikrofon_morph_animasyonu.html`'deki 48 barlık canvas dalgası, halo halkaları ve morph animasyonu birebir korunur; `dikte_ai` (tek sütun ferah) ve `classic` (2 sütunlu sağ panel, alt çubuk) görünümleri Ayarlar → Görünüm'den dinamik olarak değiştirilebilir.
+- **2026-11-13 kararları (kullanıcı onaylı):**
+  - **Tek Ajan Önceliği:** İş dallanmıyorsa, kolaysa veya tek ajanın yapması daha uygunsa alt ajan/swarm çağrılmaz; ana ajan işi kendisi tamamlar.
+  - **Alt Ajan Modeli (Gemini 4 Hydrogen):** Alt ajan ve swarm işçileri artık `gemini-3.8-flash-medium` yerine **Gemini 4 Hydrogen** (`gemini-4-hydrogen-low`/`medium`/`high`/`xhigh`) kullanır; düşünme seviyesini ajan/koordinatör belirler.
+  - **Kritik Hata Danışmanı (Opus 5.5 Medium):** Ana ajanın çözemediği aşırı kritik hatalarda `claude-opus-5-5-medium` çağrılabilir; asla kod yazmaz, uzun dosya analiz etmez, yalnızca hatanın nasıl çözüleceğini söyler.
+- **2026-11-18 kararları (v1.6.1, kullanıcı onaylı):**
+  - **Gömülü Hata Tespit Aracı & Faz A/B Stabilite:** `dikte/error_reporter.py` + `RotatingFileHandler` + `faulthandler` + `running.lock` + gizlilik maskelemesi + arayüz/tepsi entegrasyonu ve Faz A/B kilit/hook/ses/güncelleme düzeltmeleri uygulandı; sürüm `1.6.1`'e çıkarılıp kurucu (`Dikte-Setup-1.6.1.exe`) derlendi.
 
 
 ## Öneriler (onaylanmadı)

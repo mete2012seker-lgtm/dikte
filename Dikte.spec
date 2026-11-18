@@ -13,18 +13,20 @@ from PyInstaller.utils.hooks import collect_all
 block_cipher = None
 ROOT = Path(SPECPATH)
 
-# llama-cpp-python: DLL'ler (llama.dll, ggml*.dll) ve modüller birlikte toplanır.
+# llama-cpp-python ve faster-whisper (silero_vad_v6.onnx varlıkları) birlikte toplanır.
 llama_datas, llama_binaries, llama_hidden = collect_all("llama_cpp")
+fw_datas, fw_binaries, fw_hidden = collect_all("faster_whisper")
 
 a = Analysis(
     [str(ROOT / "run_dikte.py")],
     pathex=[str(ROOT)],
-    binaries=llama_binaries,
+    binaries=[*llama_binaries, *fw_binaries],
     datas=[
         (str(ROOT / "dikte" / "ui"), "dikte/ui"),
         (str(ROOT / "assets"), "assets"),
         (str(ROOT / "tests" / "data"), "tests/data"),
         *llama_datas,
+        *fw_datas,
     ],
     hiddenimports=[
         "ctranslate2",
@@ -44,6 +46,7 @@ a = Analysis(
         "PIL.Image",
         "PIL.ImageDraw",
         *llama_hidden,
+        *fw_hidden,
     ],
     hookspath=[],
     runtime_hooks=[],
