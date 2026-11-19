@@ -116,8 +116,8 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] **`UPDATE_URL` dolduruldu (2026-11-09):** GitHub Releases `latest.json` adresi; yapılandırılmamışsa `no_url`.
 - [x] **Sürüm 1.6.0 (2026-11-09):** tek kaynak `config.APP_VERSION`.
 - [x] **v1.6.1 Yayın Öncesi Denetim Düzeltmeleri (2026-11-19):** UAC `ShellExecuteW("runas")` (`updater.apply`, `uninstall.run_uninstaller`), `controller.uninstall()` temiz kapanış, `sha256=None` ve rollback özet zorunluluğu, semver ön sürüm sıralaması + draft/prerelease filtresi, `UNINSTALL_REG_KEY` eşlemesi, `release-assets.githubusercontent.com`, HF host/path traversal koruması, indirme iptal dosya kilidi + HTTP 206 düzeltmesi, Sihirbaz GPU tespiti (`has_nvidia_gpu`), `snapshot.ai.state` + test maskesi temizliği, `hotkey`/`audio`/`paste`/`clipboard` ve `error_reporter` `native_crash_tail` + `diagnostics` `setup_logging` düzeltmeleri.
-- [ ] GitHub Release yayınlanmadı (`latest.json` 404 veriyor); ilk Release kullanıcı tarafından yüklenecek.
-- Kanıt hedefi: sahte `latest.json` ile indirme → SHA → sessiz kurulum; gerçek sürüm yükseltme kullanıcı testi.
+- [x] **v1.6.1 Canlı Yayın & `onnxruntime` Düzeltmesi (2026-11-19):** `run_dikte.py`/`__main__.py` `onnxruntime` erken yükleme, `engine.py` `vad_filter=False` yedeği, `error_reporter.py` `_recent_session_log` + `onnxruntime_dll_error` kuralı, vitrin `README.md`, mobil uyumlu GitHub Pages (`docs/index.html`, `https://mete2012seker-lgtm.github.io/dikte/`) ve GitHub Release `v1.6.1` (`Dikte-Setup-1.6.1.exe` + `latest.json`) `gh` ile yayınlandı (**413 passed, 1 skipped**).
+- Kanıt: GitHub Release `v1.6.1` (`178.553.401` bayt, SHA-256 `953e4f5c...3dfd`), GitHub Pages `status: built`, `dist\Dikte\Dikte.exe --selftest --cpu` (`PKG_EXIT=0`).
 
 ### Aşama 12 — Yayın blockerlarını düzeltme (2026-11-07 planı)
 Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §3.

@@ -97,6 +97,14 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Windows UIPI (Yönetici Penceresi İzolasyonu):** Normal yetkili bir uygulama, yönetici olarak açılmış bir pencereye `SendInput` ile tuş (Ctrl+V) gönderemez; `SendInput` dönüş değerini kontrol etmek sahte "yapıştırıldı" mesajını önler.
 5. **Pano Kilidi Tekrarı:** Windows Pano Geçmişi (`Win+V`) panoyu anlık kilitleyebilir; tek atışlık kopyalama yerine 25 ms aralıkla 3 kez denemek geçici pano hatalarını sessizce aşar.
 
+## 2026-11-19 (2. Oturum) — Canlı Yayın, `onnxruntime` DLL Hatası ve GitHub Pages
+
+1. **Geç Yükleme (Lazy Import) ve Windows DLL Bellek Sınırı:** `faster-whisper`, sessizlik filtresi (`onnxruntime`) kütüphanesini ilk konuşma anında geç yüklüyordu; arayüz (`pywebview`) ve CUDA DLL'leri zaten belleğe yerleştiği için Windows bu sonradan yüklemeyi reddediyordu. Kütüphaneyi uygulamanın en başında erken yüklemek ve yine de hata olursa filtresiz çeviriye (`vad_filter=False`) düşmek sorunu kökten çözdü.
+2. **Eski Logların Yanlış Alarm Üretmesi:** Hata tanılama aracı log dosyasının önceki günlerden kalan `"Model bulunamadı"` satırlarını okuduğu için, model sonradan kurulsa bile yanlış uyarı gösteriyordu. Son başarılı `"Model hazır"` satırından öncesini elemek tanıyı temizledi.
+3. **GitHub Pages (`/docs`):** GitHub deposundaki tek bir `docs/index.html` dosyası, hiçbir sunucu kiralamadan ücretsiz bir indirme web sitesine dönüşebiliyor.
+4. **Cihaza Göre Ölçekleme (Responsive Tasarım):** CSS'te `clamp()` fonksiyonu ve `@media` kırılımları (`960px` tablet, `640px` telefon) sayesinde aynı sayfa masaüstü, tablet ve telefonda taşma yapmadan otomatik ölçekleniyor.
+5. **GitHub CLI (`gh`) ve Güvenli Giriş:** `gh auth login --web` ile şifre paylaşmadan tarayıcı üzerinden tek seferlik kodla giriş yapıldığında, Release yükleme ve güncelleme işlemleri tek komutla otomatikleştirilebiliyor.
+
 
 
 

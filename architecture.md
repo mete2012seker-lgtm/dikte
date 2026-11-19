@@ -93,7 +93,9 @@ Akış:
 | `tests/test_updater.py` | Sürüm, denetim, indirme, SHA ve uçtan uca sahte akış (20 test) | Genişletildi |
 | `tests/test_uninstall.py` | Kurulum kontrolü, veri boyutu, autostart, kaldırıcı çağrısı (12 test) | Yeni (2026-11-09) |
 | `tests/test_version.py` | Paket, User-Agent, Inno, latest.json sürüm tutarlılığı | Yeni (2026-11-09) |
-| `LICENSE` / `README.md` | MIT lisansı; kurulum, derleme, güncelleme ve kaldırma notları | Yeni (2026-11-09) |
+| `LICENSE` / `README.md` | MIT lisansı; vitrin README (ekran görüntüleri, tek tık indirme, SmartScreen/SHA-256 doğrulama, sorun bildirme) | Güncellendi (2026-11-19) |
+| `docs/index.html` & `docs/assets/` | GitHub Pages tanıtım ve indirme sitesi (`https://mete2012seker-lgtm.github.io/dikte/`), masaüstü/tablet/telefon uyumlu, açık/koyu tema, SHA-256 kopyalama | Yeni (2026-11-19) |
+| `installer/RELEASE-NOTES-v1.6.1.md` | GitHub Release `v1.6.1` sürüm notu (yenilikler, SHA-256, SmartScreen açıklaması) | Yeni (2026-11-19) |
 
 ## Bileşenler ve bağlantıları
 | Bileşen | Neye bağlı | Değişirse neler etkilenir |

@@ -150,6 +150,10 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - **Kritik Hata Danışmanı (Opus 5.5 Medium):** Ana ajanın çözemediği aşırı kritik hatalarda `claude-opus-5-5-medium` çağrılabilir; asla kod yazmaz, uzun dosya analiz etmez, yalnızca hatanın nasıl çözüleceğini söyler.
 - **2026-11-18 kararları (v1.6.1, kullanıcı onaylı):**
   - **Gömülü Hata Tespit Aracı & Faz A/B Stabilite:** `dikte/error_reporter.py` + `RotatingFileHandler` + `faulthandler` + `running.lock` + gizlilik maskelemesi + arayüz/tepsi entegrasyonu ve Faz A/B kilit/hook/ses/güncelleme düzeltmeleri uygulandı; sürüm `1.6.1`'e çıkarılıp kurucu (`Dikte-Setup-1.6.1.exe`) derlendi.
+- **2026-11-19 kararları (v1.6.1 canlı yayın, kullanıcı onaylı):**
+  - **Vitrin & GitHub Pages:** `README.md` yenilendi; `docs/index.html` üzerinden mobil/tablet/masaüstü uyumlu ücretsiz indirme sitesi (`https://mete2012seker-lgtm.github.io/dikte/`) açıldı.
+  - **GitHub CLI (`gh`) Yayını:** Bilgisayara `GitHub.cli` kuruldu; bundan sonraki sürümlerde ajan kullanıcı onayıyla `gh release` üzerinden doğrudan yayın yapabilir.
+  - **`onnxruntime` Erken Yükleme & VAD Yedeği:** Paketli uygulamada Windows DLL bellek sınırını aşmak için `onnxruntime` giriş noktasında erken yüklenir; yine de hata olursa `engine.py` otomatik `vad_filter=False` ile devam eder.
 
 
 ## Öneriler (onaylanmadı)

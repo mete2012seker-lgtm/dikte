@@ -3,13 +3,19 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.6.1 — Yayın Öncesi Denetim ve Faz 1–3 Sertleştirmesi tamamlandı (2026-11-19):**
-- 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` swarm işçisiyle yayın öncesi tam kod denetimi yapıldı (`reports/2026-11-19-yayin-oncesi-denetim-raporu.md`).
-- 2 yayın blockerı (UAC `ShellExecuteW("runas")` güncelleme/kaldırma + `controller.uninstall()` kapanışı), 8 yüksek hata (SHA-256 `None` & rollback özet zorunluluğu, semver ön sürüm sıralaması + draft/prerelease filtresi, Sihirbaz GPU tespiti `has_nvidia_gpu`, HF host/path traversal koruması, indirme iptal dosya kilidi + HTTP 206, `hotkey` stuck-key/`on_release`, `audio` akış hatası, `AUTO_MODEL`), 2 test maskesi ve kritik Faz 3 iyileştirmeleri (`paste` UIPI, `clipboard` 3x retry, `error_reporter` `native_crash_tail` + boşluklu kullanıcı adı maskeleme, `diagnostics` `setup_logging`, `app.js` `#updateApplyBtn`/açılış senkronu/`Escape` iptali) tek turda uygulanıp doğrulandı.
-- Güncel kurucu `installer\Output\Dikte-Setup-1.6.1.exe` (178.532.285 bayt, SHA-256: `9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799`) derlendi, `installer/latest.json` güncellendi ve `dist\Dikte\Dikte.exe --selftest --cpu` ile doğrulandı.
-- Tam test süiti: **410 passed, 1 skipped** (Playwright Edge arayüz + yerel HTTP indirme + +41 yeni regresyon testi dahil). Sıradaki adım: GitHub Release (`v1.6.1`) yayını ve gerçek UAC kullanıcı kabul testi.
+**v1.6.1 — Canlı Yayın, `onnxruntime` Kurulum Hatası Düzeltmesi ve GitHub Pages İndirme Sitesi tamamlandı (2026-11-19):**
+- Gerçek kurulum testinde yakalanan `ImportError: DLL load failed while importing onnxruntime_pybind11_state` (Windows DLL bellek sınırı) hatası çözüldü: `run_dikte.py` ve `dikte/__main__.py` içinde `onnxruntime` en başta (`pywebview`/CUDA öncesi) erken yükleniyor; `dikte/engine.py` içinde yine de hata oluşursa otomatik `vad_filter=False` yedeğine düşüyor.
+- `dikte/error_reporter.py` güncellendi: `onnxruntime_dll_error` kuralı eklendi ve en son başarılı `Model hazır:` satırından önce kalan eski `"Model bulunamadı"` loglarının yanlış alarm üretmesi engellendi.
+- Vitrin `README.md`, mobil/tablet/masaüstü uyumlu tek sayfalık GitHub Pages indirme sitesi (`docs/index.html`, `docs/assets/*.png`) ve `installer/RELEASE-NOTES-v1.6.1.md` hazırlandı.
+- Güncel kurucu `installer\Output\Dikte-Setup-1.6.1.exe` (178.553.401 bayt, SHA-256: `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd`) derlendi, `dist\Dikte\Dikte.exe --selftest --cpu` (`PKG_EXIT=0`, Silero VAD aktif) doğrulandı; `GitHub CLI (gh 2.105.0)` ile `v1.6.1` GitHub Release ve `https://mete2012seker-lgtm.github.io/dikte/` yayına alındı.
+- Tam test süiti: **413 passed, 1 skipped** (+3 yeni regresyon testi). Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı tanıtım/dağıtım (`winget`, AlternativeTo, 30 sn demo video).
 
 ## Biten (kanıtla)
+- **v1.6.1 Canlı Yayın, `onnxruntime`/VAD Düzeltmesi ve İndirme Sitesi (2026-11-19, 2. Oturum):**
+  - **Kök Neden & Düzeltme:** `run_dikte.py` ve `dikte/__main__.py` içinde `onnxruntime` erken yükleme; `dikte/engine.py` içinde `onnxruntime`/VAD hatasında otomatik `vad_filter=False` yedeği; `dikte/error_reporter.py` içinde `_recent_session_log()` ve `onnxruntime_dll_error` kuralı (+3 regresyon testi).
+  - **Vitrin & GitHub Pages:** `README.md` yenilendi; `docs/index.html` (masaüstü/tablet/telefon 360px–1440px `overflow: False`, Playwright Edge doğrulamalı) ve `docs/assets/` (maskeli v1.6.1 ekran görüntüleri + ikon) eklendi; `https://mete2012seker-lgtm.github.io/dikte/` yayında (`status: built`).
+  - **Kurucu & Canlı GitHub Release:** `Dikte-Setup-1.6.1.exe` (178.553.401 bayt, SHA-256: `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd`) + `installer/latest.json` (`561` bayt) `gh release upload --clobber` ile `v1.6.1` sürümüne yüklendi (`https://github.com/mete2012seker-lgtm/dikte/releases/tag/v1.6.1`).
+  - **Doğrulama:** Tam test süiti **413 passed, 1 skipped**; paketli `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu `0` (`VAD filter removed 00:00.304 of audio`).
 - **v1.6.1 Yayın Öncesi Denetim ve Faz 1–3 Sertleştirmesi (2026-11-19):**
   - **Denetim Raporu:** `reports/2026-11-19-yayin-oncesi-denetim-raporu.md` (4 paralel `Gemini 4 Hydrogen Medium` işçisi + satır düzeyinde çapraz doğrulama).
   - **Yayın Zinciri & Güvenlik:** `dikte/updater.py` & `dikte/uninstall.py` Windows UAC `ShellExecuteW("runas")`, `controller.uninstall()` temiz kapanış, `download_installer` `sha256=None` reddi + rollback SHA-256 zorunluluğu, semver ön sürüm sıralaması, `draft`/`prerelease` filtresi, `release-assets.githubusercontent.com`, `config.UNINSTALL_REG_KEY` Inno `AppId` eşlemesi.
@@ -85,14 +91,13 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
 
 ## Sıradaki ilk adım
-1. **Kullanıcı Kurulum & Dağıtım Testi:**
-   - `installer\Output\Dikte-Setup-1.6.1.exe` dosyasını gerçek makinede / temiz Windows VM'de kurup test etmek.
-   - Masaüstü kısayolu, sistem tepsisi simgesi, arka planda global kısayol bas-konuş ve Ayarlar → **Sorun Giderme ve Tanılama** kartını doğrulamak.
-   - GitHub Releases üzerinde `v1.6.1` release'inde `installer/latest.json` ve `Dikte-Setup-1.6.1.exe` varlıklarının yayımlandığını doğrulamak.
+1. **Son Kullanıcı Doğrulaması ve Tanıtım:**
+   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) indirilen yeni `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, yanlış uyarının kalktığını ve **Ayarlar → Güncellemeleri Denetle** sonucunu ("Güncelsin v1.6.1") doğrulamak.
+   - İsteğe bağlı büyüme adımları: `winget` paketi başvurusu, AlternativeTo kaydı ve 30 saniyelik Türkçe demo videosu ile topluluk duyuruları.
 
 ## Açık sorunlar
-- **Güncelleme Yayın Adresi:** GitHub Releases üzerinde `v1.6.1` release varlıkları (`latest.json` ve `Dikte-Setup-1.6.1.exe`) yayımlanana kadar uzaktan güncelleme uç noktası eski/404 yanıtı verebilir.
-- **Temiz VM / Kullanıcı Kabul Testi:** Gerçek UAC ortamında admin kurulum, kaldırma (modelleri koru / tümünü sil bayrağı) ve sistem tepsisinden sessiz açılış kullanıcı tarafından test edilmelidir.
+- **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.
+- **Windows SmartScreen:** Kurucu dijital imzasız olduğu için ilk indirmede mavi uyarı çıkabilir (`README.md` ve sitede SHA-256 doğrulama adımı eklendi; orta vadede SignPath veya Microsoft Store değerlendirilebilir).
 - **VRAM takası:** 8 GB'de ses + metin modeli aynı anda tutulmaz; bellek takas mantığı kodda hazır, kullanıcı gerçek donanımda ağır modellerle deneyebilir.
 - **llama.cpp GPU hızı:** ilk üretim çağrısı CUDA başlatma yüzünden ~50 sn ısınma sürebilir; sonraki çağrılar ~60 tok/s hızındadır.
 
@@ -143,9 +148,10 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **410 passed, 1 skipped** (2026-11-19, v1.6.1 yayın öncesi sertleştirme: +41 yeni regresyon testi, Playwright Edge UI + yerel HTTP indirme dahil) |
-| Kurucu (build.ps1) | **Üretildi:** `dist\Dikte` + `installer\Output\Dikte-Setup-1.6.1.exe`, 178.532.285 bayt, SHA-256 `9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799` |
+| `pytest -q` | **413 passed, 1 skipped** (2026-11-19, `onnxruntime`/VAD yedeği + `error_reporter` +3 regresyon testi dahil, 68.02 sn) |
+| Kurucu (build.ps1) | **Üretildi ve yayınlandı:** `installer\Output\Dikte-Setup-1.6.1.exe`, 178.553.401 bayt, SHA-256 `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd` |
 | Paketli açılış | `dist\Dikte\Dikte.exe --selftest --cpu` başarıyla çalıştı (`PKG_EXIT=0`, Silero VAD + Whisper Small CPU) |
+| GitHub Release & Pages | **Yayında:** `v1.6.1` (`Dikte-Setup-1.6.1.exe` + `latest.json`) ve `https://mete2012seker-lgtm.github.io/dikte/` (Playwright masaüstü/tablet/telefon `overflow: False`) |
 | `--selftest` | **Çalışıyor:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` hazır; kod 0 ile geçti |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |
 | pywebview gerçek uygulama | Pencere + model + ready |
