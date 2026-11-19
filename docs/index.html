@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dikte — Windows için Yerel Türkçe Sesli Dikte Uygulaması</title>
+  <meta name="description" content="Windows için ücretsiz, açık kaynak ve tamamen yerel Türkçe sesli dikte uygulaması. Sağ Ctrl'ye basılı tutup konuş, metin anında yapışsın." />
+  <link rel="icon" type="image/png" href="assets/icon.png" />
+  <style>
+    :root {
+      --bg: #F7F9FD;
+      --surface: #FFFFFF;
+      --surface-2: #EEF2FA;
+      --border: #E2E8F0;
+      --text: #101828;
+      --muted: #475467;
+      --accent: #3D5BF5;
+      --accent-hover: #2E4AE0;
+      --accent-soft: rgba(61, 91, 245, 0.12);
+      --ok: #16A34A;
+      --warn-bg: #FEF9C3;
+      --warn-border: #FDE047;
+      --warn-text: #713F12;
+      --shadow: 0 12px 32px rgba(16, 24, 40, 0.08);
+    }
+
+    html.dark {
+      --bg: #0B0F1A;
+      --surface: #121829;
+      --surface-2: #1A2238;
+      --border: rgba(255, 255, 255, 0.09);
+      --text: #F2F5FC;
+      --muted: #98A4BE;
+      --accent: #4F6DFF;
+      --accent-hover: #3D5BF5;
+      --accent-soft: rgba(79, 109, 255, 0.16);
+      --ok: #22C55E;
+      --warn-bg: rgba(250, 204, 21, 0.08);
+      --warn-border: rgba(250, 204, 21, 0.28);
+      --warn-text: #FDE68A;
+      --shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 clamp(16px, 4vw, 28px);
+    }
+
+    /* Ust cubuk */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(12px);
+      background: color-mix(in srgb, var(--bg) 82%, transparent);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: clamp(1.02rem, 2.2vw, 1.15rem);
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: clamp(10px, 2vw, 18px);
+    }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .theme-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 13px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .theme-btn:hover { border-color: var(--accent); }
+
+    /* Hero */
+    .hero {
+      padding: clamp(36px, 7vw, 72px) 0 clamp(28px, 5vw, 48px);
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: clamp(0.76rem, 2.4vw, 0.85rem);
+      font-weight: 600;
+      margin-bottom: 18px;
+      max-width: 100%;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+      flex-shrink: 0;
+    }
+    h1 {
+      font-size: clamp(1.75rem, 5.2vw, 3.35rem);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      max-width: 780px;
+      margin: 0 auto 16px;
+    }
+    .subtitle {
+      font-size: clamp(0.95rem, 2.4vw, 1.16rem);
+      color: var(--muted);
+      max-width: 650px;
+      margin: 0 auto 28px;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: clamp(0.94rem, 2.4vw, 1rem);
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--accent);
+      color: #FFFFFF;
+      box-shadow: 0 10px 24px rgba(61, 91, 245, 0.32);
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    .meta-line {
+      font-size: clamp(0.8rem, 2.2vw, 0.86rem);
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 14px;
+      margin-bottom: 14px;
+    }
+    .sha-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 100%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .sha-bar code {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      max-width: min(440px, 52vw);
+    }
+    .copy-mini {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .copy-mini:hover { border-color: var(--accent); }
+
+    /* Ekran goruntusu vitrini */
+    .showcase {
+      margin: clamp(24px, 5vw, 38px) auto 24px;
+    }
+    .shot-tabs {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      padding: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      max-width: 100%;
+    }
+    .shot-tab {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: clamp(0.8rem, 2.4vw, 0.88rem);
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .shot-tab.active {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+    .shot-frame {
+      border-radius: clamp(10px, 2vw, 16px);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .shot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* Bolumler */
+    section {
+      padding: clamp(36px, 6vw, 56px) 0;
+    }
+    .section-title {
+      font-size: clamp(1.38rem, 3.6vw, 2.1rem);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .section-desc {
+      color: var(--muted);
+      text-align: center;
+      font-size: clamp(0.92rem, 2.4vw, 1rem);
+      max-width: 620px;
+      margin: 0 auto clamp(24px, 4vw, 36px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(14px, 2.5vw, 18px);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(18px, 3vw, 24px);
+    }
+    .card h3 {
+      font-size: 1.04rem;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .card p {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 3px 9px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    /* SmartScreen kutusu */
+    .trust-box {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      border-radius: 16px;
+      padding: clamp(18px, 3.5vw, 28px);
+    }
+    .trust-box h3 {
+      font-size: clamp(1rem, 2.8vw, 1.12rem);
+      margin-bottom: 8px;
+    }
+    .trust-box p {
+      font-size: clamp(0.88rem, 2.4vw, 0.94rem);
+      margin-bottom: 12px;
+      opacity: 0.95;
+    }
+    .cmd-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: clamp(0.75rem, 2.2vw, 0.85rem);
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .cmd-box code {
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    html:not(.dark) .cmd-box {
+      background: rgba(16, 24, 40, 0.06);
+      border-color: rgba(16, 24, 40, 0.12);
+      color: #101828;
+    }
+
+    /* SSS */
+    .faq {
+      display: grid;
+      gap: 12px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px clamp(16px, 3vw, 20px);
+    }
+    summary {
+      font-weight: 600;
+      font-size: clamp(0.94rem, 2.5vw, 1rem);
+      cursor: pointer;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    details p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 0 40px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--text); }
+
+    /* Tablet */
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* Telefon */
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .nav-links a { display: none; }
+      .cta-row { flex-direction: column; align-items: stretch; }
+      .btn { width: 100%; }
+      .sha-bar { width: 100%; justify-content: space-between; }
+      .sha-bar code { max-width: 44vw; }
+      .shot-tabs { width: 100%; }
+      .shot-tab { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
+      .cmd-box { flex-direction: column; align-items: stretch; gap: 8px; }
+      .cmd-box .copy-mini { align-self: flex-end; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="#">
+        <img src="assets/icon.png" alt="Dikte logosu" />
+        <span>Dikte</span>
+      </a>
+      <div class="nav-links">
+        <a href="#ozellikler">Özellikler</a>
+        <a href="#guvenlik">Güvenlik</a>
+        <a href="#sss">SSS</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte" target="_blank" rel="noopener">GitHub</a>
+        <button class="theme-btn" id="themeToggle" type="button">Açık Tema</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>v1.6.1 • Windows 10 / 11 • Açık Kaynak (MIT)</span>
+      </div>
+      <h1>Konuş, anında temiz Türkçe metne dönüşsün.</h1>
+      <p class="subtitle">
+        Sağ Ctrl tuşunu basılı tutup konuş; bıraktığında sesin bilgisayarından hiç dışarı çıkmadan
+        yerel Whisper modeliyle yazıya çevrilsin ve çalıştığın pencereye otomatik yapışsın.
+      </p>
+
+      <div class="cta-row">
+        <a
+          id="downloadBtn"
+          class="btn btn-primary"
+          href="https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.1/Dikte-Setup-1.6.1.exe"
+        >
+          Windows için İndir (v1.6.1)
+        </a>
+        <a
+          class="btn btn-secondary"
+          href="https://github.com/mete2012seker-lgtm/dikte"
+          target="_blank"
+          rel="noopener"
+        >
+          GitHub'da İncele
+        </a>
+      </div>
+
+      <div class="meta-line">
+        <span>Ücretsiz • Reklamsız</span>
+        <span>Kurucu: ~170 MB (.exe)</span>
+        <span>NVIDIA GPU + CPU destekli</span>
+      </div>
+
+      <div class="sha-bar" title="Kurucu dosyanın SHA-256 doğrulama özeti">
+        <span>SHA-256:</span>
+        <code id="shaValue">953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd</code>
+        <button class="copy-mini" id="copyShaBtn" type="button">Kopyala</button>
+      </div>
+
+      <div class="showcase">
+        <div class="shot-tabs" role="tablist" aria-label="Ekran görüntüleri">
+          <button class="shot-tab active" type="button" data-shot="assets/ekran-dikte-koyu.png">Koyu Tema</button>
+          <button class="shot-tab" type="button" data-shot="assets/ekran-dikte-acik.png">Açık Tema</button>
+          <button class="shot-tab" type="button" data-shot="assets/ekran-modeller.png">Model Yöneticisi</button>
+        </div>
+        <div class="shot-frame">
+          <img id="showcaseImg" src="assets/ekran-dikte-koyu.png" alt="Dikte uygulama ekran görüntüsü" />
+        </div>
+      </div>
+    </section>
+
+    <section id="ozellikler">
+      <h2 class="section-title">Neden Dikte?</h2>
+      <p class="section-desc">
+        Abonelik ve bulut zorunluluğu olmadan, günlük yazışma ve not alma hızını katlamak için tasarlandı.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag">Gizlilik</span>
+          <h3>Tamamen Yerel Çalışır</h3>
+          <p>Ses kaydı yalnızca kendi bilgisayarında işlenir ve çeviriden hemen sonra silinir. Konuşmaların hiçbir sunucuya gönderilmez.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Hız</span>
+          <h3>Her Uygulamaya Otomatik Yapıştır</h3>
+          <p>Sistem tepsisinde sessizce bekler. Word, tarayıcı, WhatsApp veya e-postada kısayola basıp konuşman yeterli.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Türkçe</span>
+          <h3>Türkçe İmla ve Noktalama</h3>
+          <p>Türkçe ipucu (prompt) ve Silero sessizlik filtresiyle hazır gelir. İstersen 1–3 tuşlu kendi kısayolunu atayabilirsin.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Yapay Zeka</span>
+          <h3>İsteğe Bağlı Temizleme ve Çeviri</h3>
+          <p>Dolgu kelimelerini temizleyebilir veya konuşmanı tek tıkla Türkçe, İngilizce ya da Almanca'ya çevirebilirsin (yerel GGUF veya OpenRouter).</p>
+        </div>
+        <div class="card">
+          <span class="tag">Modeller</span>
+          <h3>Uygulama İçi Model Yönetimi</h3>
+          <p>6 Whisper ses modeli, 4 yerel metin modeli ve özel Hugging Face modeli ekleme desteği tek ekranda.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Kararlılık</span>
+          <h3>Otomatik Güncelleme ve Tanılama</h3>
+          <p>SHA-256 doğrulamalı güncelleme, önceki sürüme tek tıkla geri dönme ve gizlilik maskeli hata raporu aracı dahildir.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="guvenlik">
+      <div class="trust-box">
+        <h3>Windows SmartScreen ("Kişisel bilgisayarınızı korudu") uyarısı neden çıkar?</h3>
+        <p>
+          Dikte ücretsiz bir açık kaynak projedir ve kurucu dosya henüz ücretli bir kod imzalama sertifikasıyla imzalanmamıştır.
+          İlk kurulumda Windows mavi uyarı penceresi gösterirse <strong>Ek bilgi → Yine de çalıştır</strong> adımıyla devam edebilirsin.
+          İstersen indirdiğin kurucuyu PowerShell'de şu komutla doğrulayıp yukarıdaki SHA-256 ile karşılaştırabilirsin:
+        </p>
+        <div class="cmd-box">
+          <code id="psCmd">Get-FileHash .\Dikte-Setup-1.6.1.exe -Algorithm SHA256</code>
+          <button class="copy-mini" id="copyCmdBtn" type="button">Kopyala</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="sss">
+      <h2 class="section-title">Sık Sorulan Sorular</h2>
+      <div class="faq">
+        <details>
+          <summary>Güçlü bir ekran kartım (NVIDIA GPU) olması şart mı?</summary>
+          <p>Hayır. NVIDIA ekran kartı varsa CUDA ile çok hızlı çalışır; yoksa uygulama otomatik olarak işlemci (CPU) moduna geçer. Küçük modeller (Tiny / Small) standart dizüstü bilgisayarlarda rahatlıkla çalışır.</p>
+        </details>
+        <details>
+          <summary>Konuşmalarım internet üzerinden bir yere gönderiliyor mu?</summary>
+          <p>Varsayılan olarak hayır. Ses tanıma tamamen bilgisayarında yapılır. Yalnızca sen Ayarlar'dan kendi OpenRouter API anahtarını girip bulut temizleme/çeviri açarsan metin o sağlayıcıya gönderilir.</p>
+        </details>
+        <details>
+          <summary>Beğenmezsem bilgisayardan tamamen nasıl kaldırırım?</summary>
+          <p>Ayarlar → Uygulamayı Kaldır düğmesiyle (veya Windows Uygulamalar menüsünden) temizce kaldırabilirsin. Kaldırırken büyük model dosyalarını koruma veya tamamen silme seçeneği sunulur.</p>
+        </details>
+        <details>
+          <summary>Bir hata alırsam nasıl bildirebilirim?</summary>
+          <p>Ayarlar → Sorun Giderme ve Tanılama bölümünden veya sistem tepsisi menüsünden "Tanılama Raporu Kopyala" butonuna basıp GitHub Issues sayfasında paylaşabilirsin. Rapor konuşma metni ve API anahtarı içermez.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>Dikte v1.6.1 • MIT Lisansı ile açık kaynak</span>
+      <div style="display:flex; gap:18px;">
+        <a href="https://github.com/mete2012seker-lgtm/dikte/releases" target="_blank" rel="noopener">Sürümler</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte/issues" target="_blank" rel="noopener">Sorun Bildir</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte/blob/main/LICENSE" target="_blank" rel="noopener">Lisans</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const root = document.documentElement;
+    const themeToggle = document.getElementById("themeToggle");
+    function syncThemeLabel() {
+      themeToggle.textContent = root.classList.contains("dark") ? "Açık Tema" : "Koyu Tema";
+    }
+    themeToggle.addEventListener("click", () => {
+      root.classList.toggle("dark");
+      syncThemeLabel();
+    });
+    syncThemeLabel();
+
+    const tabs = document.querySelectorAll(".shot-tab");
+    const img = document.getElementById("showcaseImg");
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabs.forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        img.src = btn.dataset.shot;
+      });
+    });
+
+    function bindCopy(btnId, textId) {
+      const btn = document.getElementById(btnId);
+      const el = document.getElementById(textId);
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(el.textContent.trim());
+          const old = btn.textContent;
+          btn.textContent = "Kopyalandı";
+          setTimeout(() => { btn.textContent = old; }, 1500);
+        } catch (_) {}
+      });
+    }
+    bindCopy("copyShaBtn", "shaValue");
+    bindCopy("copyCmdBtn", "psCmd");
+  </script>
+</body>
+</html>

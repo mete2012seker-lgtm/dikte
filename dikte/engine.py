@@ -181,6 +181,22 @@ class TranscriptionEngine:
                 kwargs.pop("vad_parameters", None)
                 kwargs.pop("initial_prompt", None)
                 segments, info = self._model.transcribe(str(wav_path), **kwargs)
+            except Exception as vad_exc:
+                msg = str(vad_exc).lower()
+                if kwargs.get("vad_filter") and ("onnxruntime" in msg or "vad filter" in msg):
+                    logger.warning(
+                        "Silero VAD (onnxruntime) yüklenemedi; VAD filtresiz çeviriye geçiliyor: %s",
+                        vad_exc,
+                    )
+                    kwargs["vad_filter"] = False
+                    kwargs.pop("vad_parameters", None)
+                    try:
+                        segments, info = self._model.transcribe(str(wav_path), **kwargs)
+                    except TypeError:
+                        kwargs.pop("initial_prompt", None)
+                        segments, info = self._model.transcribe(str(wav_path), **kwargs)
+                else:
+                    raise
             parts = [segment.text.strip() for segment in segments]
         except Exception as exc:
             logger.exception("Çeviri hatası: %s", exc)

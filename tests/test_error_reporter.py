@@ -238,3 +238,35 @@ def test_setup_logging_attaches_file_handler_even_with_preexisting_root_handler(
             pass
         for h in old_handlers:
             root.addHandler(h)
+
+
+def test_diagnose_recognizes_onnxruntime_dll_failure():
+    collected = {
+        "env": {"pyav_compatible": True, "sounddevice_input": True},
+        "runtime": {"current_error": None},
+        "log_tail": (
+            "2026-11-19 18:02:52 | INFO | dikte.engine | Model hazır: Whisper Tiny | GPU | float16\n"
+            "ImportError: DLL load failed while importing onnxruntime_pybind11_state: yeterli bellek kaynağı yok\n"
+            "RuntimeError: Applying the VAD filter requires the onnxruntime package\n"
+        ),
+        "crash_info": None,
+    }
+    diag = error_reporter._analyze_collected(collected)
+    assert diag["has_issue"] is True
+    assert diag["code"] == "onnxruntime_dll_error"
+
+
+def test_diagnose_ignores_stale_model_missing_before_model_ready():
+    collected = {
+        "env": {"pyav_compatible": True, "sounddevice_input": True},
+        "runtime": {"current_error": None},
+        "log_tail": (
+            "2026-11-09 19:03:26 | ERROR | dikte.controller | Motor yüklenemedi: Model bulunamadı.\n"
+            "2026-11-19 18:02:52 | INFO | dikte.engine | Model hazır: Whisper Tiny | GPU | float16\n"
+            "2026-11-19 18:03:00 | INFO | dikte.audio | Kayıt başladı\n"
+        ),
+        "crash_info": None,
+    }
+    diag = error_reporter._analyze_collected(collected)
+    assert diag["has_issue"] is False
+    assert diag["code"] is None

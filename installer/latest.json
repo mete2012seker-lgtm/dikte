@@ -1,7 +1,7 @@
 {
   "version": "1.6.1",
   "url": "https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.1/Dikte-Setup-1.6.1.exe",
-  "sha256": "9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799",
+  "sha256": "953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd",
   "notes": "Dikte 1.6.1: Gömülü hata tespit ve tek tıkla log kopyalama aracı (error_reporter), UAC uyumlu otomatik güncelleme ve kaldırma (ShellExecuteW runas), SHA-256/semver ve Hugging Face güvenlik sertleştirmesi, Sihirbaz GPU tespiti, kısayol/ses/pano kararlılığı ve GPU/VRAM kilit izolasyonu.",
   "published": "2026-11-19T06:40:00Z"
 }

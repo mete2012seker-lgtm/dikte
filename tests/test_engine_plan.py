@@ -82,3 +82,29 @@ def test_engine_transcribe_language_mapping(tmp_path):
         vad_filter=True,
         condition_on_previous_text=False,
     )
+
+
+def test_transcribe_falls_back_without_vad_when_onnxruntime_fails(tmp_path):
+    from types import SimpleNamespace
+    from dikte.engine import TranscriptionEngine
+
+    calls = []
+
+    class FakeModel:
+        def transcribe(self, path, **kwargs):
+            calls.append(dict(kwargs))
+            if kwargs.get("vad_filter"):
+                raise RuntimeError("Applying the VAD filter requires the onnxruntime package")
+            return [SimpleNamespace(text="Merhaba dünya")], SimpleNamespace(duration=1.5)
+
+    engine = TranscriptionEngine()
+    engine._model = FakeModel()
+    wav = tmp_path / "sample.wav"
+    wav.write_bytes(b"RIFF")
+
+    res = engine.transcribe(wav, language="tr")
+    assert res.text == "Merhaba dünya"
+    assert len(calls) == 2
+    assert calls[0]["vad_filter"] is True
+    assert calls[1]["vad_filter"] is False
+    assert "vad_parameters" not in calls[1]

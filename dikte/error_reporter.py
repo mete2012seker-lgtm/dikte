@@ -468,10 +468,24 @@ def _build_diagnosis(
     }
 
 
+def _recent_session_log(log_tail: str) -> str:
+    """En son basarili 'Model hazir' satirindan onceki eski model-eksik loglarini ayiklar."""
+    if not log_tail:
+        return ""
+    lines = log_tail.splitlines()
+    last_ready_idx = -1
+    for idx, line in enumerate(lines):
+        if "model hazır:" in line.lower():
+            last_ready_idx = idx
+    if last_ready_idx >= 0:
+        return "\n".join(lines[last_ready_idx:])
+    return log_tail
+
+
 def _analyze_collected(collected: dict) -> dict:
     env = collected.get("env") or {}
     runtime = collected.get("runtime") or {}
-    log_tail = collected.get("log_tail") or ""
+    log_tail = _recent_session_log(collected.get("log_tail") or "")
     crash_info = collected.get("crash_info")
     current_error = runtime.get("current_error") or ""
 
@@ -554,6 +568,23 @@ def _analyze_collected(collected: dict) -> dict:
             "Dikte arayüzünün açılması için Windows WebView2 bileşeni gerekiyor.",
             [
                 "Microsoft Edge WebView2 Evergreen Runtime kurucusunu yükleyip uygulamayı yeniden başlat.",
+            ],
+            False,
+        )
+
+    # 4.5. onnxruntime / Silero VAD DLL hatası
+    if "onnxruntime" in combined and any(
+        k in combined for k in ("dll load failed", "bellek", "memory", "requires the onnxruntime", "importerror")
+    ):
+        return _build_diagnosis(
+            True,
+            "warn",
+            "onnxruntime_dll_error",
+            "Sessizlik filtresi (onnxruntime) yüklenemedi",
+            "Windows üzerinde onnxruntime DLL'i bellek/sistem sınırı nedeniyle yüklenemedi; çeviri filtresiz devam edebilir.",
+            [
+                "Uygulamayı kapatıp yeniden başlat.",
+                "Sorun sürerse en güncel Dikte sürümünü indirip kur.",
             ],
             False,
         )

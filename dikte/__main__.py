@@ -15,6 +15,12 @@ import time
 from difflib import SequenceMatcher
 from pathlib import Path
 
+# pywebview / CUDA DLL'leri yuklenmeden once onnxruntime'i erken yukle.
+try:
+    import onnxruntime  # noqa: F401
+except Exception:
+    pass
+
 from . import config, diagnostics
 from .engine import EngineError, TranscriptionEngine, select_plan
 from .instance import (
