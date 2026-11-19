@@ -112,15 +112,30 @@ def test_autostart_kapatmak_yoksa_hata_vermez(kayit):
     assert uninstall.autostart_enabled() is False
 
 
+def _fake_shell_exec(monkeypatch, rc: int = 42, calls: list | None = None):
+    from types import SimpleNamespace
+
+    class FakeShell32:
+        def ShellExecuteW(self, hwnd, op, file, params, directory, show):
+            if calls is not None:
+                calls.append((hwnd, op, file, params, directory, show))
+            return rc
+
+    monkeypatch.setattr(uninstall.sys, "platform", "win32")
+    monkeypatch.setattr(uninstall.ctypes, "windll", SimpleNamespace(shell32=FakeShell32()), raising=False)
+
+
 def test_run_uninstaller_modelleri_koru_bayragi_yazar(paketli, monkeypatch, kayit):
     kaldirici = paketli / "unins000.exe"
     kaldirici.write_bytes(b"x")
     monkeypatch.setattr(uninstall, "uninstaller_path", lambda: kaldirici)
     cagrilar = []
-    monkeypatch.setattr(uninstall.subprocess, "Popen", lambda args, **_k: cagrilar.append(args))
+    _fake_shell_exec(monkeypatch, rc=42, calls=cagrilar)
     uninstall.run_uninstaller(keep_models=True)
     assert config.KEEP_MODELS_FLAG.exists()
-    assert cagrilar and "/SILENT" in cagrilar[0]
+    assert cagrilar
+    assert cagrilar[0][1] == "runas"
+    assert "/SILENT" in cagrilar[0][3]
 
 
 def test_run_uninstaller_modelleri_sil_bayragi_kaldirir(paketli, monkeypatch, kayit):
@@ -128,7 +143,7 @@ def test_run_uninstaller_modelleri_sil_bayragi_kaldirir(paketli, monkeypatch, ka
     kaldirici.write_bytes(b"x")
     config.KEEP_MODELS_FLAG.write_text("keep", encoding="utf-8")
     monkeypatch.setattr(uninstall, "uninstaller_path", lambda: kaldirici)
-    monkeypatch.setattr(uninstall.subprocess, "Popen", lambda *_a, **_k: None)
+    _fake_shell_exec(monkeypatch, rc=42)
     uninstall.run_uninstaller(keep_models=False)
     assert not config.KEEP_MODELS_FLAG.exists()
 
@@ -138,7 +153,7 @@ def test_run_uninstaller_otomatik_baslatmayi_temizler(paketli, monkeypatch, kayi
     kaldirici.write_bytes(b"x")
     kayit.values[config.AUTOSTART_VALUE] = "eski"
     monkeypatch.setattr(uninstall, "uninstaller_path", lambda: kaldirici)
-    monkeypatch.setattr(uninstall.subprocess, "Popen", lambda *_a, **_k: None)
+    _fake_shell_exec(monkeypatch, rc=42)
     uninstall.run_uninstaller(keep_models=True)
     assert config.AUTOSTART_VALUE not in kayit.values
 
@@ -149,10 +164,21 @@ def test_run_uninstaller_kaldirici_yoksa_hata(paketli, monkeypatch):
         uninstall.run_uninstaller()
 
 
+def test_run_uninstaller_win32_yetki_hatasi(paketli, monkeypatch, kayit):
+    kaldirici = paketli / "unins000.exe"
+    kaldirici.write_bytes(b"x")
+    monkeypatch.setattr(uninstall, "uninstaller_path", lambda: kaldirici)
+    _fake_shell_exec(monkeypatch, rc=5)
+    with pytest.raises(uninstall.UninstallError) as exc:
+        uninstall.run_uninstaller()
+    assert "yönetici" in str(exc.value)
+
+
 def test_run_uninstaller_popen_hatasi_turkce(paketli, monkeypatch, kayit):
     kaldirici = paketli / "unins000.exe"
     kaldirici.write_bytes(b"x")
     monkeypatch.setattr(uninstall, "uninstaller_path", lambda: kaldirici)
+    monkeypatch.setattr(uninstall.sys, "platform", "linux")
 
     def patla(*_a, **_k):
         raise OSError("erisim yok")

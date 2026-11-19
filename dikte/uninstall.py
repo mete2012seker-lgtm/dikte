@@ -6,6 +6,7 @@ Geliştirme ortamında uygulama kurulmuş sayılmaz.
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import os
 import subprocess
@@ -107,6 +108,30 @@ def autostart_enabled() -> bool:
         return False
 
 
+def _launch_elevated(path: Path, args: list[str]) -> None:
+    """Kaldırıcıyı Windows'ta UAC yükseltmesiyle, diğer platformlarda Popen ile başlatır."""
+    if sys.platform == "win32":
+        rc = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            str(path),
+            subprocess.list2cmdline(args),
+            str(path.parent),
+            1,
+        )
+        if rc <= 32:
+            raise UninstallError(f"Kaldırıcı yönetici yetkisiyle başlatılamadı (kod {rc}).")
+        return
+    try:
+        subprocess.Popen(
+            [str(path), *args],
+            cwd=str(path.parent),
+            close_fds=True,
+        )
+    except OSError as exc:
+        raise UninstallError(f"Kaldırıcı başlatılamadı: {exc}") from exc
+
+
 def run_uninstaller(keep_models: bool = True) -> None:
     """Inno Setup kaldırıcısını sessiz kipte başlatır.
 
@@ -122,14 +147,10 @@ def run_uninstaller(keep_models: bool = True) -> None:
     except UninstallError:
         logger.warning("Otomatik başlatma kaydı temizlenemedi; kaldırıcı yine de çalışır")
     try:
-        subprocess.Popen(
-            [str(path), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
-            cwd=str(path.parent),
-            close_fds=True,
-        )
-    except OSError as exc:
+        _launch_elevated(path, ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"])
+    except UninstallError:
         logger.exception("Kaldırıcı başlatılamadı")
-        raise UninstallError(f"Kaldırıcı başlatılamadı: {exc}") from exc
+        raise
 
 
 def _write_keep_models_flag(keep: bool) -> None:

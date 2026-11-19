@@ -187,3 +187,54 @@ def test_record_js_error_throttling(monkeypatch):
     now[0] = 131.0
     r3 = error_reporter.record_js_error({"message": "Script error", "source": "app.js", "line": 10})
     assert r3 == {"ok": True}
+
+
+def test_sanitize_text_masks_spaced_windows_username():
+    raw = (
+        r"err=C:\Users\Ali Veli\AppData\Local\Dikte\dikte.log "
+        "url=D:/Users/Ali Veli/AppData/Roaming/file.txt"
+    )
+    sanitized = error_reporter.sanitize_text(raw)
+    assert "Ali Veli" not in sanitized
+    assert r"C:\Users\<KULLANICI>\AppData\Local\Dikte\dikte.log" in sanitized
+    assert "D:/Users/<KULLANICI>/AppData/Roaming/file.txt" in sanitized
+
+
+def test_format_report_includes_native_crash_tail():
+    (config.LOG_DIR / "native_crash.log").write_text(
+        "Windows fatal exception: access violation at 0x0000\n",
+        encoding="utf-8",
+    )
+    report = error_reporter.format_report_text()
+    assert "[ÇÖKME BİLGİSİ]" in report
+    assert "Yerel (Native) Çökme Kaydı:" in report
+    assert "Windows fatal exception: access violation" in report
+
+
+def test_setup_logging_attaches_file_handler_even_with_preexisting_root_handler():
+    root = logging.getLogger()
+    old_handlers = list(root.handlers)
+    for h in old_handlers:
+        root.removeHandler(h)
+    preexisting = logging.StreamHandler()
+    root.addHandler(preexisting)
+    try:
+        diagnostics.setup_logging()
+        diagnostics.setup_logging()  # İkinci çağrı mükerrer eklememeli
+        rotating = [h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        assert len(rotating) == 1
+        assert rotating[0].baseFilename.endswith("dikte.log")
+    finally:
+        for h in list(root.handlers):
+            root.removeHandler(h)
+            if h is not preexisting:
+                try:
+                    h.close()
+                except Exception:
+                    pass
+        try:
+            preexisting.close()
+        except Exception:
+            pass
+        for h in old_handlers:
+            root.addHandler(h)

@@ -71,6 +71,10 @@
   let aiBusy = false;
   let aiSaveInFlight = 0;
   let lastAiSaveTime = 0;
+  let initialSnapshotSynced = false;
+  let userChangedDesignStyle = false;
+  let userChangedSidebar = false;
+  let userChangedTheme = false;
 
   /* ---------- Faz 3.1 & 3.2: Yan Menü Daraltma ---------- */
   const brandToggle = $("#brandToggle");
@@ -79,8 +83,11 @@
       ? Boolean(collapsed)
       : !document.body.classList.contains("sidebar-collapsed");
     document.body.classList.toggle("sidebar-collapsed", isCollapsed);
-    if (persist && hasApi("settings_save")) {
-      api.settings_save({ sidebar_collapsed: isCollapsed }).catch(() => {});
+    if (persist) {
+      userChangedSidebar = true;
+      if (hasApi("settings_save")) {
+        api.settings_save({ sidebar_collapsed: isCollapsed }).catch(() => {});
+      }
     }
   }
   const sidebarCollapseBtn = $("#sidebarCollapseBtn");
@@ -112,6 +119,7 @@
       btn.classList.toggle("is-active", btn.dataset.designChoice === designStyle);
     });
     if (persist) {
+      userChangedDesignStyle = true;
       if (hasApi("settings_save")) {
         api.settings_save({ design_style: designStyle }).catch(() => {});
       } else if (hasApi("ai_settings_save")) {
@@ -370,6 +378,7 @@
     } catch (error) {}
     updateThemeControls();
     if (persist) {
+      userChangedTheme = true;
       if (hasApi("ai_settings_save")) saveAi({ theme: themeMode });
     }
   }
@@ -644,6 +653,7 @@
     appended.push(paragraph);
     undoBtn.disabled = false;
     transcript.scrollTop = transcript.scrollHeight;
+    updateActionButtons();
   }
 
   function replaceLastText(text) {
@@ -656,10 +666,23 @@
     }
     last.textContent = text;
     transcript.scrollTop = transcript.scrollHeight;
+    updateActionButtons();
   }
 
   function apply(snapshot) {
     if (!snapshot) return;
+    if (!initialSnapshotSynced) {
+      initialSnapshotSynced = true;
+      if (!userChangedDesignStyle && snapshot.design_style) {
+        setDesignStyle(snapshot.design_style, false);
+      }
+      if (!userChangedSidebar && snapshot.sidebar_collapsed !== undefined) {
+        toggleSidebar(snapshot.sidebar_collapsed, false);
+      }
+      if (!userChangedTheme && snapshot.ai && snapshot.ai.theme) {
+        setTheme(snapshot.ai.theme, false);
+      }
+    }
     window.__hotkeyLabel = snapshot.hotkey || "Sağ Ctrl";
     applyState(snapshot.state);
     statusText.textContent = snapshot.error && snapshot.state === "error"
@@ -669,7 +692,7 @@
     statusText.style.color = snapshot.state === "error" ? "var(--error)" : "var(--text)";
 
     applyModel(snapshot);
-    applyAi(snapshot.ai);
+    applyAi(snapshot.ai, snapshot.state);
     applyDiagnostics(snapshot.diagnostics);
     renderActivity(snapshot.activity || []);
 
@@ -1034,8 +1057,9 @@
         remove.title = "Modeli sil";
         remove.setAttribute("aria-label", "Modeli sil");
         remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
-        remove.disabled = item.downloading || item.loaded;
+        remove.disabled = Boolean(item.active || item.downloading || item.loaded);
         remove.addEventListener("click", () => {
+          if (remove.disabled) return;
           if (!window.confirm(item.label + " diskten silinsin mi?")) return;
           textModelAction("text_model_delete", item.name);
         });
@@ -1068,8 +1092,10 @@
         const itemDel = document.createElement("button");
         itemDel.className = "model-dropdown-item danger";
         itemDel.textContent = "Dosyayı Sil";
+        itemDel.disabled = Boolean(item.active || item.downloading || item.loaded);
         itemDel.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (itemDel.disabled) return;
           menuDropdown.classList.remove("is-open");
           if (!window.confirm(item.label + " diskten silinsin mi?")) return;
           textModelAction("text_model_delete", item.name);
@@ -1664,9 +1690,10 @@
     return transcript.innerText.replace(/\u00a0/g, " ").trim();
   }
 
-  function applyAi(ai) {
+  function applyAi(ai, snapshotState) {
     if (!ai) return;
-    aiState = Object.assign({}, ai, { state: ai.state || (aiState && aiState.state) || "ready" });
+    const nextState = snapshotState || ai.state || (aiState && aiState.state) || "ready";
+    aiState = Object.assign({}, ai, { state: nextState });
 
     const canSyncInput = (aiSaveInFlight === 0) && (Date.now() - lastAiSaveTime > 400);
 
@@ -2289,10 +2316,12 @@
         paragraph.remove();
         toast("Son dikte geri alındı.");
         if (!appended.length) undoBtn.disabled = true;
+        updateActionButtons();
         return;
       }
     }
     undoBtn.disabled = true;
+    updateActionButtons();
     toast("Geri alınacak dikte yok.", "info");
   });
 
@@ -2457,9 +2486,12 @@
       } else {
         status.textContent = (result && result.message) || "Kurulum başlatılamadı.";
         toast((result && result.message) || "Kurulum başlatılamadı.", "error");
+        btn.disabled = false;
       }
     } catch (error) {
       status.textContent = "Kurulum başlatılamadı.";
+      toast("Kurulum başlatılamadı.", "error");
+      btn.disabled = false;
     }
     btn.textContent = "Uygulamayı Güncelle";
   });
@@ -2594,6 +2626,17 @@
       e.preventDefault();
       e.stopPropagation();
 
+      if (e.key === "Escape" || e.code === "Escape") {
+        recordingHotkey = false;
+        hotkeyRecorderBtn.disabled = false;
+        if (hotkeyRecorderStatus) {
+          const currentLabel = (settingsState && settingsState.hotkey_label)
+            || (settingsState && settingsState.hotkey ? formatKeyLabel(settingsState.hotkey) : "");
+          hotkeyRecorderStatus.textContent = currentLabel || "İptal edildi.";
+        }
+        return;
+      }
+
       if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) {
         let pressed = [];
         if (e.ctrlKey) pressed.push("Ctrl");
@@ -2620,31 +2663,52 @@
       recordingHotkey = false;
       hotkeyRecorderBtn.disabled = false;
       const formatted = formatKeyLabel(hotkeyStr);
-      if (hotkeyRecorderStatus) hotkeyRecorderStatus.textContent = formatted;
-      const hotkeyNow = $("#hotkeyNow");
-      if (hotkeyNow) hotkeyNow.textContent = formatted;
-      window.__hotkeyLabel = formatted;
-      if (shortcutHint) shortcutHint.textContent = formatted + " (basılı tut)";
 
-      const select = $("#hotkeySelect");
-      if (select) {
-        let opt = Array.from(select.options).find((o) => o.value === hotkeyStr);
-        if (!opt) {
-          opt = document.createElement("option");
-          opt.value = hotkeyStr;
-          opt.textContent = formatted;
-          select.appendChild(opt);
+      const applyHotkeyUi = (hk, labelText) => {
+        if (hotkeyRecorderStatus) hotkeyRecorderStatus.textContent = labelText;
+        const hotkeyNow = $("#hotkeyNow");
+        if (hotkeyNow) hotkeyNow.textContent = labelText;
+        window.__hotkeyLabel = labelText;
+        if (shortcutHint) shortcutHint.textContent = labelText + " (basılı tut)";
+
+        const select = $("#hotkeySelect");
+        if (select) {
+          let opt = Array.from(select.options).find((o) => o.value === hk);
+          if (!opt) {
+            opt = document.createElement("option");
+            opt.value = hk;
+            opt.textContent = labelText;
+            select.appendChild(opt);
+          }
+          select.value = hk;
         }
-        select.value = hotkeyStr;
-      }
-      if (settingsState) {
-        settingsState.hotkey = hotkeyStr;
-      }
+        if (settingsState) {
+          settingsState.hotkey = hk;
+          settingsState.hotkey_label = labelText;
+        }
+      };
 
       if (hasApi("settings_save")) {
-        api.settings_save({ hotkey: hotkeyStr }).then(() => {
-          toast("Kısayol güncellendi: " + formatted, "info");
-        }).catch(() => {});
+        const prevHotkey = (settingsState && settingsState.hotkey)
+          || ($("#hotkeySelect") && $("#hotkeySelect").value)
+          || "right_ctrl";
+        const prevLabel = (settingsState && settingsState.hotkey_label)
+          || window.__hotkeyLabel
+          || formatKeyLabel(prevHotkey);
+        api.settings_save({ hotkey: hotkeyStr }).then((res) => {
+          if (res && res.ok) {
+            applyHotkeyUi(hotkeyStr, formatted);
+            toast("Kısayol güncellendi: " + formatted, "info");
+          } else {
+            applyHotkeyUi(prevHotkey, prevLabel);
+            toast((res && res.message) || "Kısayol kaydedilemedi.", "warn");
+          }
+        }).catch(() => {
+          applyHotkeyUi(prevHotkey, prevLabel);
+          toast("Kısayol kaydedilemedi.", "warn");
+        });
+      } else {
+        applyHotkeyUi(hotkeyStr, formatted);
       }
     });
   }
@@ -2704,7 +2768,10 @@
       try {
         if (hasApi("update_rollback")) {
           const res = await api.update_rollback(target, installerUrl, sha256);
-          toast((res && res.message) || "Rollback işlemi başlatıldı.", "info");
+          toast(
+            (res && res.message) || (res && res.ok ? "Rollback işlemi başlatıldı." : "Rollback başlatılamadı."),
+            res && res.ok ? "info" : "warn"
+          );
         }
       } catch (e) {
         toast("Rollback başlatılamadı.", "error");
@@ -2750,7 +2817,7 @@
       if (hasApi("wizard_status")) {
         api.wizard_status().then((st) => {
           if (st) {
-            const hasGpu = Boolean(st.has_gpu || st.device === "GPU");
+            const hasGpu = Boolean(st.has_nvidia_gpu || st.cuda_ready || st.has_gpu || st.device === "GPU");
             paintHw(hasGpu);
           } else if (modelsState) {
             paintHw(modelsState.device === "GPU");

@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib.util
 import logging
 import os
+import re
 import threading
 import urllib.error
 import urllib.parse
@@ -277,6 +278,17 @@ def scan() -> list[dict]:
     return items
 
 
+_ALLOWED_HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
+_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _validate_repo_segments(owner: str, repo_name: str) -> str:
+    for seg in (owner, repo_name):
+        if seg in {".", ".."} or not _REPO_SEGMENT_RE.match(seg):
+            raise TextModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model).")
+    return f"{owner}/{repo_name}"
+
+
 def _normalize_text_repo_and_file(repo_or_url: str, filename: str = "") -> tuple[str, str]:
     if not repo_or_url or not isinstance(repo_or_url, str):
         raise TextModelError("Geçerli bir Hugging Face model adresi veya depo kimliği girin.")
@@ -285,9 +297,11 @@ def _normalize_text_repo_and_file(repo_or_url: str, filename: str = "") -> tuple
 
     if val.lower().startswith("http://") or val.lower().startswith("https://"):
         parsed = urllib.parse.urlparse(val)
+        if parsed.netloc.lower() not in _ALLOWED_HF_HOSTS:
+            raise TextModelError("Yalnızca huggingface.co adresleri desteklenir.")
         parts = [p for p in parsed.path.strip("/").split("/") if p]
         if len(parts) >= 2:
-            repo = f"{parts[0]}/{parts[1]}"
+            repo = _validate_repo_segments(parts[0], parts[1])
             if not extracted_filename and len(parts) >= 3:
                 last = parts[-1]
                 if last.lower().endswith(".gguf"):
@@ -297,9 +311,9 @@ def _normalize_text_repo_and_file(repo_or_url: str, filename: str = "") -> tuple
     else:
         parts = [p.strip() for p in val.split("/") if p.strip()]
         if len(parts) == 2:
-            repo = f"{parts[0]}/{parts[1]}"
+            repo = _validate_repo_segments(parts[0], parts[1])
         elif len(parts) >= 3 and not extracted_filename:
-            repo = f"{parts[0]}/{parts[1]}"
+            repo = _validate_repo_segments(parts[0], parts[1])
             if parts[-1].lower().endswith(".gguf"):
                 extracted_filename = parts[-1]
         else:
@@ -310,6 +324,9 @@ def _normalize_text_repo_and_file(repo_or_url: str, filename: str = "") -> tuple
         extracted_filename = f"{sub}.gguf"
     elif not extracted_filename.lower().endswith(".gguf"):
         extracted_filename = f"{extracted_filename}.gguf"
+
+    if any(bad in extracted_filename for bad in ("/", "\\", ":", "..")):
+        raise TextModelError("Geçersiz model dosya adı.")
 
     return repo, extracted_filename
 
@@ -455,8 +472,25 @@ class Downloader:
             headers_obj = getattr(response, "headers", None)
             if headers_obj is not None:
                 content_range = headers_obj.get("Content-Range", "") or ""
-            if content_range and not content_range.startswith(f"bytes {resume_from}-"):
+            if not content_range.startswith(f"bytes {resume_from}-"):
+                try:
+                    response.close()
+                except Exception:
+                    pass
+                try:
+                    part.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                existing = 0
                 resume_from = 0
+                retry_request = urllib.request.Request(_url(spec), headers={"User-Agent": USER_AGENT})
+                try:
+                    response = self._opener(retry_request, timeout=60)
+                except urllib.error.HTTPError as retry_exc:
+                    raise TextModelError(_friendly_http_error(retry_exc)) from retry_exc
+                except Exception as retry_exc:
+                    raise TextModelError("Model sunucusuna ulaşılamadı.") from retry_exc
+                status = int(getattr(response, "status", 200) or 200)
 
         # Determine total size from Content-Length or Content-Range
         headers_obj = getattr(response, "headers", None)
@@ -494,13 +528,17 @@ class Downloader:
 
         mode = "ab" if resume_from else "wb"
         written = resume_from
+        cancelled = False
+        paused = False
         try:
             with open(part, mode) as handle:
                 while True:
                     if cancel_event is not None and cancel_event.is_set():
-                        return {"completed": False, "paused": False, "cancelled": True, "size": written}
+                        cancelled = True
+                        break
                     if pause_event is not None and pause_event.is_set():
-                        return {"completed": False, "paused": True, "cancelled": False, "size": written}
+                        paused = True
+                        break
                     chunk = response.read(self._chunk_size)
                     if not chunk:
                         break
@@ -516,6 +554,16 @@ class Downloader:
                 response.close()
             except Exception:
                 pass
+            if cancelled or (cancel_event is not None and cancel_event.is_set()):
+                try:
+                    part.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        if cancelled:
+            return {"completed": False, "paused": False, "cancelled": True, "size": written}
+        if paused:
+            return {"completed": False, "paused": True, "cancelled": False, "size": written}
 
         if spec.size_bytes > 0 and written != spec.size_bytes:
             raise TextModelError(
@@ -608,8 +656,9 @@ class TextModelManager:
 
     def __init__(self, models_dir: Path | None = None) -> None:
         self._models_dir = Path(models_dir) if models_dir else None
-        self._pause_event = threading.Event()
-        self._cancel_event = threading.Event()
+        self._lock = threading.Lock()
+        self._pause_event: threading.Event | None = None
+        self._cancel_event: threading.Event | None = None
         self._current_download_name: str | None = None
         self._downloader = Downloader()
 
@@ -629,31 +678,38 @@ class TextModelManager:
         return text_model_path(name)
 
     def download(self, name: str, progress=None) -> dict:
-        self._cancel_event.clear()
-        self._pause_event.clear()
-        self._current_download_name = name
+        pause_event = threading.Event()
+        cancel_event = threading.Event()
+        with self._lock:
+            self._pause_event = pause_event
+            self._cancel_event = cancel_event
+            self._current_download_name = name
         try:
             return self._downloader.download(
                 name,
                 progress=progress,
-                pause_event=self._pause_event,
-                cancel_event=self._cancel_event,
+                pause_event=pause_event,
+                cancel_event=cancel_event,
             )
         finally:
-            self._current_download_name = None
+            with self._lock:
+                if self._cancel_event is cancel_event:
+                    self._cancel_event = None
+                if self._pause_event is pause_event:
+                    self._pause_event = None
+                if self._current_download_name == name:
+                    self._current_download_name = None
 
     def pause_download(self) -> dict:
-        self._pause_event.set()
+        with self._lock:
+            if self._pause_event is not None:
+                self._pause_event.set()
         return {"paused": True}
 
     def cancel_download(self) -> dict:
-        self._cancel_event.set()
-        name = self._current_download_name
-        if name:
-            try:
-                delete_part(name)
-            except Exception:
-                pass
+        with self._lock:
+            if self._cancel_event is not None:
+                self._cancel_event.set()
         return {"cancelled": True}
 
     def delete(self, name: str) -> None:

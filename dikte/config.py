@@ -10,7 +10,7 @@ from pathlib import Path
 APP_NAME = "Dikte"
 APP_TITLE = "Dikte — VoxNote AI"
 APP_VERSION = "1.6.1"
-UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Dikte_is1"
+UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{FAACF175-562C-4213-8E04-3A90AEA600AA}_is1"
 AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_VALUE = "Dikte"
 # v1.6: yayın yeri GitHub Releases (karar 2026-11-07).
@@ -26,7 +26,7 @@ UI_DIR = PACKAGE_DIR / "ui"
 # Kurulu (PyInstaller) sürümde tüm kullanıcı verisi %LOCALAPPDATA%\Dikte altındadır;
 # kurulum klasörü (Program Files) veri içermez, böylece kaldırma yalnız kendi verisini siler.
 _FROZEN = bool(getattr(sys, "frozen", False)) and not os.environ.get("DIKTE_DEV")
-_APPDATA_ROOT = Path(os.environ.get("LOCALAPPDATA", ROOT_DIR)) / "Dikte"
+_APPDATA_ROOT = Path(os.environ.get("LOCALAPPDATA") or ROOT_DIR) / "Dikte"
 _APPDATA_DATA_DIR = _APPDATA_ROOT / "data"
 
 MODELS_DIR = Path(os.environ.get("DIKTE_MODELS_DIR", _APPDATA_ROOT / "models" if _FROZEN else ROOT_DIR / "models"))

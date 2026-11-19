@@ -163,3 +163,57 @@ def test_model_manager_cancel_download(tmp_path, monkeypatch):
     assert res == {"cancelled": True}
 
 
+@pytest.mark.parametrize(
+    "repo_or_url",
+    [
+        "https://evil.com/owner/repo",
+        "http://huggingface.co.evil.com/owner/repo",
+        "../repo",
+        "owner/..",
+        "owner/.",
+        "owner/repo$",
+        "owner/repo name",
+    ],
+)
+def test_normalize_speech_repo_rejects_traversal_and_invalid_host(repo_or_url):
+    with pytest.raises(models.ModelError):
+        models._normalize_speech_repo(repo_or_url)
+
+
+def test_model_manager_cancel_removes_partial_after_download_exits(tmp_path, monkeypatch):
+    import threading
+
+    mgr = models.ModelManager(models_dir=tmp_path / "models")
+    started = threading.Event()
+    proceed = threading.Event()
+
+    def fake_download(name, models_dir):
+        folder = models.model_folder(models_dir, name) / "blobs"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "part").write_bytes(b"partial")
+        started.set()
+        proceed.wait(timeout=2.0)
+        return str(models.model_folder(models_dir, name))
+
+    monkeypatch.setattr(models, "_download_model", fake_download)
+
+    err = []
+
+    def run():
+        try:
+            mgr.download("tiny")
+        except models.ModelError as exc:
+            err.append(exc)
+
+    t = threading.Thread(target=run)
+    t.start()
+    assert started.wait(timeout=2.0)
+    mgr.cancel_download()
+    # Folder still exists until _download_model exits; it's cleaned up after exit
+    proceed.set()
+    t.join(timeout=3.0)
+
+    assert err and "iptal" in str(err[0]).lower()
+    assert not models.model_folder(tmp_path / "models", "tiny").exists()
+
+

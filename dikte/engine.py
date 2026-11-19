@@ -34,6 +34,13 @@ class TranscriptResult:
     elapsed: float
 
 
+def _normalize_model_name(model_name: str | None) -> str | None:
+    text = str(model_name or "").strip()
+    if not text or text.lower() == "auto":
+        return None
+    return text
+
+
 def select_plan(
     force_device: str | None,
     cuda_ok: bool,
@@ -45,6 +52,7 @@ def select_plan(
     int8 ile, o da olmazsa small/int8 ile denenir. Seçim yoksa eski davranış:
     GPU varsa large-v3/float16, yoksa small/int8.
     """
+    model_name = _normalize_model_name(model_name)
     if model_name:
         plan: list[tuple[str, str, str]] = []
         if force_device == "cuda" or (force_device is None and cuda_ok):
@@ -74,7 +82,7 @@ class TranscriptionEngine:
         self.model_dir = Path(model_dir or config.MODELS_DIR)
         self.force_device = force_device
         self.allow_download = allow_download
-        self.model_name = model_name or None
+        self.model_name = _normalize_model_name(model_name)
         self._model = None
         self.info: EngineInfo | None = None
         self.warnings: list[str] = []
@@ -85,7 +93,7 @@ class TranscriptionEngine:
 
     def set_model(self, model_name: str | None) -> None:
         """Sonraki yüklemede kullanılacak modeli seçer. Yüklemeyi yapmaz."""
-        self.model_name = model_name or None
+        self.model_name = _normalize_model_name(model_name)
 
     def unload(self) -> None:
         """Modeli bellekten bırakır; sonraki load() yeniden yükler."""

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import threading
 import urllib.parse
@@ -142,6 +143,10 @@ def save_custom_models(data: dict[str, list[dict]], path: Path | None = None) ->
             raise ModelError("Özel modeller kaydedilemedi.") from exc
 
 
+_ALLOWED_HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
+_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
 def _normalize_speech_repo(repo_or_url: str) -> str:
     """Hugging Face repo_id veya URL'sini 'owner/repo' biçimine normalize eder."""
     if not repo_or_url or not isinstance(repo_or_url, str):
@@ -149,13 +154,17 @@ def _normalize_speech_repo(repo_or_url: str) -> str:
     val = repo_or_url.strip()
     if val.lower().startswith("http://") or val.lower().startswith("https://"):
         parsed = urllib.parse.urlparse(val)
+        if parsed.netloc.lower() not in _ALLOWED_HF_HOSTS:
+            raise ModelError("Yalnızca huggingface.co adresleri desteklenir.")
         parts = [p for p in parsed.path.strip("/").split("/") if p]
         if len(parts) >= 2:
             val = f"{parts[0]}/{parts[1]}"
         else:
             raise ModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).")
     parts = [p.strip() for p in val.split("/") if p.strip()]
-    if len(parts) == 2 and not any(" " in p for p in parts):
+    if len(parts) == 2 and all(
+        seg not in {".", ".."} and _REPO_SEGMENT_RE.match(seg) for seg in parts
+    ):
         return f"{parts[0]}/{parts[1]}"
     raise ModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).")
 
@@ -471,7 +480,8 @@ class ModelManager:
         from . import config
 
         self.models_dir = Path(models_dir or config.MODELS_DIR)
-        self._cancel_event = threading.Event()
+        self._lock = threading.Lock()
+        self._cancel_event: threading.Event | None = None
         self._current_download_name: str | None = None
 
     def scan(self) -> dict[str, dict]:
@@ -490,28 +500,29 @@ class ModelManager:
         return model_folder(self.models_dir, name)
 
     def download(self, name: str, progress=None) -> str:
-        self._cancel_event.clear()
-        self._current_download_name = name
+        cancel_event = threading.Event()
+        with self._lock:
+            self._cancel_event = cancel_event
+            self._current_download_name = name
         try:
             return download(
                 name,
                 self.models_dir,
                 progress=progress,
-                cancel_event=self._cancel_event,
+                cancel_event=cancel_event,
             )
         finally:
-            self._current_download_name = None
+            with self._lock:
+                if self._cancel_event is cancel_event:
+                    self._cancel_event = None
+                if self._current_download_name == name:
+                    self._current_download_name = None
 
     def cancel_download(self) -> dict:
-        """Süren indirmeyi iptal eder ve yarım kalan klasörü temizler."""
-        self._cancel_event.set()
-        name = self._current_download_name
-        if name:
-            folder = self.folder(name)
-            try:
-                shutil.rmtree(folder, ignore_errors=True)
-            except Exception:
-                pass
+        """Süren indirmeyi iptal eder; yarım kalan klasör indirme sonlanınca temizlenir."""
+        with self._lock:
+            if self._cancel_event is not None:
+                self._cancel_event.set()
         return {"cancelled": True}
 
     def delete(self, name: str) -> None:

@@ -244,6 +244,7 @@ def test_hotkey_listener_non_blocking_dispatch_and_canonical_release(monkeypatch
     pynput_mod.keyboard = kb_mod
     monkeypatch.setitem(sys.modules, "pynput", pynput_mod)
     monkeypatch.setitem(sys.modules, "pynput.keyboard", kb_mod)
+    monkeypatch.setattr("dikte.hotkey._is_vk_physically_down", lambda vk: None)
 
     listener = HotkeyListener(on_press, on_release, key="ctrl+d")
     listener.start()
@@ -415,3 +416,142 @@ def test_controller_diagnostics_methods_and_snapshot(tmp_path, monkeypatch):
 
     diag_dismiss = ctrl.diagnostics_dismiss_crash()
     assert diag_dismiss["ok"] is True
+
+
+def test_uninstall_schedules_exit_and_rollback_requires_sha(tmp_path, monkeypatch):
+    ctrl = _make_controller(tmp_path)
+    scheduled = []
+    monkeypatch.setattr(ctrl, "_schedule_exit_after_apply", lambda: scheduled.append(True))
+    monkeypatch.setattr(uninstall, "run_uninstaller", lambda keep_models=True: True)
+
+    res = ctrl.uninstall({"keep_models": False})
+    assert res["ok"] is True
+    assert scheduled == [True]
+
+    rb_missing = ctrl.update_rollback("1.6.0", "https://github.com/org/repo/releases/download/v1.6.0/Dikte.exe", "")
+    assert rb_missing["ok"] is False
+    assert rb_missing["code"] == "no_sha"
+
+    rb_bad = ctrl.update_rollback("1.6.0", "https://github.com/org/repo/releases/download/v1.6.0/Dikte.exe", "abc")
+    assert rb_bad["ok"] is False
+    assert rb_bad["code"] == "no_sha"
+
+
+def test_snapshot_ai_state_and_auto_model_activation(tmp_path):
+    ctrl = _make_controller(tmp_path)
+    snap = ctrl.snapshot()
+    assert snap["ai"]["state"] == snap["state"]
+
+    # engine.select_plan / set_model "auto" normalizasyonu
+    from dikte.engine import TranscriptionEngine, select_plan
+
+    assert select_plan("cpu", False, "auto") == select_plan("cpu", False, None)
+    assert select_plan("cpu", False, "AUTO") == select_plan("cpu", False, None)
+    eng = TranscriptionEngine(model_dir=tmp_path, model_name="AUTO")
+    assert eng.model_name is None
+    eng.set_model("auto")
+    assert eng.model_name is None
+
+    # model_activate("auto") reload tetiklemeli ve active_model="auto" kaydetmeli
+    ctrl.engine.model_name = "small"
+    res = ctrl.model_activate("auto")
+    assert res["ok"] is True
+    assert ctrl.wait_until_ready(3.0)
+    assert ctrl.engine.model_name is None
+    assert ctrl.settings.get("active_model") == "auto"
+
+
+def test_wizard_status_calls_nvml_shutdown_and_download_cancel_preserves_state(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    ctrl = _make_controller(tmp_path)
+    monkeypatch.setattr("dikte.diagnostics.cuda_device_count", lambda: 0)
+
+    shutdown_calls = []
+
+    class FakeNvml:
+        def nvmlInit(self):
+            pass
+
+        def nvmlDeviceGetCount(self):
+            raise RuntimeError("nvml error")
+
+        def nvmlShutdown(self):
+            shutdown_calls.append(True)
+
+    monkeypatch.setitem(sys.modules, "pynvml", FakeNvml())
+    ctrl.wizard_status()
+    assert shutdown_calls == [True]
+
+    # _download_worker cancelled durumunu error ile ezmemeli
+    ctrl._download = {"name": "small", "state": "cancelled", "bytes": 0, "total": 100, "percent": 0}
+    monkeypatch.setattr(ctrl.models, "download", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("cancelled")))
+    ctrl._download_worker("small")
+    assert ctrl._download["state"] == "cancelled"
+
+    # shutdown() models.cancel_download() çağırmalı
+    cancelled = []
+    monkeypatch.setattr(ctrl.models, "cancel_download", lambda: cancelled.append(True))
+    ctrl.shutdown()
+    assert cancelled == [True]
+
+
+def test_audio_callback_status_flags_and_clipboard_retry(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import sys
+    from dikte import clipboard
+
+    rec = AudioRecorder(temp_dir=tmp_path)
+    captured = {}
+
+    class FakeStream:
+        def __init__(self, **kwargs):
+            captured["callback"] = kwargs["callback"]
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def close(self):
+            pass
+
+    monkeypatch.setitem(sys.modules, "sounddevice", SimpleNamespace(RawInputStream=FakeStream))
+    rec.start()
+    cb = captured["callback"]
+
+    # CallbackFlags benzeri nesne: .error yok, input_overflow=True -> kritik hata olmamalı
+    cb(b"\x01\x00" * 10, 10, None, SimpleNamespace(input_overflow=True, input_underflow=False, output_underflow=False, output_overflow=False, priming_output=False))
+    assert rec._stream_error is None
+    assert rec._last_callback_at > 0
+
+    # input_underflow / priming_output -> kritik hata olmamalı
+    cb(b"\x01\x00" * 10, 10, None, SimpleNamespace(input_overflow=False, input_underflow=True, output_underflow=False, output_overflow=False, priming_output=True))
+    assert rec._stream_error is None
+
+    # Beklenmedik kritik durum -> _stream_error set edilmeli
+    cb(b"", 0, None, SimpleNamespace(input_overflow=False, input_underflow=False, output_underflow=False, output_overflow=False, priming_output=False))
+    assert rec._stream_error is not None
+    rec.cancel()
+
+    # Clipboard retry: 2 geçici hata + 3. denemede başarı
+    attempts = []
+    sleeps = []
+
+    def flaky_copy(text):
+        attempts.append(text)
+        if len(attempts) < 3:
+            raise RuntimeError("clipboard busy")
+
+    monkeypatch.setitem(sys.modules, "pyperclip", SimpleNamespace(copy=flaky_copy))
+    monkeypatch.setattr(clipboard.time, "sleep", lambda s: sleeps.append(s))
+    clipboard.copy_text("merhaba")
+    assert len(attempts) == 3
+    assert sleeps == [0.025, 0.025]
+
+    # 3 deneme de başarısızsa ClipboardError
+    monkeypatch.setitem(sys.modules, "pyperclip", SimpleNamespace(copy=lambda t: (_ for _ in ()).throw(RuntimeError("locked"))))
+    with pytest.raises(clipboard.ClipboardError):
+        clipboard.copy_text("merhaba")

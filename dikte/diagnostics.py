@@ -112,24 +112,32 @@ def setup_logging() -> None:
     config.ensure_runtime_dirs()
     log_file = config.LOG_DIR / "dikte.log"
     root = logging.getLogger()
-    if root.handlers:
-        return
+    target = os.path.normcase(str(log_file.resolve()))
+    for existing in root.handlers:
+        base = getattr(existing, "baseFilename", None)
+        if base and os.path.normcase(str(Path(base).resolve())) == target:
+            return
     root.setLevel(logging.INFO)
-    handler = logging.handlers.RotatingFileHandler(
-        log_file,
-        maxBytes=2 * 1024 * 1024,
-        backupCount=3,
-        encoding="utf-8",
-    )
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-    )
-    root.addHandler(handler)
+    try:
+        handler = logging.handlers.RotatingFileHandler(
+            log_file,
+            maxBytes=2 * 1024 * 1024,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+        )
+        root.addHandler(handler)
+    except OSError:
+        # Dosya kilitli veya salt-okunur ise uygulama log yüzünden çökmesin.
+        pass
     # Konsolda da kısa bilgi görünsün.
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
-    console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    root.addHandler(console)
+    if not any(type(h) is logging.StreamHandler for h in root.handlers):
+        console = logging.StreamHandler()
+        console.setLevel(logging.INFO)
+        console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        root.addHandler(console)
 
 
 def cuda_device_count() -> int:

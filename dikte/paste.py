@@ -100,7 +100,7 @@ def foreground_pid() -> int:
     return int(pid.value)
 
 
-def _send_key(vk: int, up: bool = False) -> None:
+def _send_key(vk: int, up: bool = False) -> bool:
     """SendInput kullanarak tuş basma/bırakma olayı gönderir; başarısız olursa keybd_event'e düşer."""
     user32 = _user32()
     flags = KEYEVENTF_KEYUP if up else 0
@@ -119,17 +119,22 @@ def _send_key(vk: int, up: bool = False) -> None:
         )
         res = user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
         if res == 1:
-            return
+            return True
+        if res == 0:
+            logger.debug("SendInput 0 döndü (UIPI/engellenmiş olabilir): vk=%s, flags=%s", vk, flags)
+            return False
     except Exception as exc:
         logger.debug("SendInput başarısız, keybd_event fallback kullanılıyor: %s", exc)
 
     try:
         user32.keybd_event(vk, 0, flags, 0)
+        return True
     except Exception as exc:
         logger.warning("keybd_event başarısız (vk=%s, flags=%s): %s", vk, flags, exc)
+        return False
 
 
-def send_ctrl_v() -> None:
+def send_ctrl_v() -> bool:
     """Ctrl+V tuş kombinasyonunu gönderir.
 
     Kısayoldan kalan basılı değiştirici tuşları (Ctrl, Shift, Alt) temizler,
@@ -172,13 +177,14 @@ def send_ctrl_v() -> None:
         time.sleep(0.025)
 
         # c) Ctrl down -> bekle -> V down -> bekle -> V up -> bekle -> Ctrl up
-        _send_key(VK_CONTROL, up=False)
+        ok = _send_key(VK_CONTROL, up=False)
         time.sleep(0.015)
-        _send_key(VK_V, up=False)
+        ok = _send_key(VK_V, up=False) and ok
         time.sleep(0.015)
-        _send_key(VK_V, up=True)
+        ok = _send_key(VK_V, up=True) and ok
         time.sleep(0.015)
-        _send_key(VK_CONTROL, up=True)
+        ok = _send_key(VK_CONTROL, up=True) and ok
+        return ok
     finally:
         time.sleep(0.020)
         _is_pasting = False
@@ -233,12 +239,6 @@ def is_own_window(pid_getter=foreground_pid) -> bool:
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid_val))
     pid = int(pid_val.value)
     if _is_own_or_child_pid(pid):
-        # Dikte penceresi ekranda görünürse yapıştırma yapılmaz; tepside gizliyse yapıştırmaya izin ver
-        if hasattr(user32, "IsWindowVisible"):
-            try:
-                return bool(user32.IsWindowVisible(hwnd))
-            except Exception:
-                pass
         return True
 
     return False
@@ -251,8 +251,7 @@ def paste_if_allowed(enabled: bool = True) -> bool:
     if is_own_window():
         return False
     try:
-        send_ctrl_v()
-        return True
+        return send_ctrl_v() is not False
     except Exception as exc:
         logger.warning("Otomatik yapıştırma başarısız: %s", exc)
         return False

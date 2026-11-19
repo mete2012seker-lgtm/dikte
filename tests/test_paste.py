@@ -170,7 +170,7 @@ def test_send_ctrl_v_sequence_and_modifier_release(monkeypatch):
     ]
 
 
-def test_is_own_window_hidden_tray_allows_paste(monkeypatch):
+def test_is_own_window_hidden_tray_returns_true(monkeypatch):
     class MockUser32:
         def GetForegroundWindow(self):
             return 5001
@@ -185,13 +185,36 @@ def test_is_own_window_hidden_tray_allows_paste(monkeypatch):
             return 1
 
         def IsWindowVisible(self, hwnd):
-            # Pencere sistem tepsisinde gizli
+            # Pencere sistem tepsisinde gizli olsa bile kendi sürecimiz True dönmeli
             return 0
 
     monkeypatch.setattr(paste, "_user32", lambda: MockUser32())
     monkeypatch.setattr(paste, "_is_own_or_child_pid", lambda pid: True)
 
-    # Kendi penceremiz ama tepside gizli (IsWindowVisible=0) -> False dönmeli (yapıştırmaya izin ver)
-    assert paste.is_own_window() is False
+    assert paste.is_own_window() is True
+
+
+def test_send_ctrl_v_returns_false_on_sendinput_zero(monkeypatch):
+    class MockUser32:
+        def GetAsyncKeyState(self, vk):
+            return 0
+
+        def MapVirtualKeyW(self, vk, flag):
+            return 0
+
+        def SendInput(self, n, p_inp, size):
+            return 0
+
+    monkeypatch.setattr(paste, "_user32", lambda: MockUser32())
+    monkeypatch.setattr(paste.time, "sleep", lambda s: None)
+
+    assert paste.send_ctrl_v() is False
+    assert paste.is_pasting() is False
+
+
+def test_paste_if_allowed_returns_false_when_send_ctrl_v_returns_false(monkeypatch):
+    monkeypatch.setattr(paste, "is_own_window", lambda: False)
+    monkeypatch.setattr(paste, "send_ctrl_v", lambda: False)
+    assert paste.paste_if_allowed(True) is False
 
 

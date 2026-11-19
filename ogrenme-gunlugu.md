@@ -89,6 +89,15 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Döndürmeli Log (`RotatingFileHandler`) ve Çökme İşaretçisi (`running.lock`):** Sınırsız büyüyen tek log dosyası yerine 2 MB × 3 döndürmeli log, `faulthandler` ve açılışta konup temiz kapanışta silinen `running.lock` dosyası sayesinde önceki oturumdaki ani çökmeler otomatik yakalanır.
 5. **Gizlilik Korumalı Tanılama (Sanitizer):** Hata raporu üretirken konuşma geçmişi, ses dosyası ve API anahtarları kesinlikle rapora alınmaz; olası anahtar desenleri ve Windows kullanıcı adı maskelenip kullanıcıya sade Türkçe çözüm adımları sunulur.
 
+## 2026-11-19 — Yayın Öncesi Denetim ve Faz 1–3 Sertleştirmesi
+
+1. **Windows UAC ve `WinError 740`:** `PrivilegesRequired=admin` ile derlenen kurucu/kaldırıcıyı normal yetkili uygulamadan `subprocess.Popen` ile açmak Windows'ta `WinError 740` hatası verir; `ShellExecuteW(..., "runas", ...)` kullanmak standart UAC onay penceresini açar.
+2. **Test Maskesi:** Sahte test köprüsü (`tests/test_ui.py`), gerçek uygulamanın göndermediği bir alanı (`copy.ai.state`) elle eklediğinde testler yeşil kalır ama gerçek uygulamada hata gizlenir; test sahteleri her zaman gerçek API şekline birebir uymalıdır.
+3. **Yol Geçişi (Path Traversal) Koruması:** Kullanıcının girdiği özel model URL'sinde alan adını (`huggingface.co`) ve dosya adındaki `../` karakterlerini doğrulamamak, model klasörü dışındaki dosyaların üzerine yazılma riskini doğurur.
+4. **Windows UIPI (Yönetici Penceresi İzolasyonu):** Normal yetkili bir uygulama, yönetici olarak açılmış bir pencereye `SendInput` ile tuş (Ctrl+V) gönderemez; `SendInput` dönüş değerini kontrol etmek sahte "yapıştırıldı" mesajını önler.
+5. **Pano Kilidi Tekrarı:** Windows Pano Geçmişi (`Win+V`) panoyu anlık kilitleyebilir; tek atışlık kopyalama yerine 25 ms aralıkla 3 kez denemek geçici pano hatalarını sessizce aşar.
+
+
 
 
 

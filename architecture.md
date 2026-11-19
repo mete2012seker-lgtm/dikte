@@ -3,7 +3,7 @@
 Bu dosya projenin güncel yapısını gösterir. Her görev sonunda güncellenir.
 
 ## Genel bakış
-Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1 (çekirdek + Dikte ekranı) 2026-10-24'te, v1.2 (Geçmiş + Modeller + Ayarlar + Yenile) 2026-10-27'de tamamlandı. v1.3'ün metin motoru, GGUF/llama.cpp ve otomatik yapıştırma bölümleri tamamlandı (llama-cpp-python GPU, 2026-11-03). v1.4 Magic UI efektleri + karanlık mod 2026-11-03'te tamamlandı; kullanıcı 2026-11-04'te onayladı. 7e kalite tablosu kısmen (10/10 OK; tam çiftler ve VRAM ölçümü yok). v1.5 kurucu + kaldırma ve v1.6 güncelleme **kodları yazıldı**; ancak 2026-11-06 denetimi yayın zincirinin çalışmadığını gösterdi: `UPDATE_URL` boş, `sha256` akışı bozuk, sürüm 1.3.0, kaldırma veriyi silmiyor, kurucu derlenmedi, karşılama sihirbazı yok. Ayrıntı ve sıra: `uygulanacak plan.md`.
+Dikte, kısayol tuşuyla çalışan bir Türkçe dikte uygulamasıdır. v1–v1.6.0 (çekirdek, geçmiş, ses/metin modelleri, otomatik yapıştırma, Magic UI + Sade Dikte.AI tasarımı, sistem tepsisi, karşılama sihirbazı, kurucu ve otomatik güncelleme) tamamlandı. v1.6.1'de gömülü hata tespit aracı (`error_reporter.py`), Faz A/B stabilite sertleştirmesi ve 2026-11-19 yayın öncesi denetimindeki tüm Blocker/Yüksek düzeltmeler (UAC `ShellExecuteW("runas")`, SHA-256 sertleştirme, HF host/path koruması, sihirbaz GPU tespiti, `hotkey`/`audio`/`paste`/`clipboard` düzeltmeleri) uygulanıp **410 passed, 1 skipped** ile doğrulandı.
 
 Akış:
 1. Kullanıcı seçili kısayolu (varsayılan Sağ Ctrl) basılı tutar veya mikrofon düğmesine basar.
@@ -136,12 +136,12 @@ Akış:
 ## Bilinen sorunlar
 - İlk çeviri yavaş (CUDA ısınması + model yükleme ~7 sn). Sonraki dikteler daha hızlı.
 - GPU çevirisi çökerse controller aynı modeli CPU/int8 ile, o da olmazsa `small/int8` ile dener; arayüzde etkinlik olarak görünür.
-- Ses modeli indirmesinde iptal/duraklat yok; yarım indirme "Yarım indirme" olarak gösterilir. Metin (GGUF) indirmesinde duraklat/devam/iptal vardır.
+- Ses modeli indirmesinde duraklatma yok, yalnız iptal vardır (`models_cancel_download`); yarım indirme temizlenir. Metin (GGUF) indirmesinde duraklat/devam/iptal vardır.
 - Aktif model silinemez; Windows dosya kilidi silmeyi engellerse Türkçe hata gösterilir.
 - Geçmişten bir kayıt açıldıktan sonra Yenile pasif olur (son dikte olmadığı için).
 - Geçmiş kapalıyken yapılan dikteden sonra anahtar açılıp Yenile yapılırsa sonuç kayıtlara yazılmaz (ses korunur, pano güncellenir).
 - Yerel metin modeli (GGUF) çalıştırmak için `llama-cpp-python` paketi gerekir; paket yokken arayüz "motor kurulu değil" bilgisini gösterir ve OpenRouter önerilir.
-- `input_language` ayarı kaydediliyor ama Whisper'a henüz bağlanmadı; motor hâlâ otomatik dil algılar.
+- `input_language` ayarı varsayılan `"tr"` olarak hem `_transcribe_path` hem `_ai_payload` içinde hizalıdır.
 - llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
 - v1.4 efektleri testlerle doğrulandı; kullanıcı 2026-11-04'te gözle onayladı.
 - **Yayın blockerları (2026-11-09 itibarıyla):** 1.6.0 kodu ve kurucu çalışıyor (sha256, UPDATE_URL, kaldırma veri/autostart, Inno AppId, derleme). Açık kalanlar: gerçek GitHub Release yok (`latest.json` 404), kur/kaldır UAC ile elle test edilmedi, karşılama sihirbazı yok (Faz 3).

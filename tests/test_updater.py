@@ -30,6 +30,14 @@ def test_compare_versions_kucuk():
     assert updater.compare_versions("2.0.0", "1.9.9") == -1
 
 
+def test_compare_versions_prerelease():
+    assert updater.compare_versions("1.6.1-rc1", "1.6.1") == 1
+    assert updater.compare_versions("1.6.1", "1.6.1-rc1") == -1
+    assert updater.compare_versions("1.6.1-beta.1", "1.6.1") == 1
+    assert updater.compare_versions("1.6.1-beta.1", "1.6.1-rc1") == 1
+    assert updater.compare_versions("v1.6.1", "1.6.1") == 0
+
+
 def test_check_http_reddi():
     with pytest.raises(updater.UpdaterError) as exc:
         updater.check(force=True, url="http://ornek/latest.json")
@@ -270,12 +278,12 @@ def test_list_releases_and_fetch_payload(monkeypatch):
     assert "releases" in payload
     assert len(payload["releases"]) == 3
 
-    # list_releases denetimi
+    # list_releases denetimi (assets'i olmayan v2.0.0 atlanır)
     releases = updater.list_releases(
         "https://api.github.com/repos/test/releases",
         current_version="1.6.0",
     )
-    assert len(releases) == 3
+    assert len(releases) == 2
 
     v16 = releases[0]
     assert v16["version"] == "1.6.0"
@@ -290,10 +298,38 @@ def test_list_releases_and_fetch_payload(monkeypatch):
     assert v15["is_downgrade"] is True
     assert v15["sha256"] == "b" * 64
 
-    v20 = releases[2]
-    assert v20["version"] == "2.0.0"
-    assert v20["is_current"] is False
-    assert v20["is_downgrade"] is False
+
+def test_list_releases_filters_draft_prerelease_and_missing_exe(monkeypatch):
+    sample_releases = [
+        {
+            "tag_name": "v1.7.0",
+            "draft": True,
+            "prerelease": False,
+            "assets": [{"name": "Dikte-Setup-1.7.0.exe", "browser_download_url": "https://github.com/x/1.7.0.exe"}],
+        },
+        {
+            "tag_name": "v1.7.0-rc1",
+            "draft": False,
+            "prerelease": True,
+            "assets": [{"name": "Dikte-Setup-1.7.0-rc1.exe", "browser_download_url": "https://github.com/x/rc1.exe"}],
+        },
+        {
+            "tag_name": "v1.6.2",
+            "draft": False,
+            "prerelease": False,
+            "assets": [{"name": "notes.txt", "browser_download_url": "https://github.com/x/notes.txt"}],
+        },
+        {
+            "tag_name": "v1.6.1",
+            "draft": False,
+            "prerelease": False,
+            "assets": [{"name": "Dikte-Setup-1.6.1.exe", "browser_download_url": "https://github.com/x/1.6.1.exe"}],
+        },
+    ]
+    data = json.dumps(sample_releases).encode("utf-8")
+    monkeypatch.setattr(updater.urllib.request, "urlopen", lambda *_a, **_k: FakeResponse(data))
+    releases = updater.list_releases("https://api.github.com/repos/test/releases", current_version="1.6.0")
+    assert [r["version"] for r in releases] == ["1.6.1"]
 
 
 def test_download_installer_cancel_and_progress(tmp_path, monkeypatch):
@@ -328,4 +364,82 @@ def test_download_installer_cancel_and_progress(tmp_path, monkeypatch):
             cancel_event=cancel_ev,
         )
     assert exc.value.code == "cancelled"
+
+
+def test_download_installer_rejects_none_sha256(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "UPDATE_URL", "https://ornek/latest.json")
+    monkeypatch.setattr(
+        updater.urllib.request,
+        "urlopen",
+        lambda *_a, **_k: FakeResponse(b"sahte-kurucu"),
+    )
+    with pytest.raises(updater.UpdaterError) as exc:
+        updater.download_installer(
+            "https://ornek/Dikte-Setup.exe",
+            dest_dir=tmp_path,
+            sha256=None,
+            allow_missing_sha256=False,
+        )
+    assert exc.value.code == "bad_sha"
+    assert not (tmp_path / "Dikte-Setup.exe").exists()
+
+
+def test_validate_download_host_allows_release_assets(monkeypatch):
+    monkeypatch.setattr(
+        config,
+        "UPDATE_URL",
+        "https://github.com/mete2012seker-lgtm/dikte/releases/latest/download/latest.json",
+    )
+    url = "https://release-assets.githubusercontent.com/github-production-release-asset/Dikte-Setup-1.6.1.exe"
+    assert updater._validate_download_host(url) == url
+
+
+def test_apply_launches_elevated_on_win32(tmp_path, monkeypatch):
+    installer = tmp_path / "Dikte-Setup.exe"
+    installer.write_bytes(b"exe")
+    calls = []
+
+    class FakeShell32:
+        def ShellExecuteW(self, hwnd, op, file, params, directory, show):
+            calls.append((hwnd, op, file, params, directory, show))
+            return 42
+
+    monkeypatch.setattr(updater.sys, "platform", "win32")
+    monkeypatch.setattr(updater.ctypes, "windll", SimpleNamespace(shell32=FakeShell32()), raising=False)
+    launched = []
+    updater.apply(installer, on_launched=lambda: launched.append(True))
+    assert len(calls) == 1
+    assert calls[0][1] == "runas"
+    assert calls[0][2] == str(installer)
+    assert "/SILENT" in calls[0][3]
+    assert launched == [True]
+
+
+def test_apply_raises_on_win32_elevation_failure(tmp_path, monkeypatch):
+    installer = tmp_path / "Dikte-Setup.exe"
+    installer.write_bytes(b"exe")
+
+    class FakeShell32:
+        def ShellExecuteW(self, *_args):
+            return 5
+
+    monkeypatch.setattr(updater.sys, "platform", "win32")
+    monkeypatch.setattr(updater.ctypes, "windll", SimpleNamespace(shell32=FakeShell32()), raising=False)
+    with pytest.raises(updater.UpdaterError) as exc:
+        updater.apply(installer)
+    assert exc.value.code == "launch_failed"
+
+
+def test_apply_non_win32_popen_fallback(tmp_path, monkeypatch):
+    installer = tmp_path / "Dikte-Setup.exe"
+    installer.write_bytes(b"exe")
+    monkeypatch.setattr(updater.sys, "platform", "linux")
+
+    def fail_popen(*_a, **_k):
+        raise OSError("cannot exec")
+
+    monkeypatch.setattr(updater.subprocess, "Popen", fail_popen)
+    with pytest.raises(updater.UpdaterError) as exc:
+        updater.apply(installer)
+    assert exc.value.code == "launch_failed"
 

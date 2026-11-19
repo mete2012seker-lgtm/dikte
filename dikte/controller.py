@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import threading
 import time
@@ -343,6 +344,12 @@ class Controller:
                 self._ai_worker,
                 self._engine_thread,
             ]
+        try:
+            cancel_fn = getattr(self.models, "cancel_download", None)
+            if cancel_fn is not None:
+                cancel_fn()
+        except Exception:
+            pass
         try:
             self.hotkey.stop()
         except Exception:
@@ -776,7 +783,7 @@ class Controller:
                 )
                 and state == READY,
                 "download": dict(self._download) if self._download else None,
-                "ai": self._ai_payload(),
+                "ai": {**self._ai_payload(), "state": state},
             }
         snap["diagnostics"] = self._diagnostics_summary()
         return snap
@@ -947,9 +954,10 @@ class Controller:
             logger.warning("Model indirilemedi: %s", exc)
             with self._lock:
                 if self._download and self._download.get("name") == name:
-                    self._download["state"] = "error"
-                    self._download["error"] = str(exc)
-                self._add_activity("Model indirilemedi", f"{name}: {exc}", "err")
+                    if self._download.get("state") != "cancelled":
+                        self._download["state"] = "error"
+                        self._download["error"] = str(exc)
+                        self._add_activity("Model indirilemedi", f"{name}: {exc}", "err")
             self._models_cache = (0.0, None)
             return
 
@@ -962,10 +970,12 @@ class Controller:
         self._models_cache = (0.0, None)
 
     def model_activate(self, name: str) -> dict:
-        try:
-            get_model(name)
-        except ModelError as exc:
-            return {"ok": False, "message": str(exc)}
+        is_auto = str(name or "").strip().lower() == AUTO_MODEL
+        if not is_auto:
+            try:
+                get_model(name)
+            except ModelError as exc:
+                return {"ok": False, "message": str(exc)}
         with self._lock:
             if self._closed:
                 return {"ok": False, "message": "Uygulama kapatıldı."}
@@ -974,12 +984,13 @@ class Controller:
                 return {"ok": False, "message": "Kayıt veya çeviri sürerken model değiştirilemez."}
             if state == LOADING:
                 return {"ok": False, "message": "Model yükleniyor, lütfen bekle."}
-            try:
-                installed = self.models.installed(name)
-            except Exception:
-                installed = False
-            if not installed:
-                return {"ok": False, "message": "Bu model önce indirilmeli."}
+            if not is_auto:
+                try:
+                    installed = self.models.installed(name)
+                except Exception:
+                    installed = False
+                if not installed:
+                    return {"ok": False, "message": "Bu model önce indirilmeli."}
             old_model = getattr(self.engine, "model_name", None) or (
                 self._info.model_name if self._info else None
             )
@@ -987,7 +998,7 @@ class Controller:
             self._set_state(LOADING)
             self._engine_thread = threading.Thread(
                 target=self._activate_worker,
-                args=(name, old_model),
+                args=(AUTO_MODEL if is_auto else name, old_model),
                 name="model-yukle",
                 daemon=True,
             )
@@ -995,12 +1006,13 @@ class Controller:
         return {"ok": True, "state": LOADING}
 
     def _activate_worker(self, name: str, old_model: str | None) -> None:
+        is_auto = str(name or "").strip().lower() == AUTO_MODEL
         with self._engine_lock:
             if self._text_runtime.model_name:
                 self._text_runtime.unload()
             try:
                 if hasattr(self.engine, "set_model"):
-                    self.engine.set_model(name)
+                    self.engine.set_model(None if is_auto else name)
                 if hasattr(self.engine, "unload"):
                     self.engine.unload()
                 self._whisper_loaded = False
@@ -1038,7 +1050,7 @@ class Controller:
                 return
 
             try:
-                self.settings.save(active_model=info.model_name or name)
+                self.settings.save(active_model=AUTO_MODEL if is_auto else (info.model_name or name))
             except Exception:
                 logger.warning("Aktif model ayarı kaydedilemedi", exc_info=True)
             with self._lock:
@@ -1470,8 +1482,7 @@ class Controller:
 
         if new_active_model is not None and new_active_model != old_active_model:
             if new_active_model == AUTO_MODEL:
-                if hasattr(self.engine, "set_model"):
-                    self.engine.set_model(AUTO_MODEL)
+                self.model_activate(AUTO_MODEL)
             else:
                 try:
                     if self.models.installed(new_active_model):
@@ -1527,7 +1538,7 @@ class Controller:
             "output_language": output_language,
             "output_language_label": output_language_label(output_language),
             "auto_translate": bool(self.settings.get("auto_translate", False)),
-            "input_language": str(self.settings.get("input_language", "auto")),
+            "input_language": str(self.settings.get("input_language", "tr")),
             "auto_paste": bool(self.settings.get("auto_paste", True)),
             "text_model": str(self.settings.get("text_model", "")),
             "text_model_loaded": self._text_runtime.model_name,
@@ -1608,6 +1619,7 @@ class Controller:
         except uninstall.UninstallError as exc:
             logger.warning("Kaldırıcı başlatılamadı: %s", exc)
             return {"ok": False, "message": str(exc)}
+        self._schedule_exit_after_apply()
         return {"ok": True, "message": "Kaldırıcı başlatıldı"}
 
     # ---------- güncelleme (v1.6) ----------
@@ -1734,6 +1746,9 @@ class Controller:
         """Seçilen eski sürümü indirir ve kurucuyu başlatır."""
         if not installer_url:
             return {"ok": False, "message": "Kurucu adresi belirtilmedi."}
+        sha_norm = str(sha256 or "").strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", sha_norm):
+            return {"ok": False, "code": "no_sha", "message": self.UPDATE_MESSAGES["no_sha"]}
         self._update_cancel_event.clear()
         try:
             dl_fn = getattr(updater, "download_installer", None) or getattr(updater, "download", None)
@@ -1744,8 +1759,8 @@ class Controller:
             kwargs = {}
             if "cancel_event" in sig.parameters:
                 kwargs["cancel_event"] = self._update_cancel_event
-            if "allow_missing_sha256" in sig.parameters and not sha256:
-                kwargs["allow_missing_sha256"] = True
+            if "sha256" in sig.parameters:
+                kwargs["sha256"] = sha_norm
             path = dl_fn(installer_url, **kwargs)
         except updater.UpdaterError as exc:
             return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, str(exc))}
@@ -1753,8 +1768,8 @@ class Controller:
             logger.warning("Rollback indirilemedi: %s", exc)
             return {"ok": False, "message": f"İndirme başarısız: {exc}"}
 
-        if sha256 and hasattr(updater, "verify_sha256"):
-            if not updater.verify_sha256(path, sha256):
+        if hasattr(updater, "verify_sha256"):
+            if not updater.verify_sha256(path, sha_norm):
                 return {"ok": False, "code": "sha_mismatch", "message": self.UPDATE_MESSAGES["sha_mismatch"]}
 
         try:
@@ -1784,7 +1799,13 @@ class Controller:
             try:
                 import pynvml
                 pynvml.nvmlInit()
-                has_gpu = pynvml.nvmlDeviceGetCount() > 0
+                try:
+                    has_gpu = pynvml.nvmlDeviceGetCount() > 0
+                finally:
+                    try:
+                        pynvml.nvmlShutdown()
+                    except Exception:
+                        pass
             except Exception:
                 try:
                     import shutil, subprocess

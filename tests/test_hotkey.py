@@ -194,3 +194,105 @@ def test_hotkey_listener_combo_lifecycle(monkeypatch):
     assert wait_until(lambda: release_count == 3)
 
     listener.stop()
+
+
+def test_hotkey_on_release_not_suppressed_while_pasting_for_pressed_key(monkeypatch):
+    import sys
+    import time
+    from types import ModuleType
+    import dikte.hotkey as hotkey_mod
+
+    events = []
+    listener = HotkeyListener(lambda: events.append("press"), lambda: events.append("release"), key="right_ctrl")
+    captured = {}
+
+    class FakeListener:
+        def __init__(self, on_press, on_release):
+            captured["on_press"] = on_press
+            captured["on_release"] = on_release
+            self.daemon = True
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    pynput_mock = ModuleType("pynput")
+    keyboard_mock = ModuleType("pynput.keyboard")
+    keyboard_mock.Listener = FakeListener
+    pynput_mock.keyboard = keyboard_mock
+    monkeypatch.setitem(sys.modules, "pynput", pynput_mock)
+    monkeypatch.setitem(sys.modules, "pynput.keyboard", keyboard_mock)
+
+    listener.start()
+    k_rctrl = DummyKeyCode(vk=163)
+    captured["on_press"](k_rctrl)
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline and "press" not in events:
+        time.sleep(0.01)
+    assert listener._pressed is True
+
+    monkeypatch.setattr(hotkey_mod, "_is_pasting", lambda: True)
+    # Yapıştırma sırasında daha önce basılı olmayan bir paste tuşu yoksayılır,
+    # ama _pressed_keys içinde olan right_ctrl bırakılınca _pressed takılı kalmamalı.
+    captured["on_release"](DummyKeyCode(vk=86))  # V tuşu
+    assert listener._pressed is True
+
+    captured["on_release"](k_rctrl)
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline and "release" not in events:
+        time.sleep(0.01)
+    assert listener._pressed is False
+    assert events == ["press", "release"]
+    listener.stop()
+
+
+def test_hotkey_on_press_prunes_stale_keys_and_resets_stuck_state(monkeypatch):
+    import sys
+    import time
+    from types import ModuleType
+    import dikte.hotkey as hotkey_mod
+
+    events = []
+    listener = HotkeyListener(lambda: events.append("press"), lambda: events.append("release"), key="right_ctrl")
+    captured = {}
+
+    class FakeListener:
+        def __init__(self, on_press, on_release):
+            captured["on_press"] = on_press
+            captured["on_release"] = on_release
+            self.daemon = True
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    pynput_mock = ModuleType("pynput")
+    keyboard_mock = ModuleType("pynput.keyboard")
+    keyboard_mock.Listener = FakeListener
+    pynput_mock.keyboard = keyboard_mock
+    monkeypatch.setitem(sys.modules, "pynput", pynput_mock)
+    monkeypatch.setitem(sys.modules, "pynput.keyboard", keyboard_mock)
+
+    down_vks = {163}
+    monkeypatch.setattr(hotkey_mod, "_is_vk_physically_down", lambda vk: vk in down_vks)
+
+    listener.start()
+    captured["on_press"](DummyKeyCode(vk=163))
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline and "press" not in events:
+        time.sleep(0.01)
+    assert listener._pressed is True
+
+    # Uyku / Win+L simülasyonu: right_ctrl fiziksel olarak artık basılı değil ama on_release gelmedi
+    down_vks.clear()
+    captured["on_press"](DummyKeyCode(char="a", vk=65))
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline and "release" not in events:
+        time.sleep(0.01)
+    assert listener._pressed is False
+    assert events == ["press", "release"]
+    listener.stop()

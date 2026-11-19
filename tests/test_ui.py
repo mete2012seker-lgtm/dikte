@@ -97,7 +97,7 @@ window.__models = {
   local_text_available: false
 };
 
-function snapshotCopy() { const copy = JSON.parse(JSON.stringify(window.__snap)); copy.ai.state = copy.state; return copy; }
+function snapshotCopy() { return JSON.parse(JSON.stringify(window.__snap)); }
 
 window.__ai = {
   provider: "none",
@@ -267,7 +267,12 @@ window.pywebview = {
       window.__calls.push("update_rollback:" + target + ":" + (installer_url || "") + ":" + (sha256 || ""));
       return { ok: true, message: "Rollback başlatıldı: " + target };
     },
-    wizard_status: async () => ({ ok: true, setup_done: window.__settings.setup_done }),
+    wizard_status: async () => ({
+      ok: true,
+      setup_done: window.__settings.setup_done,
+      has_nvidia_gpu: true,
+      cuda_ready: true
+    }),
     wizard_complete: async (payload) => {
       window.__calls.push("wizard_complete:" + JSON.stringify(payload));
       window.__settings.setup_done = true;
@@ -984,8 +989,11 @@ def test_welcome_wizard(page):
     # Sihirbazı başlat
     page.locator("#restartWizardBtn").click()
     assert not page.locator("#welcomeWizard").is_hidden()
-    # Adım 1 -> Adım 2 -> Adım 3 -> Adım 4 -> Adım 5
-    for _ in range(4):
+    # Adım 1 -> Adım 2 (GPU kontrolü) -> Adım 3 -> Adım 4 -> Adım 5
+    page.locator("#wizardNextBtn").click()
+    page.wait_for_function("() => document.querySelector('#wizardHwTitle').textContent.includes('NVIDIA GPU Algılandı')")
+    assert "NVIDIA GPU Algılandı" in page.locator("#wizardHwTitle").inner_text()
+    for _ in range(3):
         page.locator("#wizardNextBtn").click()
     assert not page.locator("#wizardFinishBtn").is_hidden()
     page.locator("#wizardFinishBtn").click()
@@ -1100,4 +1108,45 @@ def test_visual_verification_screenshots(page):
     assert (ARTIFACTS / "verify-sidebar-collapsed.png").is_file()
     assert (ARTIFACTS / "verify-text-model-details.png").is_file()
     assert (ARTIFACTS / "verify-dikte-autotranslate.png").is_file()
+
+
+def test_update_apply_reenables_on_failure(page):
+    fresh(page)
+    page.evaluate(
+        """() => {
+          window.__updateResult = {
+            ok: true,
+            update_available: true,
+            version: '1.7.0',
+            url: 'https://ornek/Dikte-1.7.0-kurulum.exe',
+            sha256: '',
+            notes: 'not',
+            message: 'Yeni sürüm: 1.7.0'
+          };
+          window.__updateApplyResult = { ok: false, message: 'İndirme başarısız.' };
+        }"""
+    )
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
+    page.locator("#updateCheckBtn").click()
+    page.wait_for_function("() => document.querySelector('#updateStatus').textContent.includes('Yeni sürüm')")
+    assert not page.locator("#updateApplyBtn").is_disabled()
+    page.locator("#updateApplyBtn").click()
+    page.wait_for_function("() => document.querySelector('#updateStatus').textContent.includes('İndirme başarısız')")
+    assert not page.locator("#updateApplyBtn").is_disabled()
+
+
+def test_hotkey_recorder_escape_cancels(page):
+    fresh(page)
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
+    before_calls = page.evaluate("() => window.__calls.filter(c => c.startsWith('settings_save:')).length")
+    page.locator("#hotkeyRecorderBtn").click()
+    assert page.locator("#hotkeyRecorderBtn").is_disabled()
+    page.keyboard.press("Escape")
+    page.wait_for_function("() => !document.querySelector('#hotkeyRecorderBtn').disabled")
+    after_calls = page.evaluate("() => window.__calls.filter(c => c.startsWith('settings_save:')).length")
+    assert after_calls == before_calls
+    assert "ESCAPE" not in page.locator("#hotkeyNow").inner_text()
+    assert page.locator("#hotkeySelect").input_value() == "right_ctrl"
 

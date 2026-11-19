@@ -286,4 +286,107 @@ def test_text_models_scan_enriched_metadata(tmp_path, monkeypatch):
     assert custom_item["quality_label"] == "Özel Model"
 
 
+@pytest.mark.parametrize(
+    "repo_or_url,filename",
+    [
+        ("https://evil.com/owner/repo", "model.gguf"),
+        ("http://huggingface.co.evil.com/owner/repo", ""),
+        ("../repo", "model.gguf"),
+        ("owner/..", "model.gguf"),
+        ("owner/repo", "../secret.gguf"),
+        ("owner/repo", "sub/secret.gguf"),
+        ("owner/repo", r"sub\secret.gguf"),
+        ("owner/repo", "C:secret.gguf"),
+        ("owner/repo$", "model.gguf"),
+    ],
+)
+def test_normalize_text_repo_and_file_rejects_traversal_and_invalid_host(repo_or_url, filename):
+    with pytest.raises(TextModelError):
+        text_models._normalize_text_repo_and_file(repo_or_url, filename)
+
+
+def test_http_206_content_range_mismatch_retries_without_range(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path / "models")
+    spec = TextModel(
+        "test-206", "Test 206", "Test modeli.",
+        "repo/x", "test-206.gguf", len(PAYLOAD), ("Test",),
+    )
+    monkeypatch.setattr(text_models, "TEXT_MODELS", (spec,))
+
+    part = partial_path("test-206")
+    part.parent.mkdir(parents=True, exist_ok=True)
+    part.write_bytes(PAYLOAD[:1024])
+
+    seen_headers = []
+
+    class FakeResp:
+        def __init__(self, status, body, headers=None):
+            self.status = status
+            self._body = body
+            self._pos = 0
+            self.headers = headers or {}
+            self.closed = False
+
+        def read(self, n=-1):
+            if self._pos >= len(self._body):
+                return b""
+            chunk = self._body[self._pos:] if n < 0 else self._body[self._pos:self._pos + n]
+            self._pos += len(chunk)
+            return chunk
+
+        def close(self):
+            self.closed = True
+
+    first_resp = FakeResp(206, PAYLOAD[2048:], {"Content-Range": f"bytes 2048-{len(PAYLOAD)-1}/{len(PAYLOAD)}"})
+    second_resp = FakeResp(200, PAYLOAD, {"Content-Length": str(len(PAYLOAD))})
+
+    def fake_opener(req, timeout=60):
+        seen_headers.append(dict(req.header_items()))
+        if len(seen_headers) == 1:
+            return first_resp
+        return second_resp
+
+    result = Downloader(opener=fake_opener, chunk_size=64 * 1024).download("test-206")
+    assert result["completed"] is True
+    assert first_resp.closed is True
+    assert len(seen_headers) == 2
+    assert "Range" in seen_headers[0]
+    assert "Range" not in seen_headers[1]
+    assert text_model_path("test-206").read_bytes() == PAYLOAD
+
+
+def test_text_manager_cancel_removes_part_after_close_and_does_not_poison_next(tiny_model):
+    mgr = text_models.TextModelManager()
+    started = threading.Event()
+    proceed = threading.Event()
+
+    orig_read_chunk = None
+
+    def slow_progress(written, total):
+        started.set()
+        proceed.wait(timeout=2.0)
+
+    # Start download in background with small chunk size so it pauses after first chunk
+    mgr._downloader = Downloader(chunk_size=1024)
+    out = {}
+
+    def run():
+        out["res"] = mgr.download("test-1b", progress=slow_progress)
+
+    t = threading.Thread(target=run)
+    t.start()
+    assert started.wait(timeout=2.0)
+    mgr.cancel_download()
+    proceed.set()
+    t.join(timeout=3.0)
+
+    assert out["res"]["cancelled"] is True
+    assert not partial_path("test-1b").exists()
+
+    # Subsequent download must succeed cleanly with its own fresh cancel event
+    res2 = mgr.download("test-1b")
+    assert res2["completed"] is True
+    assert text_model_path("test-1b").exists()
+
+
 

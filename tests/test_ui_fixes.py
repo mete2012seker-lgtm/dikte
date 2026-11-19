@@ -147,3 +147,14 @@ def test_app_js_text_model_details_and_rollback():
     assert "update_rollback" in content
     assert "target, installerUrl, sha256" in content or "api.update_rollback(target" in content
 
+
+def test_app_js_phase2_3_fixes():
+    """app.js must include GPU wizard check, snapshot state forwarding, Escape cancel, and delete guards."""
+    content = APP_JS.read_text(encoding="utf-8")
+    assert 'st.has_nvidia_gpu || st.cuda_ready || st.has_gpu || st.device === "GPU"' in content
+    assert "applyAi(snapshot.ai, snapshot.state)" in content
+    assert "initialSnapshotSynced" in content
+    assert 'e.key === "Escape" || e.code === "Escape"' in content
+    assert 'res && res.ok ? "info" : "warn"' in content
+    assert "Boolean(item.active || item.downloading || item.loaded)" in content
+

@@ -13,3 +13,4 @@ Format: `tarih | dosya adı | konu | tek cümlelik sonuç`
 | 2026-11-04 | 2026-11-04-7e-kalite-tablosu.md | 7e yerel GGUF kalite tablosu | Gemma 3 4B GPU: 10/10 cümle geçti, temizlik/çeviri doğrulu, cümle başı 0,2–1,5 sn |
 | 2026-11-06 | ../Dikte-Denetim-Raporu.md | Kod denetimi (eksik/yarım/hata) | 8 yayın blockerı: güncelleme `sha256`, boş `UPDATE_URL`, sürüm 1.3.0, kaldırma verisi, derlenmemiş kurucu, eksik sihirbaz |
 | 2026-11-18 | 2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md | OpenWhispr, gömülü hata tespit aracı ve stabilite denetimi | 4 swarm ajanı (Gemini 4 Hydrogen Medium) ile OpenWhispr dersleri, `error_reporter.py` tasarımı, 16 mimari/mantıksal bulgu ve 4 fazlı stabilite planı çıkarıldı |
+| 2026-11-19 | 2026-11-19-yayin-oncesi-denetim-raporu.md | v1.6.1 yayın öncesi denetim | 4 paralel swarm ajanı ile 2 UAC blockerı, 8 yüksek hata ve 2 test maskesi bulundu; Faz 1–3 düzeltmeleri tek turda uygulanıp 410 testle doğrulandı |

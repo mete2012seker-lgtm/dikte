@@ -12,11 +12,13 @@ Kurallar (UYGULAMA-PLANI §5.6, §12):
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import logging
 import re
 import subprocess
+import sys
 import threading
 import urllib.error
 import urllib.parse
@@ -41,22 +43,39 @@ class UpdaterError(RuntimeError):
         self.code = code
 
 
-def compare_versions(current: str, new: str) -> int:
-    """Sayısal sürüm karşılaştırması: 1 = yeni sürüm daha büyük."""
-    def parts(version: str):
-        out = []
-        for piece in str(version).split("."):
-            digits = "".join(ch for ch in piece if ch.isdigit())
-            out.append(int(digits) if digits else 0)
-        return out
+def _parse_version(version: str) -> tuple[list[int], int, tuple[tuple[int, int | str], ...]]:
+    """Sürüm dizgesini (çekirdek, final_bayrağı, ön_yayın) biçiminde ayrıştırır."""
+    text = str(version or "").strip().lstrip("vV")
+    text = text.split("+", 1)[0]
+    core_str, _sep, pre_str = text.partition("-")
+    core: list[int] = []
+    for piece in core_str.split("."):
+        digits = "".join(ch for ch in piece if ch.isdigit())
+        core.append(int(digits) if digits else 0)
+    if not pre_str:
+        return core, 1, ()
+    pre_tokens: list[tuple[int, int | str]] = []
+    for part in pre_str.split("."):
+        for tok in re.findall(r"\d+|[a-zA-Z]+", part):
+            if tok.isdigit():
+                pre_tokens.append((0, int(tok)))
+            else:
+                pre_tokens.append((1, tok.lower()))
+    return core, 0, tuple(pre_tokens)
 
-    cur, new = parts(current), parts(new)
-    length = max(len(cur), len(new))
-    cur += [0] * (length - len(cur))
-    new += [0] * (length - len(new))
-    if new > cur:
+
+def compare_versions(current: str, new: str) -> int:
+    """Sayısal sürüm karşılaştırması: 1 = yeni sürüm daha büyük, -1 = yeni sürüm daha küçük."""
+    cur_core, cur_final, cur_pre = _parse_version(current)
+    new_core, new_final, new_pre = _parse_version(new)
+    length = max(len(cur_core), len(new_core), 3)
+    cur_core += [0] * (length - len(cur_core))
+    new_core += [0] * (length - len(new_core))
+    cur_key = (cur_core, cur_final, cur_pre)
+    new_key = (new_core, new_final, new_pre)
+    if new_key > cur_key:
         return 1
-    if new < cur:
+    if new_key < cur_key:
         return -1
     return 0
 
@@ -122,6 +141,8 @@ def list_releases(
     for item in raw_list:
         if not isinstance(item, dict):
             continue
+        if item.get("draft") or item.get("prerelease"):
+            continue
         tag_name = str(item.get("tag_name") or "")
         name = str(item.get("name") or tag_name or "Sürüm")
         published_at = str(item.get("published_at") or "")
@@ -143,6 +164,8 @@ def list_releases(
                 if a_name.endswith(".exe") or a_url.lower().endswith(".exe"):
                     installer_url = a_url
                     break
+        if not installer_url:
+            continue
 
         # SHA-256 özetini çıkar (body içindeki 'sha256: ...' veya 64 hex karakter)
         sha256 = ""
@@ -232,6 +255,7 @@ def _validate_download_host(url: str) -> str:
             "github.com",
             "api.github.com",
             "objects.githubusercontent.com",
+            "release-assets.githubusercontent.com",
         ):
             return url
         raise UpdaterError("host_rejected")
@@ -294,7 +318,7 @@ def download_installer(
     if sha256:
         if not verify_sha256(final_path, sha256):
             raise UpdaterError("sha_mismatch", "İndirilen dosyanın SHA-256 özeti uyuşmuyor.")
-    elif sha256 == "" and not allow_missing_sha256:
+    elif not allow_missing_sha256:
         final_path.unlink(missing_ok=True)
         raise UpdaterError("bad_sha", "Geçerli bir SHA-256 özeti bulunamadı.")
 
@@ -317,15 +341,35 @@ def verify_sha256(path: Path, expected: str) -> bool:
     return ok
 
 
+def _launch_elevated(path: Path, args: list[str]) -> None:
+    """Kurucuyu Windows'ta UAC yükseltmesiyle, diğer platformlarda Popen ile başlatır."""
+    if sys.platform == "win32":
+        rc = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            str(path),
+            subprocess.list2cmdline(args),
+            str(path.parent),
+            1,
+        )
+        if rc <= 32:
+            raise UpdaterError("launch_failed", "Kurucu yönetici yetkisiyle başlatılamadı.")
+        return
+    try:
+        subprocess.Popen(
+            [str(path), *args],
+            cwd=str(path.parent),
+            close_fds=True,
+        )
+    except OSError as exc:
+        raise UpdaterError("launch_failed", str(exc)) from exc
+
+
 def apply(installer_path: Path, on_launched: Callable[[], None] | None = None) -> None:
     """Kurucuyu sessiz kipte başlatır; uygulama kapanır, kurulum devam eder."""
     path = Path(installer_path)
     if not path.exists():
         raise UpdaterError("missing_installer")
-    subprocess.Popen(
-        [str(path), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
-        cwd=str(path.parent),
-        close_fds=True,
-    )
+    _launch_elevated(path, ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"])
     if on_launched is not None:
         on_launched()

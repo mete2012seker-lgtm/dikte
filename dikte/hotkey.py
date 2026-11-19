@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ctypes
 import logging
+import sys
 import threading
 from collections import deque
 from typing import Callable
@@ -236,6 +238,17 @@ def _is_pasting() -> bool:
         return False
 
 
+def _is_vk_physically_down(vk: int) -> bool | None:
+    """Windows'ta sanal tuşun fiziksel olarak basılı olup olmadığını döner."""
+    if sys.platform != "win32":
+        return None
+    try:
+        state = ctypes.windll.user32.GetAsyncKeyState(int(vk))
+        return bool(state & 0x8000)
+    except Exception:
+        return None
+
+
 def _canonical_key_id(key) -> tuple:
     """pynput Key/KeyCode nesnesi için modifier+char değişiminden etkilenmeyen kimlik üretir."""
     if key is None:
@@ -373,6 +386,20 @@ class HotkeyListener:
                     return
 
                 key_id = _canonical_key_id(key)
+                should_reset = False
+                with self._keys_lock:
+                    for existing_id in list(self._pressed_keys.keys()):
+                        if existing_id[0] == "key" and isinstance(existing_id[1], int):
+                            if _is_vk_physically_down(existing_id[1]) is False:
+                                self._pressed_keys.pop(existing_id, None)
+                    if self._pressed:
+                        active_before = {tok for toks in self._pressed_keys.values() for tok in toks}
+                        if not self._target_tokens.issubset(active_before):
+                            should_reset = True
+
+                if should_reset:
+                    self.reset_state()
+
                 should_trigger = False
                 with self._keys_lock:
                     self._pressed_keys[key_id] = tokens
@@ -386,12 +413,14 @@ class HotkeyListener:
 
             def on_release(key) -> None:
                 tokens = key_to_tokens(key)
-                if _is_pasting() and tokens and (tokens & _PASTE_RELATED_TOKENS):
-                    return
-
                 key_id = _canonical_key_id(key)
                 should_release = False
                 with self._keys_lock:
+                    in_pressed = key_id in self._pressed_keys or (
+                        bool(tokens) and any(toks == tokens for toks in self._pressed_keys.values())
+                    )
+                    if _is_pasting() and tokens and (tokens & _PASTE_RELATED_TOKENS) and not in_pressed:
+                        return
                     removed = self._pressed_keys.pop(key_id, None)
                     if removed is None and tokens:
                         to_remove = [k for k, toks in self._pressed_keys.items() if toks == tokens]

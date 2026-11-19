@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -42,8 +43,8 @@ _RE_SK_OPENROUTER = re.compile(r"sk-or-v1-[A-Za-z0-9_-]+")
 _RE_SK_GENERIC = re.compile(r"sk-[A-Za-z0-9_-]{12,}")
 _RE_BEARER = re.compile(r"(?i)\bBearer\s+\S+")
 _RE_API_KEY = re.compile(r"(?i)api[_-]?key\s*[:=]\s*\S+")
-_RE_WIN_USER_BACKSLASH = re.compile(r"(?i)([A-Za-z]:\\Users\\)([^\\\s\"'<>|;,:]+)")
-_RE_WIN_USER_SLASH = re.compile(r"(?i)([A-Za-z]:/Users/)([^/\s\"'<>|;,:]+)")
+_RE_WIN_USER_BACKSLASH = re.compile(r"(?i)([A-Za-z]:\\Users\\)([^\\\"'<>|;,:\r\n]+)")
+_RE_WIN_USER_SLASH = re.compile(r"(?i)([A-Za-z]:/Users/)([^/\"'<>|;,:\r\n]+)")
 
 _JS_THROTTLE_SECONDS = 30.0
 _MAX_LOG_BYTES = 64 * 1024
@@ -80,9 +81,21 @@ def _now_iso() -> str:
 
 def _atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(content, encoding="utf-8")
-    os.replace(tmp_path, path)
+    tmp_path = path.with_name(
+        f"{path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:
@@ -822,6 +835,10 @@ def _format_from_collected(collected: dict, diagnosis: dict) -> str:
             tb = sanitize_text(str(last_crash.get("traceback", "")))
             if tb:
                 lines.append(tb.strip())
+        native_tail = sanitize_text(str(crash_info.get("native_crash_tail") or "")).strip()
+        if native_tail:
+            lines.append("Yerel (Native) Çökme Kaydı:")
+            lines.append(native_tail)
 
     lines.extend(
         [

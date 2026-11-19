@@ -115,7 +115,7 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] **`sha256` akışı düzeltildi (2026-11-09):** `update_check` `sha256` döndürüyor; `update_apply` tek denetim sonucunu kullanıyor; boş/bozuk özet indirmeden reddediliyor.
 - [x] **`UPDATE_URL` dolduruldu (2026-11-09):** GitHub Releases `latest.json` adresi; yapılandırılmamışsa `no_url`.
 - [x] **Sürüm 1.6.0 (2026-11-09):** tek kaynak `config.APP_VERSION`.
-- [ ] Güncelleme UI thread'inde senkron çalışıyor; ilerleme/iptal yok, uygulama kapanmıyor (Faz 3.3).
+- [x] **v1.6.1 Yayın Öncesi Denetim Düzeltmeleri (2026-11-19):** UAC `ShellExecuteW("runas")` (`updater.apply`, `uninstall.run_uninstaller`), `controller.uninstall()` temiz kapanış, `sha256=None` ve rollback özet zorunluluğu, semver ön sürüm sıralaması + draft/prerelease filtresi, `UNINSTALL_REG_KEY` eşlemesi, `release-assets.githubusercontent.com`, HF host/path traversal koruması, indirme iptal dosya kilidi + HTTP 206 düzeltmesi, Sihirbaz GPU tespiti (`has_nvidia_gpu`), `snapshot.ai.state` + test maskesi temizliği, `hotkey`/`audio`/`paste`/`clipboard` ve `error_reporter` `native_crash_tail` + `diagnostics` `setup_logging` düzeltmeleri.
 - [ ] GitHub Release yayınlanmadı (`latest.json` 404 veriyor); ilk Release kullanıcı tarafından yüklenecek.
 - Kanıt hedefi: sahte `latest.json` ile indirme → SHA → sessiz kurulum; gerçek sürüm yükseltme kullanıcı testi.
 

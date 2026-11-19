@@ -3,13 +3,19 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.6.1 — OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Faz A/B Stabilite Sertleştirmesi tamamlandı (2026-11-18):**
-- 4 paralel `Gemini 4 Hydrogen (Medium)` ajanı ile OpenWhispr dersi + gömülü hata tespit aracı tasarımı + mimari/mantıksal denetim raporu (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`) hazırlandı.
-- Faz A (Acil çökme/kilit) ve Faz B (Gömülü Hata Tespit ve Log Kopyalama Aracı + Kısa Vade Stabilite) uygulandı ve ikinci göz denetimiyle doğrulandı.
-- PyInstaller `Dikte.spec` içine `collect_all("faster_whisper")` (`silero_vad_v6.onnx` varlıkları) eklendi; sürüm **1.6.1**'e yükseltildi ve `installer\Output\Dikte-Setup-1.6.1.exe` (178.515.604 bayt) derlenip `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu 0 ile doğrulandı.
-- Tam test süiti: **369 passed, 1 skipped** (Playwright Edge arayüz testleri + yerel HTTP indirme testleri dahil). Sıradaki adım: GitHub Release (`v1.6.1`) yüklemesi ve kullanıcı kabul testi.
+**v1.6.1 — Yayın Öncesi Denetim ve Faz 1–3 Sertleştirmesi tamamlandı (2026-11-19):**
+- 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` swarm işçisiyle yayın öncesi tam kod denetimi yapıldı (`reports/2026-11-19-yayin-oncesi-denetim-raporu.md`).
+- 2 yayın blockerı (UAC `ShellExecuteW("runas")` güncelleme/kaldırma + `controller.uninstall()` kapanışı), 8 yüksek hata (SHA-256 `None` & rollback özet zorunluluğu, semver ön sürüm sıralaması + draft/prerelease filtresi, Sihirbaz GPU tespiti `has_nvidia_gpu`, HF host/path traversal koruması, indirme iptal dosya kilidi + HTTP 206, `hotkey` stuck-key/`on_release`, `audio` akış hatası, `AUTO_MODEL`), 2 test maskesi ve kritik Faz 3 iyileştirmeleri (`paste` UIPI, `clipboard` 3x retry, `error_reporter` `native_crash_tail` + boşluklu kullanıcı adı maskeleme, `diagnostics` `setup_logging`, `app.js` `#updateApplyBtn`/açılış senkronu/`Escape` iptali) tek turda uygulanıp doğrulandı.
+- Güncel kurucu `installer\Output\Dikte-Setup-1.6.1.exe` (178.532.285 bayt, SHA-256: `9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799`) derlendi, `installer/latest.json` güncellendi ve `dist\Dikte\Dikte.exe --selftest --cpu` ile doğrulandı.
+- Tam test süiti: **410 passed, 1 skipped** (Playwright Edge arayüz + yerel HTTP indirme + +41 yeni regresyon testi dahil). Sıradaki adım: GitHub Release (`v1.6.1`) yayını ve gerçek UAC kullanıcı kabul testi.
 
 ## Biten (kanıtla)
+- **v1.6.1 Yayın Öncesi Denetim ve Faz 1–3 Sertleştirmesi (2026-11-19):**
+  - **Denetim Raporu:** `reports/2026-11-19-yayin-oncesi-denetim-raporu.md` (4 paralel `Gemini 4 Hydrogen Medium` işçisi + satır düzeyinde çapraz doğrulama).
+  - **Yayın Zinciri & Güvenlik:** `dikte/updater.py` & `dikte/uninstall.py` Windows UAC `ShellExecuteW("runas")`, `controller.uninstall()` temiz kapanış, `download_installer` `sha256=None` reddi + rollback SHA-256 zorunluluğu, semver ön sürüm sıralaması, `draft`/`prerelease` filtresi, `release-assets.githubusercontent.com`, `config.UNINSTALL_REG_KEY` Inno `AppId` eşlemesi.
+  - **Backend, Veri & Tanılama:** `text_models.py`/`models.py` HF alan adı ve `../` yol geçişi engeli + dosya kapanışı sonrası temizlik + HTTP 206 düzeltmesi; `hotkey.py` `on_release` ve `GetAsyncKeyState` takılı tuş kurtarma; `audio.py` akış hatası ve callback zaman damgası; `engine.py`/`controller.py` `AUTO_MODEL` normalize; `paste.py` UIPI `SendInput` kontrolü; `clipboard.py` 3x tekrar; `error_reporter.py` `native_crash_tail` + boşluklu kullanıcı adı maskeleme + benzersiz atomik yazma; `diagnostics.py` `setup_logging()` handler ve `OSError` koruması.
+  - **Arayüz & Test Maskeleri:** `app.js` Sihirbaz GPU tespiti (`has_nvidia_gpu`), `snapshot.ai.state`, açılışta tema/tasarım/sidebar senkronu, `#updateApplyBtn` hata sonrası açılma, `Escape` ile kısayol kaydı iptali; `tests/test_ui.py` `copy.ai.state` test maskesi temizlendi.
+  - **Kurucu & Testler:** `Dikte-Setup-1.6.1.exe` (178.532.285 bayt, SHA-256: `9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799`); tam süit **410 passed, 1 skipped** (+41 yeni test).
 - **v1.6.1 OpenWhispr Analizi, Gömülü Hata Tespit Aracı ve Faz A/B Stabilite (2026-11-18):**
   - **OpenWhispr Analizi & Denetim (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`):** Pano yedekleme/geri yükleme, Özel Sözlük, tepsi modu Floating Pill ve mikrofon/RMS dersleri çıkarıldı; 16 mimari/mantıksal bulgu satır kanıtıyla belgelendi.
   - **Gömülü Hata Tespit & Log Kopyalama Aracı (`dikte/error_reporter.py`, `dikte/diagnostics.py`):** `RotatingFileHandler` (2 MB × 3), `faulthandler` (`native_crash.log`), `sys/threading.excepthook`, `running.lock` beklenmedik kapanma tespiti, gizlilik maskelemesi (API anahtarları/kullanıcı yolu hariç; `history.json`/`secrets.json`/`last.wav`/`_latest` asla okunmaz), 10+ Türkçe çözüm kuralı, `#diagBanner`, `#diagModal`, Ayarlar → **Sorun Giderme ve Tanılama** kartı, tepside `"Tanılama Raporu Kopyala"`, JS `error`/`unhandledrejection` köprüsü ve başsız açılış hatası için `MessageBoxW`.
@@ -137,8 +143,8 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **369 passed, 1 skipped** (2026-11-18, v1.6.1: `test_error_reporter.py` 18 + `test_stability_fixes.py` 8 + Playwright UI 37 + indirme 10 dahil) |
-| Kurucu (build.ps1) | **Üretildi:** `dist\Dikte` + `installer\Output\Dikte-Setup-1.6.1.exe`, 178.515.604 bayt, SHA-256 `ad2d1ea4fd1e87c382b25f548ad572d0762ba6897a68e5781aaefe58a5d0889a` |
+| `pytest -q` | **410 passed, 1 skipped** (2026-11-19, v1.6.1 yayın öncesi sertleştirme: +41 yeni regresyon testi, Playwright Edge UI + yerel HTTP indirme dahil) |
+| Kurucu (build.ps1) | **Üretildi:** `dist\Dikte` + `installer\Output\Dikte-Setup-1.6.1.exe`, 178.532.285 bayt, SHA-256 `9bf2b45b9bb16f2b1811dc8350a6ce6df8e2a971b1e68d97ab9db1dea92b7799` |
 | Paketli açılış | `dist\Dikte\Dikte.exe --selftest --cpu` başarıyla çalıştı (`PKG_EXIT=0`, Silero VAD + Whisper Small CPU) |
 | `--selftest` | **Çalışıyor:** `tests/data/test.wav` (16 kHz mono WAV) ve `test.txt` hazır; kod 0 ile geçti |
 | Gerçek model aktifleştirme | large-v3 → tiny, GPU float16, ready |

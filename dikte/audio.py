@@ -38,6 +38,7 @@ class AudioRecorder:
         self._recorded_frames = 0
         self._max_duration_reached = False
         self._stream_error: str | None = None
+        self._last_callback_at: float = 0.0
 
     @property
     def is_recording(self) -> bool:
@@ -60,11 +61,19 @@ class AudioRecorder:
             self._stream_error = None
 
         def callback(indata, frames, _time_info, status) -> None:
+            self._last_callback_at = time.monotonic()
             if status:
                 logger.warning("Ses akışı uyarısı: %s", status)
-                if getattr(status, "input_overflow", False):
+                is_overflow = bool(getattr(status, "input_overflow", False))
+                is_nonfatal_flag = bool(
+                    getattr(status, "input_underflow", False)
+                    or getattr(status, "output_underflow", False)
+                    or getattr(status, "output_overflow", False)
+                    or getattr(status, "priming_output", False)
+                )
+                if is_overflow:
                     logger.warning("Ses akışında tampon taşması (input_overflow) oluştu.")
-                if getattr(status, "error", False):
+                if getattr(status, "error", False) or (not is_overflow and not is_nonfatal_flag):
                     with self._chunks_lock:
                         self._stream_error = f"Ses akışı kritik hata verdi: {status}"
                     return
@@ -103,6 +112,7 @@ class AudioRecorder:
 
         self._recording = True
         self._started_at = time.perf_counter()
+        self._last_callback_at = time.monotonic()
         logger.info("Kayıt başladı")
 
     def stop(self) -> Recording | None:
