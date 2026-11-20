@@ -3,14 +3,20 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**v1.6.1 — Canlı Yayın, `onnxruntime` Kurulum Hatası Düzeltmesi ve GitHub Pages İndirme Sitesi tamamlandı (2026-11-19):**
-- Gerçek kurulum testinde yakalanan `ImportError: DLL load failed while importing onnxruntime_pybind11_state` (Windows DLL bellek sınırı) hatası çözüldü: `run_dikte.py` ve `dikte/__main__.py` içinde `onnxruntime` en başta (`pywebview`/CUDA öncesi) erken yükleniyor; `dikte/engine.py` içinde yine de hata oluşursa otomatik `vad_filter=False` yedeğine düşüyor.
-- `dikte/error_reporter.py` güncellendi: `onnxruntime_dll_error` kuralı eklendi ve en son başarılı `Model hazır:` satırından önce kalan eski `"Model bulunamadı"` loglarının yanlış alarm üretmesi engellendi.
-- Vitrin `README.md`, mobil/tablet/masaüstü uyumlu tek sayfalık GitHub Pages indirme sitesi (`docs/index.html`, `docs/assets/*.png`) ve `installer/RELEASE-NOTES-v1.6.1.md` hazırlandı.
-- Güncel kurucu `installer\Output\Dikte-Setup-1.6.1.exe` (178.553.401 bayt, SHA-256: `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd`) derlendi, `dist\Dikte\Dikte.exe --selftest --cpu` (`PKG_EXIT=0`, Silero VAD aktif) doğrulandı; `GitHub CLI (gh 2.105.0)` ile `v1.6.1` GitHub Release ve `https://mete2012seker-lgtm.github.io/dikte/` yayına alındı.
-- Tam test süiti: **413 passed, 1 skipped** (+3 yeni regresyon testi). Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı tanıtım/dağıtım (`winget`, AlternativeTo, 30 sn demo video).
+**2026-11-20 — Remotion Tanıtım Videosu, Web Sitesi ve README Yayını tamamlandı (v1.6.1 canlı):**
+- `video/` klasöründe 45 saniyelik (1350 kare, `1920x1080`, `30 fps`, H.264 + AAC) 7 sahneli Remotion tanıtım videosu ve deterministik 9 WAV ses efekti kiti üretildi; 15 sahne karesi görsel olarak denetlenip Sahne 5 logo kırpılması ve dairesel dalga easing'i düzeltildi.
+- Web akışına uygun sıkıştırılmış `docs/assets/dikte-tanitim.mp4` (`9.185.093` bayt, `+faststart`, H.264 `1920x1080` + AAC) ve 1080p kapak görseli `docs/assets/dikte-tanitim-poster.png` oluşturuldu.
+- GitHub Pages (`docs/index.html`) içine `#tanitim-videosu` oynatıcı bölümü (1440/768/360px `overflow: False`), `README.md` alt bölümüne ise tıklanabilir kapak ve doğrudan izleme/indirme bağlantıları eklendi.
+- **v1.6.1 — Canlı Yayın, `onnxruntime` Kurulum Hatası Düzeltmesi ve GitHub Pages İndirme Sitesi tamamlandı (2026-11-19):**
+  - `run_dikte.py`/`__main__.py` `onnxruntime` erken yükleme, `engine.py` `vad_filter=False` yedeği, `error_reporter.py` `_recent_session_log()` + `onnxruntime_dll_error` kuralı.
+  - Güncel kurucu `installer\Output\Dikte-Setup-1.6.1.exe` (178.553.401 bayt, SHA-256: `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd`) `v1.6.1` GitHub Release ve `https://mete2012seker-lgtm.github.io/dikte/` yayında (**413 passed, 1 skipped**).
+- Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı topluluk dağıtımı (`winget`, AlternativeTo).
 
 ## Biten (kanıtla)
+- **Remotion Tanıtım Videosu, Web Sitesi ve README Yayını (2026-11-20):**
+  - **Video Kaynağı (`video/`):** `src/theme.ts` (Dikte koyu/açık renk paleti, `@fontsource` yerel Türkçe fontlar), 5 katmanlı `StageLayers` + `DotPattern`, `MicMorphWave` (48 bar + morphing mikrofon), `MagicUI` (`ShineBorderCard`, `MagicCard`, `AnimatedListItem`, `Keycap3D`), 7 sahne (`Scene1Hook`..`Scene7CTA`) ve `scripts/generate-sfx.mjs` (9 adet 16-bit WAV ses efekti).
+  - **Web & README Entegrasyonu:** `docs/assets/dikte-tanitim.mp4` (`9.185.093` bayt, `ffprobe`: `h264 1920x1080 30fps + aac, 45.013s`), `docs/assets/dikte-tanitim-poster.png`, `docs/index.html` (`#tanitim-videosu` + üst menü bağlantısı) ve `README.md` (`## Tanıtım Videosu`).
+  - **Doğrulama:** `npm --prefix video run typecheck` (exit 0), `pytest -q` (**413 passed, 1 skipped**, 68.03 sn), 15 kontrol karesi görsel denetimi, Playwright `docs/index.html` (`1440x900`, `768x1024`, `360x800` `overflow: False`, `mp4_http=200`).
 - **v1.6.1 Canlı Yayın, `onnxruntime`/VAD Düzeltmesi ve İndirme Sitesi (2026-11-19, 2. Oturum):**
   - **Kök Neden & Düzeltme:** `run_dikte.py` ve `dikte/__main__.py` içinde `onnxruntime` erken yükleme; `dikte/engine.py` içinde `onnxruntime`/VAD hatasında otomatik `vad_filter=False` yedeği; `dikte/error_reporter.py` içinde `_recent_session_log()` ve `onnxruntime_dll_error` kuralı (+3 regresyon testi).
   - **Vitrin & GitHub Pages:** `README.md` yenilendi; `docs/index.html` (masaüstü/tablet/telefon 360px–1440px `overflow: False`, Playwright Edge doğrulamalı) ve `docs/assets/` (maskeli v1.6.1 ekran görüntüleri + ikon) eklendi; `https://mete2012seker-lgtm.github.io/dikte/` yayında (`status: built`).
@@ -91,9 +97,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
 
 ## Sıradaki ilk adım
-1. **Son Kullanıcı Doğrulaması ve Tanıtım:**
-   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) indirilen yeni `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, yanlış uyarının kalktığını ve **Ayarlar → Güncellemeleri Denetle** sonucunu ("Güncelsin v1.6.1") doğrulamak.
-   - İsteğe bağlı büyüme adımları: `winget` paketi başvurusu, AlternativeTo kaydı ve 30 saniyelik Türkçe demo videosu ile topluluk duyuruları.
+1. **Son Kullanıcı Doğrulaması ve Dağıtım:**
+   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) yeni `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, yanlış uyarının kalktığını, **Ayarlar → Güncellemeleri Denetle** sonucunu ve canlı `#tanitim-videosu` bölümünü doğrulamak.
+   - İsteğe bağlı büyüme adımları: `winget` paketi başvurusu ve AlternativeTo kaydı (45 sn Remotion tanıtım videosu tamamlandı).
 
 ## Açık sorunlar
 - **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.
@@ -144,11 +150,15 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
   - **Hugging Face Özel Modeller:** `data/custom_models.json` dosyasında kalıcı saklanır; model kartında "Sil" denildiğinde diskteki model dosyası silinir ama kart listede kalır, kartın "⋯" menüsünde ayrıca "Listeden Kaldır" seçeneği bulunur.
   - **Faz 5.2 Kapsamı ve Dağıtım:** Bu oturumda tüm kodlar yazılıp `build.ps1` ile güncel `Dikte-Setup-1.6.0.exe` derlenecek; sentetik test sesi (`tests/data/test.wav` + `test.txt`) ile selftest ve paketli açılış testi otomatik doğrulanacak; gerçek VM testi ve GitHub Release yüklemesi kullanıcıya bırakılacak.
   - **Ajan Kararları (İkon & Tepsi):** Logo kaynağı `design/download` (ses dalgalı mavi ikon) alınıp `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
+- **2026-11-20 (Tanıtım Videosu):** `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu üretildi; `docs/assets/dikte-tanitim.mp4` (`+faststart`, `9,18 MB`) + kapak görseli GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi; `video/node_modules`, `.remotion`, `out/`, `public/sfx/` `.gitignore` ile hariç tutuldu.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **413 passed, 1 skipped** (2026-11-19, `onnxruntime`/VAD yedeği + `error_reporter` +3 regresyon testi dahil, 68.02 sn) |
+| `pytest -q` | **413 passed, 1 skipped** (2026-11-20 doğrulandı, 68.03 sn) |
+| Remotion TypeScript (`tsc --noEmit`) | **Geçti** (exit 0, 2026-11-20) |
+| Tanıtım videosu render & `ffprobe` | **Geçti:** `video/out/dikte-tanitim.mp4` (`18,6 MB`) ve web MP4 `docs/assets/dikte-tanitim.mp4` (`9,18 MB`, `h264 1920x1080 30fps + aac, 45.013s`), 15 kontrol karesi incelendi |
+| GitHub Pages video & responsive | **Geçti:** Playwright `1440x900`, `768x1024`, `360x800` `overflow: False`, `#promoVideo` + `mp4_http=200` (2026-11-20) |
 | Kurucu (build.ps1) | **Üretildi ve yayınlandı:** `installer\Output\Dikte-Setup-1.6.1.exe`, 178.553.401 bayt, SHA-256 `953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd` |
 | Paketli açılış | `dist\Dikte\Dikte.exe --selftest --cpu` başarıyla çalıştı (`PKG_EXIT=0`, Silero VAD + Whisper Small CPU) |
 | GitHub Release & Pages | **Yayında:** `v1.6.1` (`Dikte-Setup-1.6.1.exe` + `latest.json`) ve `https://mete2012seker-lgtm.github.io/dikte/` (Playwright masaüstü/tablet/telefon `overflow: False`) |

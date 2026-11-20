@@ -1,0 +1,27 @@
+{
+  "name": "dikte-promo-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion promotional video for Dikte",
+  "scripts": {
+    "dev": "remotion studio",
+    "prebuild": "node scripts/generate-sfx.mjs",
+    "build": "remotion render src/index.ts DikteTanitim out/dikte-tanitim.mp4 --codec h264 --crf 17 --overwrite",
+    "typecheck": "tsc --noEmit",
+    "sfx": "node scripts/generate-sfx.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.1.0",
+    "@fontsource/jetbrains-mono": "^5.1.0",
+    "@fontsource/plus-jakarta-sans": "^5.1.0",
+    "@remotion/cli": "^4.0.240",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.240"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

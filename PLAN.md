@@ -186,6 +186,13 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Dağıtım ve sürüm **1.6.1**: `Dikte.spec` içine `collect_all("faster_whisper")` (`silero_vad_v6.onnx`) eklendi; `Dikte-Setup-1.6.1.exe` (178.515.604 bayt) derlendi, `latest.json` güncellendi, `dist\Dikte\Dikte.exe --selftest --cpu` çıkış kodu 0 ile doğrulandı.
 - [x] Kanıt: **369 passed, 1 skipped** (`pytest -q`, 86.43 sn).
 
+### Aşama 18 — Remotion Tanıtım Videosu, Web Sitesi ve README Yayını (2026-11-20 tamamlandı)
+- [x] `video/` altında Remotion 4 projesi kuruldu (`src/theme.ts`, `@fontsource` yerel Türkçe fontlar, 5 katmanlı sahne iskeleti, deterministik 9 WAV ses efekti kiti).
+- [x] 45 saniyelik (1350 kare, 1920x1080, 30 fps) 7 sahneli tanıtım videosu (`video/out/dikte-tanitim.mp4`) üretildi: klavyeyle yazma zorluğu, sesle `3,5x` hız, 48 bar mikrofon morfizmi + `Sağ Ctrl`, AI Temizle/Çevir + `ShineBorder`, `AnimatedThemeToggler` dairesel koyu→açık tema geçişi, `BentoGrid`/`MagicCard` ve kapanış.
+- [x] 15 sahne karesi (`check_*.png`) görsel olarak incelendi; Sahne 5 logo kırpılması ve dairesel dalga easing'i düzeltilip yeniden render edildi.
+- [x] Web için optimize MP4 (`docs/assets/dikte-tanitim.mp4`, 9,18 MB, `+faststart`) ve 1080p kapak görseli (`docs/assets/dikte-tanitim-poster.png`) `docs/index.html` (`#tanitim-videosu`) ile `README.md` alt bölümüne eklendi.
+- Kanıt: `tsc --noEmit` (exit 0), `ffprobe` (H.264 1920x1080 30fps + AAC, 45.013 sn), **413 passed, 1 skipped** (`pytest -q`), Playwright `1440/768/360px` doğrulaması. Kullanıcı taslağı ve web/README eklemesini onayladı.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |

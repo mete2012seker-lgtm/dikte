@@ -105,9 +105,11 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Cihaza Göre Ölçekleme (Responsive Tasarım):** CSS'te `clamp()` fonksiyonu ve `@media` kırılımları (`960px` tablet, `640px` telefon) sayesinde aynı sayfa masaüstü, tablet ve telefonda taşma yapmadan otomatik ölçekleniyor.
 5. **GitHub CLI (`gh`) ve Güvenli Giriş:** `gh auth login --web` ile şifre paylaşmadan tarayıcı üzerinden tek seferlik kodla giriş yapıldığında, Release yükleme ve güncelleme işlemleri tek komutla otomatikleştirilebiliyor.
 
+## 2026-11-20 — Remotion Tanıtım Videosu ve Web Yayını
 
-
-
-
-
+1. **Remotion (Kodla Video Üretimi):** Ekran kaydı alıp kesmek yerine React bileşenlerini kare kare render ederek piksel netliğinde tanıtım videosu (MP4) üretilebiliyor; yay fiziği (`spring`) ve kademeli girişler hazır şablon hissini ortadan kaldırıyor.
+2. **Yerel Font (`@fontsource`) ve Türkçe Karakterler:** Render sırasında internet erişimi olmasa bile `latin-ext` alt kümesini içeren font paketlerini projeye gömmek, `ı, İ, ğ, ş, ç, ö, ü` harflerinin başka bir yedek fonta düşmeden net çıkmasını sağlıyor.
+3. **Deterministik Ses Sentezi (WAV SFX):** Dışarıdan telifli ses aramak yerine küçük bir Node betiğiyle saf matematik kullanarak tıklama, geçiş ve arka plan tonları üretmek projeyi tek komutla yeniden üretilebilir kılıyor.
+4. **Web İçin `faststart` ve CRF Sıkıştırma:** `ffmpeg` ile `-movflags +faststart` eklemek tarayıcının 9 MB'lık videoyu tamamen indirmeden ilk saniyeden oynatmaya başlamasını sağlar; `CRF 22` ise kaliteyi koruyarak dosya boyutunu yarıya düşürür.
+5. **GitHub `README.md` vs GitHub Pages:** GitHub güvenlik/uyumluluk nedeniyle README içinde ham `<video>` etiketlerini doğrudan oynatmaz; bu yüzden README'de tıklanabilir kapak görseliyle videoyu doğrudan HTML5 `<video>` olarak sunan GitHub Pages sitesine (`#tanitim-videosu`) bağlamak en temiz çözümdür.
 

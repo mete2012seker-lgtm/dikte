@@ -276,6 +276,42 @@
       height: auto;
     }
 
+    /* Tanitim videosu */
+    .video-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .video-frame {
+      border-radius: clamp(10px, 2vw, 16px);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #060A14;
+      box-shadow: var(--shadow);
+    }
+    .video-frame video {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      background: #060A14;
+    }
+    .video-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+    .video-meta a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .video-meta a:hover { text-decoration: underline; }
+
     /* Bolumler */
     section {
       padding: clamp(36px, 6vw, 56px) 0;
@@ -431,6 +467,7 @@
       .shot-tab { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
       .cmd-box { flex-direction: column; align-items: stretch; gap: 8px; }
       .cmd-box .copy-mini { align-self: flex-end; }
+      .video-meta { flex-direction: column; text-align: center; }
       .footer-inner { flex-direction: column; text-align: center; }
     }
   </style>
@@ -443,6 +480,7 @@
         <span>Dikte</span>
       </a>
       <div class="nav-links">
+        <a href="#tanitim-videosu">Tanıtım Videosu</a>
         <a href="#ozellikler">Özellikler</a>
         <a href="#guvenlik">Güvenlik</a>
         <a href="#sss">SSS</a>
@@ -502,6 +540,31 @@
         </div>
         <div class="shot-frame">
           <img id="showcaseImg" src="assets/ekran-dikte-koyu.png" alt="Dikte uygulama ekran görüntüsü" />
+        </div>
+      </div>
+    </section>
+
+    <section id="tanitim-videosu">
+      <h2 class="section-title">45 Saniyede Dikte</h2>
+      <p class="section-desc">
+        Klavyeyle yazmak yerine konuşmanın hızını, yerel Whisper akışını, yapay zeka temizliğini ve Magic UI tema geçişlerini izle.
+      </p>
+      <div class="video-wrap">
+        <div class="video-frame">
+          <video
+            id="promoVideo"
+            controls
+            playsinline
+            preload="metadata"
+            poster="assets/dikte-tanitim-poster.png"
+          >
+            <source src="assets/dikte-tanitim.mp4" type="video/mp4" />
+            Tarayıcın video oynatmayı desteklemiyor. <a href="assets/dikte-tanitim.mp4">Tanıtım videosunu indir</a>.
+          </video>
+        </div>
+        <div class="video-meta">
+          <span>1080p • 45 sn • Sesli tanıtım (Remotion)</span>
+          <a href="assets/dikte-tanitim.mp4" download="Dikte-Tanitim.mp4">Videoyu indir (.mp4)</a>
         </div>
       </div>
     </section>

@@ -23,6 +23,7 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 | olabilir.md        | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu (ne nerede, nasıl çalışır)                                                |
 | calisma-duzeni.md  | **Zorunlu plan/denetim düzeni:** keşif → doküman → 4 paralel salt-okunur alt ajan → sentez → rapor → doğrulama                 |
 | web/               | Next.js 16 + shadcn + Magic UI denemesi (AnimatedList, BentoGrid, AnimatedThemeToggler); yalnız referans, üretim arayüzü değil |
+| video/             | Remotion tanıtım videosu kaynak projesi (45 sn, 1080p, 7 sahne + sentezlenen WAV ses kiti)                                     |
 
 ## Kullanıcı
 - Kodlamaya yeni başlıyor. Sade Türkçe ile konuş, terimi bir cümleyle açıkla.
@@ -154,6 +155,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - **Vitrin & GitHub Pages:** `README.md` yenilendi; `docs/index.html` üzerinden mobil/tablet/masaüstü uyumlu ücretsiz indirme sitesi (`https://mete2012seker-lgtm.github.io/dikte/`) açıldı.
   - **GitHub CLI (`gh`) Yayını:** Bilgisayara `GitHub.cli` kuruldu; bundan sonraki sürümlerde ajan kullanıcı onayıyla `gh release` üzerinden doğrudan yayın yapabilir.
   - **`onnxruntime` Erken Yükleme & VAD Yedeği:** Paketli uygulamada Windows DLL bellek sınırını aşmak için `onnxruntime` giriş noktasında erken yüklenir; yine de hata olursa `engine.py` otomatik `vad_filter=False` ile devam eder.
+- **2026-11-20 kararları (tanıtım videosu, kullanıcı onaylı):**
+  - **Remotion Tanıtım Videosu (`video/`):** Klavyeyle yazmanın zorluğuna karşı sesle daha hızlı/akıcı ifade etmeyi, bas-konuş mikrofon morfizmini, AI temizle/çevir ve Magic UI geçişlerini anlatan 45 sn 1080p video üretildi; web için optimize MP4 (`docs/assets/dikte-tanitim.mp4`) GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi.
 
 
 ## Öneriler (onaylanmadı)

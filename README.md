@@ -98,7 +98,21 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 - Sürüm tek kaynaktan (`dikte/config.py` → `APP_VERSION`) okunur.
 - Otomatik güncelleme `installer/latest.json` dosyasını (`releases/latest/download/latest.json`) kullanır.
 - `web/` klasörü Next.js + Magic UI denemesidir; üretim arayüzü `dikte/ui/` altındadır.
+- `video/` klasörü Remotion tanıtım videosu kaynak kodunu içerir.
 - Ses ve metin modelleri uygulama içinden indirilir; depoya dahil değildir.
+
+---
+
+## Tanıtım Videosu
+
+Klavyeyle yazmanın yavaşlığı yerine sesle daha hızlı, akıcı ve doğal ifade etmeyi; yerel Whisper bas-konuş akışını, yapay zeka temizliğini ve Magic UI geçişlerini anlatan 45 saniyelik tanıtım videosu:
+
+[![Dikte Tanıtım Videosu — İzlemek için tıkla](docs/assets/dikte-tanitim-poster.png)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)
+
+- **[Tanıtım Videosunu Web Sitesinde İzle (45 sn, sesli)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)**
+- **[MP4 Videosunu Doğrudan Aç / İndir](https://mete2012seker-lgtm.github.io/dikte/assets/dikte-tanitim.mp4)**
+
+---
 
 ## Lisans
 
