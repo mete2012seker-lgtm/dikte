@@ -193,6 +193,12 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Web için optimize MP4 (`docs/assets/dikte-tanitim.mp4`, 9,18 MB, `+faststart`) ve 1080p kapak görseli (`docs/assets/dikte-tanitim-poster.png`) `docs/index.html` (`#tanitim-videosu`) ile `README.md` alt bölümüne eklendi.
 - Kanıt: `tsc --noEmit` (exit 0), `ffprobe` (H.264 1920x1080 30fps + AAC, 45.013 sn), **413 passed, 1 skipped** (`pytest -q`), Playwright `1440/768/360px` doğrulaması. Kullanıcı taslağı ve web/README eklemesini onayladı.
 
+### Aşama 19 — Çok Dilli Vitrin: İngilizce Varsayılan README ve Web Sitesi (2026-11-21 tamamlandı)
+- [x] Mevcut Türkçe açıklama `README.tr.md` dosyasına taşındı ve en üstüne `[English](README.md) | Türkçe` geçiş bağlantısı eklendi.
+- [x] `README.md` tamamen İngilizceye çevrildi (GitHub ana sayfasında varsayılan İngilizce) ve en üstüne `English | [Türkçe](README.tr.md)` bağlantısı eklendi.
+- [x] `docs/index.html` varsayılan İngilizce (`<html lang="en">`) yapıldı; üst çubuğa masaüstü/tablet/mobil uyumlu `EN | TR` dil seçici (`localStorage` + `?lang=tr`/`?lang=en`) eklendi.
+- Kanıt: `README.md` ve `README.tr.md` yerel bağlantıları `6/6` doğrulandı (`missing=[]`); Playwright Edge `1440x900`, `768x1024`, `360x800` (`default=en`, `TR → EN` geçişi, `overflow=False`, `0` JS hatası, `?lang=tr` OK). Kullanıcı planı ve kapanışı onayladı.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |

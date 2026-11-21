@@ -113,3 +113,10 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Web İçin `faststart` ve CRF Sıkıştırma:** `ffmpeg` ile `-movflags +faststart` eklemek tarayıcının 9 MB'lık videoyu tamamen indirmeden ilk saniyeden oynatmaya başlamasını sağlar; `CRF 22` ise kaliteyi koruyarak dosya boyutunu yarıya düşürür.
 5. **GitHub `README.md` vs GitHub Pages:** GitHub güvenlik/uyumluluk nedeniyle README içinde ham `<video>` etiketlerini doğrudan oynatmaz; bu yüzden README'de tıklanabilir kapak görseliyle videoyu doğrudan HTML5 `<video>` olarak sunan GitHub Pages sitesine (`#tanitim-videosu`) bağlamak en temiz çözümdür.
 
+## 2026-11-21 — Çok Dilli Vitrin (README ve Web Sitesi i18n)
+
+1. **Çok Dilli README Düzeni (`README.md` + `README.tr.md`):** GitHub depo ana sayfasında dosyaların altında otomatik olarak `README.md` dosyasını gösterir. Varsayılan dili İngilizce yapıp en üste `[English](README.md) | [Türkçe](README.tr.md)` bağlantıları koymak uluslararası kullanıcıların projeyi hemen anlamasını sağlar.
+2. **İstemci Tarafı Çoklu Dil (`data-i18n`):** Tek bir statik HTML dosyasında her metne `data-i18n` anahtarı verip küçük bir JavaScript sözlüğüyle değiştirmek, ayrı sunucu veya iki farklı HTML dosyası bakımına gerek kalmadan anında dil geçişi sağlar.
+3. **Varsayılan Dil ve Kalıcı Tercih (`localStorage` + `?lang=`):** HTML kaynak kodunu doğrudan varsayılan dilde (`lang="en"`) yazmak arama motorları ve ilk açılış için en sağlıklı yoldur; kullanıcının seçtiği dili `localStorage`'da saklamak ve `?lang=tr` parametresini desteklemek Türkçe README'den gelen ziyaretçiye doğrudan Türkçe deneyim sunar.
+4. **Mobil Üst Çubukta Taşma Kontrolü:** Masaüstü bağlantıları mobilde gizlenirken dil seçici ve tema düğmesi gibi temel kontrollerin görünür kalması ve `360px` genişlikte yatay taşma (`scrollWidth > clientWidth`) yapmaması Playwright ile doğrulanır.
+

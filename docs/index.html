@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr" class="dark">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dikte — Windows için Yerel Türkçe Sesli Dikte Uygulaması</title>
-  <meta name="description" content="Windows için ücretsiz, açık kaynak ve tamamen yerel Türkçe sesli dikte uygulaması. Sağ Ctrl'ye basılı tutup konuş, metin anında yapışsın." />
+  <title>Dikte — Free, Local Voice Dictation App for Windows</title>
+  <meta name="description" content="Free, open-source, and fully local voice dictation app for Windows. Hold Right Ctrl, speak, and paste text instantly." />
   <link rel="icon" type="image/png" href="assets/icon.png" />
   <style>
     :root {
@@ -114,6 +114,33 @@
       white-space: nowrap;
     }
     .theme-btn:hover { border-color: var(--accent); }
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .lang-btn:hover { color: var(--text); }
+    .lang-btn.active {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
 
     /* Hero */
     .hero {
@@ -459,6 +486,9 @@
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       .nav-links a { display: none; }
+      .nav-links { gap: 8px; }
+      .theme-btn { padding: 6px 10px; font-size: 0.78rem; }
+      .lang-btn { padding: 4px 8px; font-size: 0.74rem; }
       .cta-row { flex-direction: column; align-items: stretch; }
       .btn { width: 100%; }
       .sha-bar { width: 100%; justify-content: space-between; }
@@ -476,16 +506,20 @@
   <header>
     <div class="container nav">
       <a class="brand" href="#">
-        <img src="assets/icon.png" alt="Dikte logosu" />
+        <img id="brandLogo" src="assets/icon.png" alt="Dikte logo" />
         <span>Dikte</span>
       </a>
       <div class="nav-links">
-        <a href="#tanitim-videosu">Tanıtım Videosu</a>
-        <a href="#ozellikler">Özellikler</a>
-        <a href="#guvenlik">Güvenlik</a>
-        <a href="#sss">SSS</a>
+        <a href="#tanitim-videosu" data-i18n="nav_video">Promo Video</a>
+        <a href="#ozellikler" data-i18n="nav_features">Features</a>
+        <a href="#guvenlik" data-i18n="nav_security">Security</a>
+        <a href="#sss" data-i18n="nav_faq">FAQ</a>
         <a href="https://github.com/mete2012seker-lgtm/dikte" target="_blank" rel="noopener">GitHub</a>
-        <button class="theme-btn" id="themeToggle" type="button">Açık Tema</button>
+        <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+          <button class="lang-btn active" type="button" data-lang="en" aria-pressed="true">EN</button>
+          <button class="lang-btn" type="button" data-lang="tr" aria-pressed="false">TR</button>
+        </div>
+        <button class="theme-btn" id="themeToggle" type="button">Light Theme</button>
       </div>
     </div>
   </header>
@@ -494,12 +528,12 @@
     <section class="hero">
       <div class="badge">
         <span class="badge-dot"></span>
-        <span>v1.6.1 • Windows 10 / 11 • Açık Kaynak (MIT)</span>
+        <span data-i18n="hero_badge">v1.6.1 • Windows 10 / 11 • Open Source (MIT)</span>
       </div>
-      <h1>Konuş, anında temiz Türkçe metne dönüşsün.</h1>
-      <p class="subtitle">
-        Sağ Ctrl tuşunu basılı tutup konuş; bıraktığında sesin bilgisayarından hiç dışarı çıkmadan
-        yerel Whisper modeliyle yazıya çevrilsin ve çalıştığın pencereye otomatik yapışsın.
+      <h1 data-i18n="hero_title">Speak, and turn it into clean text instantly.</h1>
+      <p class="subtitle" data-i18n="hero_subtitle">
+        Hold Right Ctrl and speak; when you release it, your voice is transcribed locally with Whisper
+        without ever leaving your PC and pasted automatically into your active window.
       </p>
 
       <div class="cta-row">
@@ -507,47 +541,49 @@
           id="downloadBtn"
           class="btn btn-primary"
           href="https://github.com/mete2012seker-lgtm/dikte/releases/download/v1.6.1/Dikte-Setup-1.6.1.exe"
+          data-i18n="cta_download"
         >
-          Windows için İndir (v1.6.1)
+          Download for Windows (v1.6.1)
         </a>
         <a
           class="btn btn-secondary"
           href="https://github.com/mete2012seker-lgtm/dikte"
           target="_blank"
           rel="noopener"
+          data-i18n="cta_github"
         >
-          GitHub'da İncele
+          View on GitHub
         </a>
       </div>
 
       <div class="meta-line">
-        <span>Ücretsiz • Reklamsız</span>
-        <span>Kurucu: ~170 MB (.exe)</span>
-        <span>NVIDIA GPU + CPU destekli</span>
+        <span data-i18n="meta_free">Free • No Ads</span>
+        <span data-i18n="meta_size">Installer: ~170 MB (.exe)</span>
+        <span data-i18n="meta_gpu">NVIDIA GPU + CPU supported</span>
       </div>
 
-      <div class="sha-bar" title="Kurucu dosyanın SHA-256 doğrulama özeti">
+      <div class="sha-bar" id="shaBar" title="SHA-256 verification checksum of the installer">
         <span>SHA-256:</span>
         <code id="shaValue">953e4f5c0f3599a09c8880efd546334e17a9535883938c0bf59967efe55f3dfd</code>
-        <button class="copy-mini" id="copyShaBtn" type="button">Kopyala</button>
+        <button class="copy-mini" id="copyShaBtn" type="button" data-i18n="copy_btn">Copy</button>
       </div>
 
       <div class="showcase">
-        <div class="shot-tabs" role="tablist" aria-label="Ekran görüntüleri">
-          <button class="shot-tab active" type="button" data-shot="assets/ekran-dikte-koyu.png">Koyu Tema</button>
-          <button class="shot-tab" type="button" data-shot="assets/ekran-dikte-acik.png">Açık Tema</button>
-          <button class="shot-tab" type="button" data-shot="assets/ekran-modeller.png">Model Yöneticisi</button>
+        <div class="shot-tabs" id="shotTabs" role="tablist" aria-label="Screenshots">
+          <button class="shot-tab active" type="button" data-shot="assets/ekran-dikte-koyu.png" data-i18n="tab_dark">Dark Theme</button>
+          <button class="shot-tab" type="button" data-shot="assets/ekran-dikte-acik.png" data-i18n="tab_light">Light Theme</button>
+          <button class="shot-tab" type="button" data-shot="assets/ekran-modeller.png" data-i18n="tab_models">Model Manager</button>
         </div>
         <div class="shot-frame">
-          <img id="showcaseImg" src="assets/ekran-dikte-koyu.png" alt="Dikte uygulama ekran görüntüsü" />
+          <img id="showcaseImg" src="assets/ekran-dikte-koyu.png" alt="Dikte application screenshot" />
         </div>
       </div>
     </section>
 
     <section id="tanitim-videosu">
-      <h2 class="section-title">45 Saniyede Dikte</h2>
-      <p class="section-desc">
-        Klavyeyle yazmak yerine konuşmanın hızını, yerel Whisper akışını, yapay zeka temizliğini ve Magic UI tema geçişlerini izle.
+      <h2 class="section-title" data-i18n="video_title">Dikte in 45 Seconds</h2>
+      <p class="section-desc" data-i18n="video_desc">
+        Watch how speaking outpaces typing, along with the local Whisper flow, optional AI cleanup, and Magic UI theme transitions.
       </p>
       <div class="video-wrap">
         <div class="video-frame">
@@ -559,88 +595,88 @@
             poster="assets/dikte-tanitim-poster.png"
           >
             <source src="assets/dikte-tanitim.mp4" type="video/mp4" />
-            Tarayıcın video oynatmayı desteklemiyor. <a href="assets/dikte-tanitim.mp4">Tanıtım videosunu indir</a>.
+            <span data-i18n-html="video_fallback">Your browser does not support video playback. <a href="assets/dikte-tanitim.mp4">Download the promo video</a>.</span>
           </video>
         </div>
         <div class="video-meta">
-          <span>1080p • 45 sn • Sesli tanıtım (Remotion)</span>
-          <a href="assets/dikte-tanitim.mp4" download="Dikte-Tanitim.mp4">Videoyu indir (.mp4)</a>
+          <span data-i18n="video_meta">1080p • 45s • Promo with audio (Remotion)</span>
+          <a href="assets/dikte-tanitim.mp4" download="Dikte-Tanitim.mp4" data-i18n="video_download">Download video (.mp4)</a>
         </div>
       </div>
     </section>
 
     <section id="ozellikler">
-      <h2 class="section-title">Neden Dikte?</h2>
-      <p class="section-desc">
-        Abonelik ve bulut zorunluluğu olmadan, günlük yazışma ve not alma hızını katlamak için tasarlandı.
+      <h2 class="section-title" data-i18n="feat_title">Why Dikte?</h2>
+      <p class="section-desc" data-i18n="feat_desc">
+        Built to multiply your everyday writing and note-taking speed—without subscriptions or cloud lock-in.
       </p>
       <div class="grid">
         <div class="card">
-          <span class="tag">Gizlilik</span>
-          <h3>Tamamen Yerel Çalışır</h3>
-          <p>Ses kaydı yalnızca kendi bilgisayarında işlenir ve çeviriden hemen sonra silinir. Konuşmaların hiçbir sunucuya gönderilmez.</p>
+          <span class="tag" data-i18n="f1_tag">Privacy</span>
+          <h3 data-i18n="f1_title">Runs 100% Locally</h3>
+          <p data-i18n="f1_desc">Audio is processed solely on your PC and deleted right after transcription. Your speech is never sent to external servers.</p>
         </div>
         <div class="card">
-          <span class="tag">Hız</span>
-          <h3>Her Uygulamaya Otomatik Yapıştır</h3>
-          <p>Sistem tepsisinde sessizce bekler. Word, tarayıcı, WhatsApp veya e-postada kısayola basıp konuşman yeterli.</p>
+          <span class="tag" data-i18n="f2_tag">Speed</span>
+          <h3 data-i18n="f2_title">Auto-Paste Into Any App</h3>
+          <p data-i18n="f2_desc">Stays quietly in your system tray. Just hold your shortcut and speak in Word, your browser, WhatsApp, or email.</p>
         </div>
         <div class="card">
-          <span class="tag">Türkçe</span>
-          <h3>Türkçe İmla ve Noktalama</h3>
-          <p>Türkçe ipucu (prompt) ve Silero sessizlik filtresiyle hazır gelir. İstersen 1–3 tuşlu kendi kısayolunu atayabilirsin.</p>
+          <span class="tag" data-i18n="f3_tag">Accuracy</span>
+          <h3 data-i18n="f3_title">Punctuation &amp; Silence Filtering</h3>
+          <p data-i18n="f3_desc">Ready out of the box with Silero VAD silence filtering and smart prompting. Bind any custom 1–3 key shortcut you like.</p>
         </div>
         <div class="card">
-          <span class="tag">Yapay Zeka</span>
-          <h3>İsteğe Bağlı Temizleme ve Çeviri</h3>
-          <p>Dolgu kelimelerini temizleyebilir veya konuşmanı tek tıkla Türkçe, İngilizce ya da Almanca'ya çevirebilirsin (yerel GGUF veya OpenRouter).</p>
+          <span class="tag" data-i18n="f4_tag">AI</span>
+          <h3 data-i18n="f4_title">Optional Cleanup &amp; Translation</h3>
+          <p data-i18n="f4_desc">Remove filler words or translate speech in one click into English, Turkish, or German (via local GGUF or OpenRouter).</p>
         </div>
         <div class="card">
-          <span class="tag">Modeller</span>
-          <h3>Uygulama İçi Model Yönetimi</h3>
-          <p>6 Whisper ses modeli, 4 yerel metin modeli ve özel Hugging Face modeli ekleme desteği tek ekranda.</p>
+          <span class="tag" data-i18n="f5_tag">Models</span>
+          <h3 data-i18n="f5_title">Built-in Model Manager</h3>
+          <p data-i18n="f5_desc">6 Whisper speech models, 4 local text models, and custom Hugging Face model support—all managed from one screen.</p>
         </div>
         <div class="card">
-          <span class="tag">Kararlılık</span>
-          <h3>Otomatik Güncelleme ve Tanılama</h3>
-          <p>SHA-256 doğrulamalı güncelleme, önceki sürüme tek tıkla geri dönme ve gizlilik maskeli hata raporu aracı dahildir.</p>
+          <span class="tag" data-i18n="f6_tag">Reliability</span>
+          <h3 data-i18n="f6_title">Auto-Update &amp; Diagnostics</h3>
+          <p data-i18n="f6_desc">Includes SHA-256 verified updates, one-click version rollback, and a privacy-masked diagnostic report tool.</p>
         </div>
       </div>
     </section>
 
     <section id="guvenlik">
       <div class="trust-box">
-        <h3>Windows SmartScreen ("Kişisel bilgisayarınızı korudu") uyarısı neden çıkar?</h3>
-        <p>
-          Dikte ücretsiz bir açık kaynak projedir ve kurucu dosya henüz ücretli bir kod imzalama sertifikasıyla imzalanmamıştır.
-          İlk kurulumda Windows mavi uyarı penceresi gösterirse <strong>Ek bilgi → Yine de çalıştır</strong> adımıyla devam edebilirsin.
-          İstersen indirdiğin kurucuyu PowerShell'de şu komutla doğrulayıp yukarıdaki SHA-256 ile karşılaştırabilirsin:
+        <h3 data-i18n="sec_title">Why does Windows SmartScreen ("Windows protected your PC") appear?</h3>
+        <p data-i18n-html="sec_desc">
+          Dikte is a free open-source project and the installer is not yet signed with a paid code-signing certificate.
+          If Windows displays a blue warning on first run, click <strong>More info → Run anyway</strong> to continue.
+          You can also verify the installer in PowerShell with this command and compare it against the SHA-256 checksum above:
         </p>
         <div class="cmd-box">
           <code id="psCmd">Get-FileHash .\Dikte-Setup-1.6.1.exe -Algorithm SHA256</code>
-          <button class="copy-mini" id="copyCmdBtn" type="button">Kopyala</button>
+          <button class="copy-mini" id="copyCmdBtn" type="button" data-i18n="copy_btn">Copy</button>
         </div>
       </div>
     </section>
 
     <section id="sss">
-      <h2 class="section-title">Sık Sorulan Sorular</h2>
+      <h2 class="section-title" data-i18n="faq_title">Frequently Asked Questions</h2>
       <div class="faq">
         <details>
-          <summary>Güçlü bir ekran kartım (NVIDIA GPU) olması şart mı?</summary>
-          <p>Hayır. NVIDIA ekran kartı varsa CUDA ile çok hızlı çalışır; yoksa uygulama otomatik olarak işlemci (CPU) moduna geçer. Küçük modeller (Tiny / Small) standart dizüstü bilgisayarlarda rahatlıkla çalışır.</p>
+          <summary data-i18n="q1_q">Do I need a powerful NVIDIA GPU?</summary>
+          <p data-i18n="q1_a">No. If you have an NVIDIA GPU, Dikte uses CUDA for ultra-fast transcription; otherwise it automatically falls back to CPU mode. Lighter models (Tiny / Small) run smoothly on standard laptops.</p>
         </details>
         <details>
-          <summary>Konuşmalarım internet üzerinden bir yere gönderiliyor mu?</summary>
-          <p>Varsayılan olarak hayır. Ses tanıma tamamen bilgisayarında yapılır. Yalnızca sen Ayarlar'dan kendi OpenRouter API anahtarını girip bulut temizleme/çeviri açarsan metin o sağlayıcıya gönderilir.</p>
+          <summary data-i18n="q2_q">Is my speech ever sent over the internet?</summary>
+          <p data-i18n="q2_a">Not by default. Speech recognition happens completely locally on your PC. Text is only sent externally if you enter your own OpenRouter API key in Settings and enable cloud cleanup or translation.</p>
         </details>
         <details>
-          <summary>Beğenmezsem bilgisayardan tamamen nasıl kaldırırım?</summary>
-          <p>Ayarlar → Uygulamayı Kaldır düğmesiyle (veya Windows Uygulamalar menüsünden) temizce kaldırabilirsin. Kaldırırken büyük model dosyalarını koruma veya tamamen silme seçeneği sunulur.</p>
+          <summary data-i18n="q3_q">How do I completely uninstall it if I change my mind?</summary>
+          <p data-i18n="q3_a">Use Settings → Uninstall App inside Dikte (or Windows Installed Apps) for a clean removal. During uninstall, you can choose whether to keep or delete large model files.</p>
         </details>
         <details>
-          <summary>Bir hata alırsam nasıl bildirebilirim?</summary>
-          <p>Ayarlar → Sorun Giderme ve Tanılama bölümünden veya sistem tepsisi menüsünden "Tanılama Raporu Kopyala" butonuna basıp GitHub Issues sayfasında paylaşabilirsin. Rapor konuşma metni ve API anahtarı içermez.</p>
+          <summary data-i18n="q4_q">How can I report a bug?</summary>
+          <p data-i18n="q4_a">Click "Copy Diagnostic Report" from Settings → Troubleshooting &amp; Diagnostics (or the system tray menu) and paste it on GitHub Issues. The report never includes your dictated text or API keys.</p>
         </details>
       </div>
     </section>
@@ -648,26 +684,229 @@
 
   <footer>
     <div class="container footer-inner">
-      <span>Dikte v1.6.1 • MIT Lisansı ile açık kaynak</span>
+      <span data-i18n="footer_copy">Dikte v1.6.1 • Open source under the MIT License</span>
       <div style="display:flex; gap:18px;">
-        <a href="https://github.com/mete2012seker-lgtm/dikte/releases" target="_blank" rel="noopener">Sürümler</a>
-        <a href="https://github.com/mete2012seker-lgtm/dikte/issues" target="_blank" rel="noopener">Sorun Bildir</a>
-        <a href="https://github.com/mete2012seker-lgtm/dikte/blob/main/LICENSE" target="_blank" rel="noopener">Lisans</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte/releases" target="_blank" rel="noopener" data-i18n="footer_releases">Releases</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte/issues" target="_blank" rel="noopener" data-i18n="footer_issues">Report Issue</a>
+        <a href="https://github.com/mete2012seker-lgtm/dikte/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="footer_license">License</a>
       </div>
     </div>
   </footer>
 
   <script>
+    const TRANSLATIONS = {
+      en: {
+        page_title: "Dikte — Free, Local Voice Dictation App for Windows",
+        page_desc: "Free, open-source, and fully local voice dictation app for Windows. Hold Right Ctrl, speak, and paste text instantly.",
+        brand_alt: "Dikte logo",
+        nav_video: "Promo Video",
+        nav_features: "Features",
+        nav_security: "Security",
+        nav_faq: "FAQ",
+        theme_to_light: "Light Theme",
+        theme_to_dark: "Dark Theme",
+        hero_badge: "v1.6.1 • Windows 10 / 11 • Open Source (MIT)",
+        hero_title: "Speak, and turn it into clean text instantly.",
+        hero_subtitle: "Hold Right Ctrl and speak; when you release it, your voice is transcribed locally with Whisper without ever leaving your PC and pasted automatically into your active window.",
+        cta_download: "Download for Windows (v1.6.1)",
+        cta_github: "View on GitHub",
+        meta_free: "Free • No Ads",
+        meta_size: "Installer: ~170 MB (.exe)",
+        meta_gpu: "NVIDIA GPU + CPU supported",
+        sha_title: "SHA-256 verification checksum of the installer",
+        copy_btn: "Copy",
+        copied_btn: "Copied",
+        shots_aria: "Screenshots",
+        shot_alt: "Dikte application screenshot",
+        tab_dark: "Dark Theme",
+        tab_light: "Light Theme",
+        tab_models: "Model Manager",
+        video_title: "Dikte in 45 Seconds",
+        video_desc: "Watch how speaking outpaces typing, along with the local Whisper flow, optional AI cleanup, and Magic UI theme transitions.",
+        video_fallback: 'Your browser does not support video playback. <a href="assets/dikte-tanitim.mp4">Download the promo video</a>.',
+        video_meta: "1080p • 45s • Promo with audio (Remotion)",
+        video_download: "Download video (.mp4)",
+        feat_title: "Why Dikte?",
+        feat_desc: "Built to multiply your everyday writing and note-taking speed—without subscriptions or cloud lock-in.",
+        f1_tag: "Privacy",
+        f1_title: "Runs 100% Locally",
+        f1_desc: "Audio is processed solely on your PC and deleted right after transcription. Your speech is never sent to external servers.",
+        f2_tag: "Speed",
+        f2_title: "Auto-Paste Into Any App",
+        f2_desc: "Stays quietly in your system tray. Just hold your shortcut and speak in Word, your browser, WhatsApp, or email.",
+        f3_tag: "Accuracy",
+        f3_title: "Punctuation & Silence Filtering",
+        f3_desc: "Ready out of the box with Silero VAD silence filtering and smart prompting. Bind any custom 1–3 key shortcut you like.",
+        f4_tag: "AI",
+        f4_title: "Optional Cleanup & Translation",
+        f4_desc: "Remove filler words or translate speech in one click into English, Turkish, or German (via local GGUF or OpenRouter).",
+        f5_tag: "Models",
+        f5_title: "Built-in Model Manager",
+        f5_desc: "6 Whisper speech models, 4 local text models, and custom Hugging Face model support—all managed from one screen.",
+        f6_tag: "Reliability",
+        f6_title: "Auto-Update & Diagnostics",
+        f6_desc: "Includes SHA-256 verified updates, one-click version rollback, and a privacy-masked diagnostic report tool.",
+        sec_title: 'Why does Windows SmartScreen ("Windows protected your PC") appear?',
+        sec_desc: "Dikte is a free open-source project and the installer is not yet signed with a paid code-signing certificate. If Windows displays a blue warning on first run, click <strong>More info → Run anyway</strong> to continue. You can also verify the installer in PowerShell with this command and compare it against the SHA-256 checksum above:",
+        faq_title: "Frequently Asked Questions",
+        q1_q: "Do I need a powerful NVIDIA GPU?",
+        q1_a: "No. If you have an NVIDIA GPU, Dikte uses CUDA for ultra-fast transcription; otherwise it automatically falls back to CPU mode. Lighter models (Tiny / Small) run smoothly on standard laptops.",
+        q2_q: "Is my speech ever sent over the internet?",
+        q2_a: "Not by default. Speech recognition happens completely locally on your PC. Text is only sent externally if you enter your own OpenRouter API key in Settings and enable cloud cleanup or translation.",
+        q3_q: "How do I completely uninstall it if I change my mind?",
+        q3_a: "Use Settings → Uninstall App inside Dikte (or Windows Installed Apps) for a clean removal. During uninstall, you can choose whether to keep or delete large model files.",
+        q4_q: "How can I report a bug?",
+        q4_a: 'Click "Copy Diagnostic Report" from Settings → Troubleshooting & Diagnostics (or the system tray menu) and paste it on GitHub Issues. The report never includes your dictated text or API keys.',
+        footer_copy: "Dikte v1.6.1 • Open source under the MIT License",
+        footer_releases: "Releases",
+        footer_issues: "Report Issue",
+        footer_license: "License"
+      },
+      tr: {
+        page_title: "Dikte — Windows için Yerel Türkçe Sesli Dikte Uygulaması",
+        page_desc: "Windows için ücretsiz, açık kaynak ve tamamen yerel Türkçe sesli dikte uygulaması. Sağ Ctrl'ye basılı tutup konuş, metin anında yapışsın.",
+        brand_alt: "Dikte logosu",
+        nav_video: "Tanıtım Videosu",
+        nav_features: "Özellikler",
+        nav_security: "Güvenlik",
+        nav_faq: "SSS",
+        theme_to_light: "Açık Tema",
+        theme_to_dark: "Koyu Tema",
+        hero_badge: "v1.6.1 • Windows 10 / 11 • Açık Kaynak (MIT)",
+        hero_title: "Konuş, anında temiz Türkçe metne dönüşsün.",
+        hero_subtitle: "Sağ Ctrl tuşunu basılı tutup konuş; bıraktığında sesin bilgisayarından hiç dışarı çıkmadan yerel Whisper modeliyle yazıya çevrilsin ve çalıştığın pencereye otomatik yapışsın.",
+        cta_download: "Windows için İndir (v1.6.1)",
+        cta_github: "GitHub'da İncele",
+        meta_free: "Ücretsiz • Reklamsız",
+        meta_size: "Kurucu: ~170 MB (.exe)",
+        meta_gpu: "NVIDIA GPU + CPU destekli",
+        sha_title: "Kurucu dosyanın SHA-256 doğrulama özeti",
+        copy_btn: "Kopyala",
+        copied_btn: "Kopyalandı",
+        shots_aria: "Ekran görüntüleri",
+        shot_alt: "Dikte uygulama ekran görüntüsü",
+        tab_dark: "Koyu Tema",
+        tab_light: "Açık Tema",
+        tab_models: "Model Yöneticisi",
+        video_title: "45 Saniyede Dikte",
+        video_desc: "Klavyeyle yazmak yerine konuşmanın hızını, yerel Whisper akışını, yapay zeka temizliğini ve Magic UI tema geçişlerini izle.",
+        video_fallback: 'Tarayıcın video oynatmayı desteklemiyor. <a href="assets/dikte-tanitim.mp4">Tanıtım videosunu indir</a>.',
+        video_meta: "1080p • 45 sn • Sesli tanıtım (Remotion)",
+        video_download: "Videoyu indir (.mp4)",
+        feat_title: "Neden Dikte?",
+        feat_desc: "Abonelik ve bulut zorunluluğu olmadan, günlük yazışma ve not alma hızını katlamak için tasarlandı.",
+        f1_tag: "Gizlilik",
+        f1_title: "Tamamen Yerel Çalışır",
+        f1_desc: "Ses kaydı yalnızca kendi bilgisayarında işlenir ve çeviriden hemen sonra silinir. Konuşmaların hiçbir sunucuya gönderilmez.",
+        f2_tag: "Hız",
+        f2_title: "Her Uygulamaya Otomatik Yapıştır",
+        f2_desc: "Sistem tepsisinde sessizce bekler. Word, tarayıcı, WhatsApp veya e-postada kısayola basıp konuşman yeterli.",
+        f3_tag: "Türkçe",
+        f3_title: "Türkçe İmla ve Noktalama",
+        f3_desc: "Türkçe ipucu (prompt) ve Silero sessizlik filtresiyle hazır gelir. İstersen 1–3 tuşlu kendi kısayolunu atayabilirsin.",
+        f4_tag: "Yapay Zeka",
+        f4_title: "İsteğe Bağlı Temizleme ve Çeviri",
+        f4_desc: "Dolgu kelimelerini temizleyebilir veya konuşmanı tek tıkla Türkçe, İngilizce ya da Almanca'ya çevirebilirsin (yerel GGUF veya OpenRouter).",
+        f5_tag: "Modeller",
+        f5_title: "Uygulama İçi Model Yönetimi",
+        f5_desc: "6 Whisper ses modeli, 4 yerel metin modeli ve özel Hugging Face modeli ekleme desteği tek ekranda.",
+        f6_tag: "Kararlılık",
+        f6_title: "Otomatik Güncelleme ve Tanılama",
+        f6_desc: "SHA-256 doğrulamalı güncelleme, önceki sürüme tek tıkla geri dönme ve gizlilik maskeli hata raporu aracı dahildir.",
+        sec_title: 'Windows SmartScreen ("Kişisel bilgisayarınızı korudu") uyarısı neden çıkar?',
+        sec_desc: "Dikte ücretsiz bir açık kaynak projedir ve kurucu dosya henüz ücretli bir kod imzalama sertifikasıyla imzalanmamıştır. İlk kurulumda Windows mavi uyarı penceresi gösterirse <strong>Ek bilgi → Yine de çalıştır</strong> adımıyla devam edebilirsin. İstersen indirdiğin kurucuyu PowerShell'de şu komutla doğrulayıp yukarıdaki SHA-256 ile karşılaştırabilirsin:",
+        faq_title: "Sık Sorulan Sorular",
+        q1_q: "Güçlü bir ekran kartım (NVIDIA GPU) olması şart mı?",
+        q1_a: "Hayır. NVIDIA ekran kartı varsa CUDA ile çok hızlı çalışır; yoksa uygulama otomatik olarak işlemci (CPU) moduna geçer. Küçük modeller (Tiny / Small) standart dizüstü bilgisayarlarda rahatlıkla çalışır.",
+        q2_q: "Konuşmalarım internet üzerinden bir yere gönderiliyor mu?",
+        q2_a: "Varsayılan olarak hayır. Ses tanıma tamamen bilgisayarında yapılır. Yalnızca sen Ayarlar'dan kendi OpenRouter API anahtarını girip bulut temizleme/çeviri açarsan metin o sağlayıcıya gönderilir.",
+        q3_q: "Beğenmezsem bilgisayardan tamamen nasıl kaldırırım?",
+        q3_a: "Ayarlar → Uygulamayı Kaldır düğmesiyle (veya Windows Uygulamalar menüsünden) temizce kaldırabilirsin. Kaldırırken büyük model dosyalarını koruma veya tamamen silme seçeneği sunulur.",
+        q4_q: "Bir hata alırsam nasıl bildirebilirim?",
+        q4_a: 'Ayarlar → Sorun Giderme ve Tanılama bölümünden veya sistem tepsisi menüsünden "Tanılama Raporu Kopyala" butonuna basıp GitHub Issues sayfasında paylaşabilirsin. Rapor konuşma metni ve API anahtarı içermez.',
+        footer_copy: "Dikte v1.6.1 • MIT Lisansı ile açık kaynak",
+        footer_releases: "Sürümler",
+        footer_issues: "Sorun Bildir",
+        footer_license: "Lisans"
+      }
+    };
+
+    const LANG_STORAGE_KEY = "dikte_site_lang";
     const root = document.documentElement;
     const themeToggle = document.getElementById("themeToggle");
-    function syncThemeLabel() {
-      themeToggle.textContent = root.classList.contains("dark") ? "Açık Tema" : "Koyu Tema";
+    const langButtons = document.querySelectorAll(".lang-btn");
+    let currentLang = "en";
+
+    function resolveInitialLang() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryLang = params.get("lang");
+        if (queryLang === "en" || queryLang === "tr") {
+          localStorage.setItem(LANG_STORAGE_KEY, queryLang);
+          return queryLang;
+        }
+        const saved = localStorage.getItem(LANG_STORAGE_KEY);
+        if (saved === "en" || saved === "tr") return saved;
+      } catch (_) {}
+      return "en";
     }
+
+    function syncThemeLabel() {
+      const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+      themeToggle.textContent = root.classList.contains("dark")
+        ? dict.theme_to_light
+        : dict.theme_to_dark;
+    }
+
+    function applyLanguage(lang, persist = false) {
+      currentLang = lang === "tr" ? "tr" : "en";
+      const dict = TRANSLATIONS[currentLang];
+      root.lang = currentLang;
+      document.title = dict.page_title;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", dict.page_desc);
+
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.dataset.i18n;
+        if (dict[key] !== undefined) el.textContent = dict[key];
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+        const key = el.dataset.i18nHtml;
+        if (dict[key] !== undefined) el.innerHTML = dict[key];
+      });
+
+      const brandLogo = document.getElementById("brandLogo");
+      if (brandLogo) brandLogo.alt = dict.brand_alt;
+      const shaBar = document.getElementById("shaBar");
+      if (shaBar) shaBar.title = dict.sha_title;
+      const shotTabs = document.getElementById("shotTabs");
+      if (shotTabs) shotTabs.setAttribute("aria-label", dict.shots_aria);
+      const showcaseImg = document.getElementById("showcaseImg");
+      if (showcaseImg) showcaseImg.alt = dict.shot_alt;
+
+      langButtons.forEach((btn) => {
+        const isActive = btn.dataset.lang === currentLang;
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
+      });
+
+      syncThemeLabel();
+
+      if (persist) {
+        try { localStorage.setItem(LANG_STORAGE_KEY, currentLang); } catch (_) {}
+      }
+    }
+
+    langButtons.forEach((btn) => {
+      btn.addEventListener("click", () => applyLanguage(btn.dataset.lang, true));
+    });
+
     themeToggle.addEventListener("click", () => {
       root.classList.toggle("dark");
       syncThemeLabel();
     });
-    syncThemeLabel();
+
+    applyLanguage(resolveInitialLang(), false);
 
     const tabs = document.querySelectorAll(".shot-tab");
     const img = document.getElementById("showcaseImg");
@@ -682,12 +921,17 @@
     function bindCopy(btnId, textId) {
       const btn = document.getElementById(btnId);
       const el = document.getElementById(textId);
+      let timer = null;
       btn.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(el.textContent.trim());
-          const old = btn.textContent;
-          btn.textContent = "Kopyalandı";
-          setTimeout(() => { btn.textContent = old; }, 1500);
+          const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+          btn.textContent = dict.copied_btn;
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            const latestDict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+            btn.textContent = latestDict.copy_btn;
+          }, 1500);
         } catch (_) {}
       });
     }

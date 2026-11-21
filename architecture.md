@@ -93,8 +93,8 @@ Akış:
 | `tests/test_updater.py` | Sürüm, denetim, indirme, SHA ve uçtan uca sahte akış (20 test) | Genişletildi |
 | `tests/test_uninstall.py` | Kurulum kontrolü, veri boyutu, autostart, kaldırıcı çağrısı (12 test) | Yeni (2026-11-09) |
 | `tests/test_version.py` | Paket, User-Agent, Inno, latest.json sürüm tutarlılığı | Yeni (2026-11-09) |
-| `LICENSE` / `README.md` | MIT lisansı; vitrin README (ekran görüntüleri, tek tık indirme, SmartScreen/SHA-256 doğrulama, sorun bildirme, alt bölümde tanıtım videosu) | Güncellendi (2026-11-20) |
-| `docs/index.html` & `docs/assets/` | GitHub Pages tanıtım ve indirme sitesi (`https://mete2012seker-lgtm.github.io/dikte/`), masaüstü/tablet/telefon uyumlu, açık/koyu tema, SHA-256 kopyalama, `#tanitim-videosu` (`dikte-tanitim.mp4`, `dikte-tanitim-poster.png`) | Güncellendi (2026-11-20) |
+| `LICENSE` / `README.md` / `README.tr.md` | MIT lisansı; varsayılan İngilizce vitrin `README.md` ve Türkçe `README.tr.md` (üstte karşılıklı `English \| Türkçe` geçişi, ekran görüntüleri, SHA-256 doğrulama ve tanıtım videosu) | Güncellendi (2026-11-21) |
+| `docs/index.html` & `docs/assets/` | GitHub Pages tanıtım ve indirme sitesi (`https://mete2012seker-lgtm.github.io/dikte/`), varsayılan İngilizce + üst çubukta `EN \| TR` dil seçici (`localStorage` + `?lang=`), masaüstü/tablet/telefon uyumlu, açık/koyu tema, SHA-256 kopyalama, `#tanitim-videosu` (`dikte-tanitim.mp4`, `dikte-tanitim-poster.png`) | Güncellendi (2026-11-21) |
 | `video/` | Remotion tanıtım videosu projesi: `src/theme.ts`, 5 katmanlı sahne/Magic UI/Mikrofon Morph bileşenleri, 7 sahne, `@fontsource` Türkçe fontlar ve `scripts/generate-sfx.mjs` WAV ses sentezleyici (`node_modules/`, `.remotion/`, `out/`, `public/sfx/` git dışı) | Yeni (2026-11-20) |
 | `installer/RELEASE-NOTES-v1.6.1.md` | GitHub Release `v1.6.1` sürüm notu (yenilikler, SHA-256, SmartScreen açıklaması) | Yeni (2026-11-19) |
 

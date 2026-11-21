@@ -3,7 +3,10 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-20 — Remotion Tanıtım Videosu, Web Sitesi ve README Yayını tamamlandı (v1.6.1 canlı):**
+**2026-11-21 — Çok Dilli Vitrin: İngilizce Varsayılan README ve GitHub Pages (EN / TR) tamamlandı:**
+- `README.md` tamamen İngilizceye çevrildi (GitHub ana sayfasında varsayılan İngilizce görünüm) ve en üstüne **English | [Türkçe](README.tr.md)** dil geçiş bağlantıları eklendi; mevcut Türkçe içerik `README.tr.md` dosyasına taşındı (`?lang=tr` site bağlantılarıyla).
+- `docs/index.html` varsayılan İngilizce (`<html lang="en" class="dark">`) olarak güncellendi; üst çubuğa **EN | TR** dil seçme düğmesi, `localStorage` tercihi ve `?lang=tr`/`?lang=en` desteği eklendi. Playwright Edge ile `1440x900`, `768x1024` ve `360x800` ekranlarda `default=en`, `TR → EN` geçişi, `overflow: False` ve `0` JS hatası doğrulandı.
+- **2026-11-20 — Remotion Tanıtım Videosu, Web Sitesi ve README Yayını tamamlandı (v1.6.1 canlı):**
 - `video/` klasöründe 45 saniyelik (1350 kare, `1920x1080`, `30 fps`, H.264 + AAC) 7 sahneli Remotion tanıtım videosu ve deterministik 9 WAV ses efekti kiti üretildi; 15 sahne karesi görsel olarak denetlenip Sahne 5 logo kırpılması ve dairesel dalga easing'i düzeltildi.
 - Web akışına uygun sıkıştırılmış `docs/assets/dikte-tanitim.mp4` (`9.185.093` bayt, `+faststart`, H.264 `1920x1080` + AAC) ve 1080p kapak görseli `docs/assets/dikte-tanitim-poster.png` oluşturuldu.
 - GitHub Pages (`docs/index.html`) içine `#tanitim-videosu` oynatıcı bölümü (1440/768/360px `overflow: False`), `README.md` alt bölümüne ise tıklanabilir kapak ve doğrudan izleme/indirme bağlantıları eklendi.
@@ -13,6 +16,10 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı topluluk dağıtımı (`winget`, AlternativeTo).
 
 ## Biten (kanıtla)
+- **Çok Dilli Vitrin: İngilizce Varsayılan README ve Web Sitesi (2026-11-21):**
+  - **README (`README.md`, `README.tr.md`):** GitHub ana sayfasında varsayılan İngilizce açıklama (`README.md`) ve üstte tıklanabilir `English | Türkçe` bağlantıları; `README.tr.md` Türkçe sürümü; her iki dosyada 6/6 yerel görsel/dosya bağlantısı doğrulandı (`missing=[]`).
+  - **GitHub Pages (`docs/index.html`):** Varsayılan `<html lang="en">`, üst çubukta `EN | TR` dil seçici (`#langSwitch`), `localStorage` hatırlama, `?lang=tr`/`?lang=en` sorgu parametresi ve dinamik tema/kopyala etiketleri.
+  - **Doğrulama:** Playwright Edge `1440x900`, `768x1024`, `360x800` (`default=en`, `TR → EN` geçişi, `overflow_en=False`, `overflow_tr=False`, `errors=0`, `?lang=tr` OK).
 - **Remotion Tanıtım Videosu, Web Sitesi ve README Yayını (2026-11-20):**
   - **Video Kaynağı (`video/`):** `src/theme.ts` (Dikte koyu/açık renk paleti, `@fontsource` yerel Türkçe fontlar), 5 katmanlı `StageLayers` + `DotPattern`, `MicMorphWave` (48 bar + morphing mikrofon), `MagicUI` (`ShineBorderCard`, `MagicCard`, `AnimatedListItem`, `Keycap3D`), 7 sahne (`Scene1Hook`..`Scene7CTA`) ve `scripts/generate-sfx.mjs` (9 adet 16-bit WAV ses efekti).
   - **Web & README Entegrasyonu:** `docs/assets/dikte-tanitim.mp4` (`9.185.093` bayt, `ffprobe`: `h264 1920x1080 30fps + aac, 45.013s`), `docs/assets/dikte-tanitim-poster.png`, `docs/index.html` (`#tanitim-videosu` + üst menü bağlantısı) ve `README.md` (`## Tanıtım Videosu`).
@@ -151,6 +158,7 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
   - **Faz 5.2 Kapsamı ve Dağıtım:** Bu oturumda tüm kodlar yazılıp `build.ps1` ile güncel `Dikte-Setup-1.6.0.exe` derlenecek; sentetik test sesi (`tests/data/test.wav` + `test.txt`) ile selftest ve paketli açılış testi otomatik doğrulanacak; gerçek VM testi ve GitHub Release yüklemesi kullanıcıya bırakılacak.
   - **Ajan Kararları (İkon & Tepsi):** Logo kaynağı `design/download` (ses dalgalı mavi ikon) alınıp `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
 - **2026-11-20 (Tanıtım Videosu):** `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu üretildi; `docs/assets/dikte-tanitim.mp4` (`+faststart`, `9,18 MB`) + kapak görseli GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi; `video/node_modules`, `.remotion`, `out/`, `public/sfx/` `.gitignore` ile hariç tutuldu.
+- **2026-11-21 (Çok Dilli Vitrin — EN / TR):** GitHub depo ana sayfası (`README.md`) varsayılan İngilizce, Türkçe sürümü `README.tr.md` ve üstlerinde karşılıklı tıklanabilir `English | Türkçe` bağlantıları olacak şekilde ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
 
 ## Test durumu
 | Test | Sonuç |
