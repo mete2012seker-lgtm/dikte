@@ -66,7 +66,8 @@ Akış:
 | `tests/test_ui.py` | Playwright + sahte köprü: 4 sayfa, sihirbaz, HF modal, rollback, wave canvas, metin model detayları (38 test) | 343 test geçti |
 | `tests/test_paste.py` | Kendi pencereyi atlama, gizli tepsi penceresi, şartlı modifier keyup, extended tuş bayrağı | 343 test geçti |
 | `tests/test_version.py` | Tek sürüm kaynağı (1.6.1), latest.json, User-Agent uyumu | Geçti |
-| `.kilo/skills/` | `asama-baslat`, `asama-bitir`, `proje-baslat` skill'leri | Hazır |
+| `.agent/skills/` & `.kilo/skills/` | `asama-baslat` (Obsidian + Gemini 4 Hydrogen), `asama-bitir`, `proje-baslat`, `belirsizleri-sor` vb. skill'ler | Güncellendi (2026-11-24) |
+| `reports/2026-11-24-kod-denetimi-raporu.md` | v1.6.1 tam kod denetimi (0 blocker, 6 yüksek, ~40 orta, 7 test maskesi, ~500 satır kısaltma, 4 fazlı plan) | Yeni (2026-11-24) |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
@@ -147,8 +148,8 @@ Akış:
 - `input_language` ayarı varsayılan `"tr"` olarak hem `_transcribe_path` hem `_ai_payload` içinde hizalıdır.
 - llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
 - v1.4 efektleri testlerle doğrulandı; kullanıcı 2026-11-04'te gözle onayladı.
-- **Yayın blockerları (2026-11-09 itibarıyla):** 1.6.0 kodu ve kurucu çalışıyor (sha256, UPDATE_URL, kaldırma veri/autostart, Inno AppId, derleme). Açık kalanlar: gerçek GitHub Release yok (`latest.json` 404), kur/kaldır UAC ile elle test edilmedi, karşılama sihirbazı yok (Faz 3).
-- **Test yan etkisi:** `tests/test_ui.py` ekran görüntülerini `design/v2/` altına yazıyor; her test koşusu `design/v2/v2-*-dikte.png` gibi referans dosyalarını değiştirebilir. Commit'e girmemeli; `git restore` ile geri alınır (Faz 4'te test çıktısı `artifacts/`'a taşınacak).
+- **Yayın durumu (2026-11-24 itibarıyla):** v1.6.1 GitHub Release ve GitHub Pages yayında (**413 passed, 1 skipped**). 2026-11-24 tam kod denetimi 6 yüksek hata (`controller.py:287`, `hotkey.py:392`, `text_models.py:568-573`, `app.js:2211-2218`, `app.js` 5 köprü çağrısı, `Dikte.iss:73`), ~40 orta bulgu, 7 test maskesi ve ~500 satır kısaltma fırsatı tespit etti (`reports/2026-11-24-kod-denetimi-raporu.md`).
+- **Test ekran görüntüleri:** `tests/test_ui.py` ekran görüntülerini `artifacts/` (git dışı) klasörüne yazar; `design/v2/` referans dosyalarına dokunmaz.
 - **HKCU Run kaydı:** Kurucu admin modda çalışır; kayıt, kurulumu yapan kullanıcının HKCU'suna yazılır. Farklı bir yönetici hesabıyla kurulursa kayıt beklenen yerde olmayabilir.
 - **`bin\` klasörü** (`%LOCALAPPDATA%\Dikte\bin`, 27 Ağustos) Dikte kodunun oluşturmadığı bir klasör; kaldırma kapsamı dışında bırakıldı.
 - **Veri kaybı riskleri (2026-11-11 Faz 2'de giderildi):** pano hatasında yapıştırma iptali, `history_open` kimlik güncellemesi, GGUF indirme jetonu + worker `join`, `finish_reason == "length"` ve `strip_response` tek satır koruması, `RLock` + `uuid` `.tmp` + `fsync` + `OSError` koruması ve temiz `shutdown()` eklendi.
@@ -188,3 +189,5 @@ Akış:
 - 2026-11-18 (v1.6.1 — OpenWhispr Analizi, Gömülü Hata Tespit Aracı & Faz A/B Stabilite): 4 paralel `Gemini 4 Hydrogen (Medium)` ajanı ile OpenWhispr dersi + kod denetimi (`reports/2026-11-18-openwhispr-tanilama-ve-stabilite-raporu.md`) çıkarıldı; ardından Faz A/B düzeltmeleri (`_engine_lock`, `_ai_task_token` + `_seq`, non-blocking `HotkeyListener` + kanonik tuş, `AudioRecorder` kilidi + `MAX_RECORD_SECONDS`, `tray.py`/`bridge.py` kapanış tekilleştirme, `--uninstall` kodu, `updater.apply` sonrası kapanış, ilk açılış sihirbazı, tek atomik ayar kaydı) ve `dikte/error_reporter.py` + `#diagBanner`/`#diagModal`/`#diagCard` + tepsi rapor kopyalama eklendi. Sürüm **1.6.1**'e yükseltildi.
 - 2026-11-19 (v1.6.1 Canlı Yayın & `onnxruntime` Düzeltmesi): `onnxruntime` erken yükleme ve `vad_filter=False` yedeği eklendi; `README.md` ve GitHub Pages indirme sitesi (`docs/index.html`) yayına alındı; `v1.6.1` GitHub Release `gh` ile yayınlandı.
 - 2026-11-20 (Remotion Tanıtım Videosu, Web Sitesi ve README Yayını): `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu ve deterministik WAV ses kiti üretildi; web için sıkıştırılan `docs/assets/dikte-tanitim.mp4` (`9,18 MB`) + kapak görseli `docs/index.html` (`#tanitim-videosu`) ve `README.md` alt bölümüne eklendi.
+- 2026-11-21 (Çok Dilli Vitrin — EN / TR): `README.md` İngilizce varsayılan, `README.tr.md` Türkçe olarak ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
+- 2026-11-24 (v1.6.1 Tam Kod Denetimi ve `asama-baslat` Güncellemesi): 4 paralel `Gemini 4 Hydrogen (Medium)` işçisiyle salt-okunur kod denetimi yapıldı (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat`/`asama-bitir`/`calisma-duzeni.md` içine değiştirilebilir düşünme seviyeli `Gemini 4 Hydrogen` ve Obsidian MCP geçmiş kontrolü eklendi.

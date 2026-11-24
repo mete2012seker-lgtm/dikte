@@ -159,6 +159,9 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - **Remotion Tanıtım Videosu (`video/`):** Klavyeyle yazmanın zorluğuna karşı sesle daha hızlı/akıcı ifade etmeyi, bas-konuş mikrofon morfizmini, AI temizle/çevir ve Magic UI geçişlerini anlatan 45 sn 1080p video üretildi; web için optimize MP4 (`docs/assets/dikte-tanitim.mp4`) GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi.
 - **2026-11-21 kararları (çok dilli vitrin, kullanıcı onaylı):**
   - **İngilizce Varsayılan README ve Web Sitesi:** `README.md` varsayılan İngilizce, `README.tr.md` Türkçe olup üstlerinde tıklanabilir `English | Türkçe` bağlantıları bulunur; `docs/index.html` varsayılan İngilizce açılır ve üst çubukta `EN | TR` dil seçici sunar.
+- **2026-11-24 kararları (kod denetimi ve protokol güncellemesi, kullanıcı onaylı):**
+  - **`asama-baslat` Güncellemesi:** Oturum başında önceki işlere ve kararlara bakmak için **Obsidian hafıza kasasını (`obsidian` MCP)** kontrol etmek zorunludur; alt aşamalar/alt ajanlar **Gemini 4 Hydrogen** ile çalıştırılır ve düşünme seviyesi (`low`/`medium`/`high`/`xhigh`) işin zorluğuna göre değiştirilebilir.
+  - **v1.6.1 Tam Kod Denetimi:** Salt-okunur denetim tamamlandı (`reports/2026-11-24-kod-denetimi-raporu.md`); kod değişikliği yapılmadı, 4 fazlı düzeltme/kısaltma planı bir sonraki oturumda kullanıcı onayıyla başlatılacak.
 
 
 ## Öneriler (onaylanmadı)

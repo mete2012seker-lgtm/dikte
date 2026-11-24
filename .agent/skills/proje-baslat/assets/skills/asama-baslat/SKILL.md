@@ -17,6 +17,7 @@ Sırayla oku (olmayanı atla ve söyle):
 6. ogrenme-gunlugu.md
 7. reports/README.md (rapor dizini, raporları ihtiyaç olursa aç)
 8. Arayüz işi varsa design/ui-spec.md
+9. **Obsidian Hafıza Kontrolü (`obsidian` MCP):** Önceki oturumlarda yapılan işlere, kararlara ve kullanıcı tercihlerine bakmak için `obsidian` MCP araçlarıyla (`list_directory`, `search_notes`, `read_note`) ilgili proje klasörünü kontrol et. Tüm kasayı okuma; sadece ilgili notları aç.
 
 Dosyaları ezberleme, ihtiyaç olunca tekrar aç. Büyük dosyalarda ilgili bölüme bak.
 
@@ -37,8 +38,9 @@ STATE.md ile çelişki varsa (commit edilmemiş değişiklik, STATE'te yazmayan 
 Kullanıcı bir aşama seçtiyse (ya da STATE.md'deki sıradaki adım onaylandıysa):
 1. PLAN.md'deki bitti tanımını ve kanıtı kendi cümlenle tekrar et.
 2. Kısa bir plan çıkar. Sonra planı sorgula: hangi varsayım yanlışsa plan çöker, nerede çöpe dönebilir?
-3. Kullanıcının yapması gerekenleri "SENİN YAPACAĞIN ŞEY:" başlığıyla listele.
-4. Kaba maliyet beklentisini tek cümleyle yaz (küçük, orta, büyük iş).
+3. **Tek Ajan Önceliği ve Alt Ajanlar:** İş tek ajanla çözülebiliyorsa alt ajan çağırma. Paralel iş bölümü gerekiyorsa `swarm` işçilerini **Gemini 4 Hydrogen** (`gemini-4-hydrogen-low` / `medium` / `high` / `xhigh`) ile çalıştır; düşünme seviyesini alt aşamanın zorluğuna göre değiştirilebilir tut.
+4. Kullanıcının yapması gerekenleri "SENİN YAPACAĞIN ŞEY:" başlığıyla listele.
+5. Kaba maliyet beklentisini tek cümleyle yaz (küçük, orta, büyük iş).
 
 ## 5. Onay bekle
 Kullanıcı "devam" ya da "başla" demeden kod yazma, dosya değiştirme. Sadece okuma ve plan.

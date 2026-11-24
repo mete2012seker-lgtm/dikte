@@ -100,7 +100,7 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [x] `prefers-reduced-motion`: efektler tüm animasyonları kapatır, kenar parlaması statik kalır. (WCAG AA kontrast ölçümü yapılmadı — arayüz zaten AA'ya yakın renkler kullanıyor; ölçüm gerekirse ileride eklenir.)
 - Kanıt: 206 pytest (Playwright 23 test), `design/v2/*.png`. **Kullanıcı görsel onayı 2026-11-04'te alındı; aşama kapalı.**
 
-### Aşama 10 — v1.5: Kurucu ve kaldırma (kod yazıldı, yayın doğrulanmadı)
+### Aşama 10 — v1.5: Kurucu ve kaldırma (kurucu yayında; kullanıcı temiz VM testi bekliyor)
 - [x] PyInstaller `onedir` + Inno Setup dosyaları yazıldı. (2026-11-04: `Dikte.spec` + `installer/Dikte.iss`)
 - [x] Ayarlar'da büyük kırmızı "Uygulamayı Kaldır" butonu, çift onay, silinecek boyut bilgisi. (`dikte/uninstall.py` + appCard)
 - [x] **Kurucu derlendi (2026-11-09):** `build.ps1` ile `dist\Dikte` ve `installer\Output\Dikte-Setup-1.6.0.exe` üretildi; `run_dikte.py` girişi ve `collect_all("llama_cpp")` eklendi.
@@ -109,7 +109,7 @@ Ayrıntılı dosya/sayfa eşlemesi: `UYGULAMA-PLANI.md`.
 - [ ] Kurulum → çalıştırma → kaldırma → klasörlerin silindiğinin kontrolü (kullanıcı testi; UAC gerekir).
 - Kanıt hedefi: `dist\Dikte\Dikte.exe`, `Dikte-Setup-*.exe`, kur/kaldır logu, silinen klasör listesi.
 
-### Aşama 11 — v1.6: Otomatik güncelleme (kod var, akış bozuk)
+### Aşama 11 — v1.6: Otomatik güncelleme (v1.6.1 yayında)
 - [x] Açılışta sessiz sürüm denetimi ve Ayarlar'da **Güncelleme** kartı yazıldı. (`dikte/updater.py`, `controller.py:1281-1344`)
 - [x] `latest.json` okuma, sürüm karşılaştırma, kurucu indirme, SHA-256 doğrulama ve sessiz kurulum iskeleti var.
 - [x] **`sha256` akışı düzeltildi (2026-11-09):** `update_check` `sha256` döndürüyor; `update_apply` tek denetim sonucunu kullanıyor; boş/bozuk özet indirmeden reddediliyor.
@@ -199,10 +199,16 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] `docs/index.html` varsayılan İngilizce (`<html lang="en">`) yapıldı; üst çubuğa masaüstü/tablet/mobil uyumlu `EN | TR` dil seçici (`localStorage` + `?lang=tr`/`?lang=en`) eklendi.
 - Kanıt: `README.md` ve `README.tr.md` yerel bağlantıları `6/6` doğrulandı (`missing=[]`); Playwright Edge `1440x900`, `768x1024`, `360x800` (`default=en`, `TR → EN` geçişi, `overflow=False`, `0` JS hatası, `?lang=tr` OK). Kullanıcı planı ve kapanışı onayladı.
 
+### Aşama 20 — v1.6.1 Tam Kod Denetimi ve `asama-baslat` Protokol Güncellemesi (2026-11-24 tamamlandı)
+- [x] `calisma-duzeni.md` uyarınca 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` işçisi ve koordinatör satır doğrulamasıyla tam kod denetimi yapıldı (`reports/2026-11-24-kod-denetimi-raporu.md`, `reports/README.md`).
+- [x] `asama-baslat` (ve şablon/yedek kopyaları), `asama-bitir` ve `calisma-duzeni.md` §10 güncellendi: alt ajan/işçi modeli **Gemini 4 Hydrogen** (değiştirilebilir düşünme seviyesi) ve `asama-baslat` içinde **Obsidian MCP geçmiş kontrolü** tanımlandı.
+- [ ] **Sıradaki uygulama (Faz 1–4):** `reports/2026-11-24-kod-denetimi-raporu.md` §8'deki 4 fazlı düzeltme ve ~500 satırlık kısaltma planı (kullanıcı onayıyla sonraki oturumda başlanacak).
+- Kanıt: AST 25/25 OK, **413 passed, 1 skipped** (`pytest -q`, 100,4 sn), gizli bilgi taraması temiz, 7 kritik iddia kod satırından doğrulandı.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |
-| Mantık (geçmiş, ayarlar, model kataloğu, hata tespit, stabilite, tek kopya, UI) | pytest, `tests/` (370 test) |
+| Mantık (geçmiş, ayarlar, model kataloğu, hata tespit, stabilite, tek kopya, UI) | pytest, `tests/` (413+ test) |
 | Çeviri motoru | `--selftest` ve tests/data/test.wav |
 | Arayüz görünümü | Playwright ekran görüntüsü, design/ ile karşılaştırma, DOM testi |
 | Mikrofon, kısayol, başka pencereye yapıştırma | Elle test listesi ("SENİN YAPACAĞIN TEST") |

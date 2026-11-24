@@ -248,15 +248,15 @@ python -c "import ast,pathlib,sys; [ast.parse(p.read_text(encoding='utf-8')) for
 
 ---
 
-## 10. Swarm Koordinatör Sistemi ve Görev Bölüşümü (`swarm` aracı zorunlu)
+## 10. Swarm Koordinatör Sistemi ve Görev Bölüşümü (`Gemini 4 Hydrogen`)
 
-2026-11-12 kuralı uyarınca:
-1. **Ana Model (Koordinatör):**
-   - Ana model orta veya kolay zorluktaki hiçbir kodu kendisi yazmaz; yalnızca en zor mimari kararlar, kritik kilitler/algoritmalar, karmaşık köprü protokolleri ve bir işçinin 3 denemede çözemediği blokajlarda devreye girer.
-   - Kolay ama uzun kodlar, arayüz uyarlamaları, testler ve doküman güncellemeleri koordinatör tarafından doğrudan yazılmaz.
-2. **Yerleşik Swarm Aracı (`swarm`):**
-   - Kodlama, test ve doküman işleri `invoke_subagent` yerine doğrudan yerleşik **`swarm` aracı (`swarm{action:"add", model:"gemini-3.8-flash-medium", ...}`)** ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür.
-   - Tüm swarm işçileri istisnasız `gemini-3.8-flash-medium` (`Model: "flash"`) ile başlatılır.
+2026-11-13 / 2026-11-24 kuralı uyarınca:
+1. **Tek Ajan Önceliği:**
+   - İş dallanmıyorsa, kolaysa veya tek bir ajanın yapması daha uygunsa alt ajan ya da swarm çağrılmaz; ana ajan görevi doğrudan kendisi tamamlar.
+2. **Yerleşik Swarm Aracı (`swarm`) ve Değiştirilebilir Düşünme Seviyesi:**
+   - İş gerçekten bağımsız kollara ayrıldığında yerleşik **`swarm` aracı** ile ortak mesaj panosu (Swarm Board) üzerinden yürütülür.
+   - Alt aşamalar ve swarm işçileri **Gemini 4 Hydrogen** (`gemini-4-hydrogen-low`, `gemini-4-hydrogen-medium`, `gemini-4-hydrogen-high`, `gemini-4-hydrogen-xhigh`) ile çalıştırılır. Düşünme seviyesi işin zorluğuna göre serbestçe seçilir ve gerektiğinde değiştirilebilir (`low`: basit tarama/doküman, `medium`: standart kodlama/test/denetim, `high`/`xhigh`: zor mimari veya kritik hata).
+   - Ana ajanın çözemediği aşırı kritik bir düğümde `claude-opus-5-5-medium` yalnızca hatanın nasıl çözüleceğini söylemesi için çağrılabilir (kod yazmaz, uzun dosya analiz etmez).
 3. **Dosya Sahipliği ve Paralel Çalışma:**
    - İşe başlamadan önce dosyalar çakışmayacak şekilde (her işçiye özel dosya sahipliği verilerek) ayrılır:
      - Örnek: `icon-tray`, `data-layer`, `controller-api`, `ui-frontend`, `verifier` ve `monitor`.
@@ -265,5 +265,5 @@ python -c "import ast,pathlib,sys; [ast.parse(p.read_text(encoding='utf-8')) for
 4. **Pano İletişimi ve Yaşam Döngüsü:**
    - İşçiler tamamladıkları işi panoda `@verifier` ve `@coordinator`'ı etiketleyerek duyurur.
    - Koordinatör iş akışını `read_board` ile okur, boşta beklerken `swarm_wait` çağırır (token harcamaz).
-   - İşlerin bittiği `@verifier` raporu ile doğrulandığında, koordinatör `swarm{action:"kill"}` ile işçileri kapatır ve sonuçları teslim alır.
+   - İşlerin bittiği doğrulandığında, koordinatör `swarm{action:"kill"}` ile işçileri kapatır ve sonuçları teslim alır.
 

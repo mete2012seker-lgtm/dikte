@@ -38,11 +38,14 @@ Kullanıcının bugün öğrendiklerini sade Türkçe, 3-5 madde yaz. Teknik ter
 ## 6. STIL.md
 Kullanıcı konuşma tarzında bir değişiklik istediyse güncelle. İstemediyse dokunma.
 
-## 7. Gözden geçirme ve Swarm Kapanışı
-Aşama sonunda tüm işlemler tamamlandığında `swarm` aracı ile `gemini-3.8-flash-medium` (`Model: "flash"`) modeline sahip `@verifier` veya `@docs-finisher` gibi işçiler devreye girer:
-1. Plandaki maddeleri ve bitti tanımını kodla karşılaştırarak modellerin/kodun neleri yapıp neleri yapmadığı denetlenir.
-2. Testler koşturulup sonuçlar (`pytest`, selftest, derleme) doğrulanır.
-3. Bulgular panoya ve ana ajana raporlanır; koordinatör `swarm_wait` ve `read_board` ile süreci denetler, doğrulama tamamlanınca `swarm{action:"kill"}` ile işçileri temizler. Bu denetim ve doğrulama olmadan oturum kapatılmaz.
+## 7. Gözden geçirme, Obsidian Kaydı ve Swarm Kapanışı
+- **Obsidian Hafıza Güncellemesi:** Oturumda tamamlanan önemli adımları, kararları veya denetim sonuçlarını `obsidian` MCP ile ilgili proje klasörüne atomik not olarak kaydet ve `_genel-bakis.md` indeksine bağla.
+- **Doğrulama ve Swarm Kapanışı:**
+  - **Tek Ajan Önceliği:** Yalnızca doküman/plan/rapor güncellendiyse veya iş küçükse ana ajan doğrulamayı doğrudan kendisi tamamlar.
+  - **Swarm Doğrulaması (kod değişikliğinde):** Kod değişikliği veya çoklu işçi kullanıldıysa **`Gemini 4 Hydrogen`** (`gemini-4-hydrogen-low` / `medium` / `high` / `xhigh` — işin zorluğuna göre seçilebilir düşünme seviyesi) modeline sahip `@verifier` işçisi devreye girer:
+    1. Plandaki maddeleri ve bitti tanımını kodla karşılaştırarak nelerin yapılıp nelerin yapılmadığı denetlenir.
+    2. Testler koşturulup sonuçlar (`pytest`, selftest, derleme) doğrulanır.
+    3. Bulgular panoya ve ana ajana raporlanır; koordinatör `swarm_wait` ve `read_board` ile süreci denetler, doğrulama tamamlanınca `swarm{action:"kill"}` ile işçileri temizler.
 
 ## 8. Maliyet günlüğü
 STATE.md'deki Maliyet günlüğünü kendin doldurma. Kullanıcıdan OpenRouter Activity sayfasındaki toplam harcamayı iste. Verirse tarih ve aşamayla yaz, vermezse boş bırak.

@@ -3,7 +3,10 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-21 — Çok Dilli Vitrin: İngilizce Varsayılan README ve GitHub Pages (EN / TR) tamamlandı:**
+**2026-11-24 — v1.6.1 Tam Kod Denetimi (salt-okunur) ve `asama-baslat` Protokol Güncellemesi tamamlandı:**
+- `calisma-duzeni.md` uyarınca commit `102cfc6` üzerinde 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` işçisi ve koordinatör satır doğrulamasıyla kapsamlı kod denetimi yapıldı; rapor `reports/2026-11-24-kod-denetimi-raporu.md` dosyasına yazıldı ve `reports/README.md` dizinine eklendi (**0 blocker, 6 yüksek, ~40 orta, 7 test maskesi, ~500 satır kısaltma fırsatı**). Kod dosyalarına dokunulmadı; başlangıç ölçüsü **AST 25/25 OK** ve **413 passed, 1 skipped** (100,4 sn).
+- `.agent/skills/asama-baslat/SKILL.md` (ve şablon/yedek kopyaları), `.agent/skills/asama-bitir/SKILL.md` ve `calisma-duzeni.md` §10 güncellendi: alt ajan/işçi modeli **Gemini 4 Hydrogen** ve zorluğa göre değiştirilebilir düşünme seviyesi (`low`/`medium`/`high`/`xhigh`) olarak netleştirildi; `asama-baslat` içine önceki oturumları ve kararları kontrol etmek için **Obsidian MCP hafıza kontrolü** eklendi.
+- **2026-11-21 — Çok Dilli Vitrin: İngilizce Varsayılan README ve GitHub Pages (EN / TR) tamamlandı:**
 - `README.md` tamamen İngilizceye çevrildi (GitHub ana sayfasında varsayılan İngilizce görünüm) ve en üstüne **English | [Türkçe](README.tr.md)** dil geçiş bağlantıları eklendi; mevcut Türkçe içerik `README.tr.md` dosyasına taşındı (`?lang=tr` site bağlantılarıyla).
 - `docs/index.html` varsayılan İngilizce (`<html lang="en" class="dark">`) olarak güncellendi; üst çubuğa **EN | TR** dil seçme düğmesi, `localStorage` tercihi ve `?lang=tr`/`?lang=en` desteği eklendi. Playwright Edge ile `1440x900`, `768x1024` ve `360x800` ekranlarda `default=en`, `TR → EN` geçişi, `overflow: False` ve `0` JS hatası doğrulandı.
 - **2026-11-20 — Remotion Tanıtım Videosu, Web Sitesi ve README Yayını tamamlandı (v1.6.1 canlı):**
@@ -16,6 +19,10 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı topluluk dağıtımı (`winget`, AlternativeTo).
 
 ## Biten (kanıtla)
+- **v1.6.1 Tam Kod Denetimi ve `asama-baslat` Protokol Güncellemesi (2026-11-24):**
+  - **Denetim Raporu:** `reports/2026-11-24-kod-denetimi-raporu.md` (`reports/README.md` güncellendi); 4 paralel `Gemini 4 Hydrogen (Medium)` işçisi + 7 kritik iddianın satır doğrulaması; 0 blocker, 6 yüksek (`controller.py:287`, `hotkey.py:392`, `text_models.py:568-573`, `app.js:2211-2218`, `app.js` 5 köprü çağrısı, `Dikte.iss:73`), ~40 orta, 7 test maskesi, ~500 satır kısaltma planı.
+  - **Doğrulama:** AST 25/25 dosya OK, `pytest -q` **413 passed, 1 skipped** (100,4 sn), gizli bilgi taraması temiz.
+  - **Protokol Güncellemesi:** `asama-baslat`, `asama-bitir` ve `calisma-duzeni.md` §10 içinde `Gemini 4 Hydrogen` (değiştirilebilir düşünme seviyesi) ve Obsidian MCP geçmiş kontrolü zorunlu hale getirildi.
 - **Çok Dilli Vitrin: İngilizce Varsayılan README ve Web Sitesi (2026-11-21):**
   - **README (`README.md`, `README.tr.md`):** GitHub ana sayfasında varsayılan İngilizce açıklama (`README.md`) ve üstte tıklanabilir `English | Türkçe` bağlantıları; `README.tr.md` Türkçe sürümü; her iki dosyada 6/6 yerel görsel/dosya bağlantısı doğrulandı (`missing=[]`).
   - **GitHub Pages (`docs/index.html`):** Varsayılan `<html lang="en">`, üst çubukta `EN | TR` dil seçici (`#langSwitch`), `localStorage` hatırlama, `?lang=tr`/`?lang=en` sorgu parametresi ve dinamik tema/kopyala etiketleri.
@@ -96,17 +103,15 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Faz 2 veri kaybı ve çökme hataları tamamlandı (2026-11-11):** `uygulanacak plan.md` §4'teki 11 maddenin tamamı TDD ile uygulandı; 18 yeni regresyon testi eklendi (**263 passed, 1 skipped**); `Model: "flash"` alt ajanıyla kod ve testler satır satır denetlendi. Masaüstüne `C:\Users\aksek\Desktop\Dikte.lnk` kısayolu oluşturuldu.
 
 ## Yarım kalan
-- **v1.3 / 7c:** Bellek takası + Metin/Ses sekmeleri var; "⋯" model menüsü yok. PLAN'da işaretsiz.
-- **v1.3 / 7e:** Arayüz + Playwright var; kalite tablosu **kısmen** (10/10 OK var, tam girdi/çıktı çiftleri ve VRAM takas ölçümü yok).
-- **v1.4:** Efektler + `design/v2/` hazır; kullanıcı gözle onayladı (2026-11-04) → kapalı.
-- **v1.5:** Kaldırma + kurucu **derlendi (2026-11-09)**; kur/kaldır kullanıcı testi bekliyor. Karşılama sihirbazı kapsamı Faz 3'te.
-- **v1.6:** Sürüm, sha256 akışı ve `UPDATE_URL` düzeltildi (2026-11-09). İlk GitHub Release yayınlanmadı; `latest.json` şu an 404 veriyor.
-- **Karşılama sihirbazı (5 ekran):** Hiç yazılmadı; yalnız taslak HTML var. 2026-11-04'te kapsama alındı.
+- **2026-11-24 Kod Denetimi Düzeltme Fazları (Faz 1–4):** Rapor (`reports/2026-11-24-kod-denetimi-raporu.md`) hazır, henüz kod değişikliğine başlanmadı.
+- **Sihirbaz 2. adım CUDA indirme butonu:** `#wizardCudaActions` / `#wizardCudaMsg` yer tutucusu duruyor; isteğe bağlı CUDA indirme uç noktası henüz bağlı değil (rapor §5).
+- **v1.5 / v1.6 kullanıcı kabul testi:** `Dikte-Setup-1.6.1.exe` ile gerçek bilgisayarda temiz kurulum, canlı konuşma, güncelleme denetimi ve kaldırma testi kullanıcıda bekliyor.
 
 ## Sıradaki ilk adım
-1. **Son Kullanıcı Doğrulaması ve Dağıtım:**
-   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) yeni `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, yanlış uyarının kalktığını, **Ayarlar → Güncellemeleri Denetle** sonucunu ve canlı `#tanitim-videosu` bölümünü doğrulamak.
-   - İsteğe bağlı büyüme adımları: `winget` paketi başvurusu ve AlternativeTo kaydı (45 sn Remotion tanıtım videosu tamamlandı).
+1. **2026-11-24 Denetim Raporu — Faz 1 (Çökme ve durum makinesi):**
+   - `reports/2026-11-24-kod-denetimi-raporu.md` §8 Faz 1 maddelerini (Y1 `controller.py:287` READY kaçağı, Y2 `hotkey.py:392` `Key.value.vk` takılı tuş kurtarma, Y3 `text_models.py:568` `effective_total` yarım GGUF kontrolü + kilit/geçmiş/indirme yarışı) TDD ile uygulamak; ardından Faz 2 (arayüz), Faz 3 (kurucu/gizlilik) ve Faz 4 (~500 satır kısaltma + test maskeleri).
+2. **Son Kullanıcı Doğrulaması ve Dağıtım:**
+   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, **Ayarlar → Güncellemeleri Denetle** sonucunu ve canlı `#tanitim-videosu` bölümünü doğrulamak.
 
 ## Açık sorunlar
 - **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.
@@ -159,11 +164,12 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
   - **Ajan Kararları (İkon & Tepsi):** Logo kaynağı `design/download` (ses dalgalı mavi ikon) alınıp `.ico` ve `.png` üretilir; sistem tepsisi `pystray + Pillow` ile kurulur; tepsi menüsü `Göster/Gizle | Durum | Çıkış` olur.
 - **2026-11-20 (Tanıtım Videosu):** `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu üretildi; `docs/assets/dikte-tanitim.mp4` (`+faststart`, `9,18 MB`) + kapak görseli GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi; `video/node_modules`, `.remotion`, `out/`, `public/sfx/` `.gitignore` ile hariç tutuldu.
 - **2026-11-21 (Çok Dilli Vitrin — EN / TR):** GitHub depo ana sayfası (`README.md`) varsayılan İngilizce, Türkçe sürümü `README.tr.md` ve üstlerinde karşılıklı tıklanabilir `English | Türkçe` bağlantıları olacak şekilde ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
+- **2026-11-24 (Kod Denetimi ve `asama-baslat` Güncellemesi):** v1.6.1 kodu salt-okunur tam denetimden geçirildi (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat` skill'ine önceki oturumlar için **Obsidian MCP kontrolü** ve alt aşamalar/işçiler için değiştirilebilir düşünme seviyeli **Gemini 4 Hydrogen** (`low`/`medium`/`high`/`xhigh`) kuralı eklendi.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **413 passed, 1 skipped** (2026-11-20 doğrulandı, 68.03 sn) |
+| `pytest -q` | **413 passed, 1 skipped** (2026-11-24 doğrulandı, 100,4 sn; AST 25/25 OK) |
 | Remotion TypeScript (`tsc --noEmit`) | **Geçti** (exit 0, 2026-11-20) |
 | Tanıtım videosu render & `ffprobe` | **Geçti:** `video/out/dikte-tanitim.mp4` (`18,6 MB`) ve web MP4 `docs/assets/dikte-tanitim.mp4` (`9,18 MB`, `h264 1920x1080 30fps + aac, 45.013s`), 15 kontrol karesi incelendi |
 | GitHub Pages video & responsive | **Geçti:** Playwright `1440x900`, `768x1024`, `360x800` `overflow: False`, `#promoVideo` + `mp4_http=200` (2026-11-20) |

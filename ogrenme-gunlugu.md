@@ -120,3 +120,11 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 3. **Varsayılan Dil ve Kalıcı Tercih (`localStorage` + `?lang=`):** HTML kaynak kodunu doğrudan varsayılan dilde (`lang="en"`) yazmak arama motorları ve ilk açılış için en sağlıklı yoldur; kullanıcının seçtiği dili `localStorage`'da saklamak ve `?lang=tr` parametresini desteklemek Türkçe README'den gelen ziyaretçiye doğrudan Türkçe deneyim sunar.
 4. **Mobil Üst Çubukta Taşma Kontrolü:** Masaüstü bağlantıları mobilde gizlenirken dil seçici ve tema düğmesi gibi temel kontrollerin görünür kalması ve `360px` genişlikte yatay taşma (`scrollWidth > clientWidth`) yapmaması Playwright ile doğrulanır.
 
+## 2026-11-24 — v1.6.1 Tam Kod Denetimi ve Protokol Güncellemesi
+
+1. **Durum Makinesi Kaçağı:** Bir fonksiyonun mevcut durumu kontrol etmeden koşulsuz `READY` (hazır) durumuna geçmesi, arka planda hâlâ bir işlem sürerken yeni kayıt başlatılmasına yol açabilir; durum geçişleri her zaman hangi durumdan gelindiğine bakmalıdır.
+2. **Enum İçindeki Özellik Farkı (`Key.value.vk`):** `pynput` kütüphanesinde normal karakter tuşlarında sanal tuş kodu (`vk`) doğrudan nesnenin üstündeyken, `Sağ Ctrl` gibi özel tuşlarda `key.value.vk` içinde tutulur; bunu atlamak takılı tuş kurtarma kodunun hiç çalışmamasına neden olur.
+3. **Test Maskesi (Test Masking):** Üretim kodunun sahte test nesnesini (`Mock`) fark edip gerçek parametreleri atlaması veya test sahtesinin her zaman `ok: true` döndürmesi, gerçek hataların yeşil testlerin arkasında gizlenmesine yol açar.
+4. **Kod Tekrarını Tek Yardımcıda Toplamak:** Aynı atomik dosya yazma mantığının 6 farklı dosyada kopyalanması yerine tek ortak yardımcıya taşınması hem hata riskini azaltır hem de kod tabanını yüzlerce satır kısaltır.
+5. **Çapraz Oturum Hafızası (`asama-baslat` + Obsidian):** Yeni sohbet açıldığında yalnız proje içindeki metin dosyalarına değil, kişisel Obsidian hafıza kasasına da bakmak önceki oturumlardaki kararların ve alınan derslerin unutulmasını önler.
+
