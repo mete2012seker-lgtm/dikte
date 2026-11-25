@@ -128,3 +128,10 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 4. **Kod Tekrarını Tek Yardımcıda Toplamak:** Aynı atomik dosya yazma mantığının 6 farklı dosyada kopyalanması yerine tek ortak yardımcıya taşınması hem hata riskini azaltır hem de kod tabanını yüzlerce satır kısaltır.
 5. **Çapraz Oturum Hafızası (`asama-baslat` + Obsidian):** Yeni sohbet açıldığında yalnız proje içindeki metin dosyalarına değil, kişisel Obsidian hafıza kasasına da bakmak önceki oturumlardaki kararların ve alınan derslerin unutulmasını önler.
 
+## 2026-11-25 — Genele Hitap Etme ve Sade Tanıtım Araştırması
+
+1. **Open Graph (OG) Kartları:** Web sayfasına eklenen birkaç küçük HTML meta etiketi (`og:title`, `og:image`), site bağlantısı WhatsApp, Discord veya sosyal medyada paylaşıldığında düz link yerine kapak görselli zengin önizleme kartı görünmesini sağlar.
+2. **Microsoft Store (MSIX) ve SmartScreen:** Microsoft Eylül 2025'te bireysel geliştirici kayıt ücretini kaldırdı; MSIX paketiyle mağazada yayınlanan uygulamalar Microsoft tarafından ücretsiz imzalandığı için mavi SmartScreen uyarısı çıkmıyor.
+3. **Bas-Bırak (Toggle) ve Yüzen Gösterge (Overlay):** Basılı tutmanın yanında tek tıkla başlat/durdur seçeneği ve tepsideyken ekranın altında beliren küçük bir "Dinliyor…" işareti, sıradan kullanıcıların sesli dikteyi günlük alışkanlığa çevirmesinde en çok aradığı iki kolaylıktır.
+4. **Gerçek Ekran Kaydı Etkisi:** Sıfır bütçeli tanıtımda karmaşık animasyonlar yerine 20–30 saniyelik gerçek ekran kaydında konuşarak metin yazdırmayı göstermek daha doğal güven ve indirme getirir.
+

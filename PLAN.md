@@ -205,6 +205,12 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [ ] **Sıradaki uygulama (Faz 1–4):** `reports/2026-11-24-kod-denetimi-raporu.md` §8'deki 4 fazlı düzeltme ve ~500 satırlık kısaltma planı (kullanıcı onayıyla sonraki oturumda başlanacak).
 - Kanıt: AST 25/25 OK, **413 passed, 1 skipped** (`pytest -q`, 100,4 sn), gizli bilgi taraması temiz, 7 kritik iddia kod satırından doğrulandı.
 
+### Aşama 21 — Genele Hitap Etme ve Basit Tanıtım Araştırması (2026-11-25 tamamlandı)
+- [x] Dikte'nin mevcut kodu, vitrini ve kurucusu genele hitap etme açısından incelendi (uygulama koduna dokunulmadı).
+- [x] Benzer ücretsiz/açık kaynak dikte projeleri (`Handy`, `Buzz`, `OpenWhispr`, `Vibe`, `Whispering`, `HoldToSpeak`, `LocalFlow`, `PieFlow`) Exa ile araştırıldı.
+- [x] Gelir amacı ve süre sınırı olmadan (~1.000 kişi hedefiyle) basit uygulama dokunuşları, vitrin güzelleştirmeleri ve sıfır bütçeli YouTube/Shorts/forum fikirleri `reports/2026-11-25-yayin-ve-buyume-raporu.md` ve Obsidian kasasına kaydedildi.
+- Kanıt: `reports/2026-11-25-yayin-ve-buyume-raporu.md`, `reports/README.md`, Obsidian `02-Projeler/dikte-projesi/2026-11-25-yayin-ve-buyume-stratejisi.md`. Kullanıcı onayı: yalnızca araştırma ve kayıt istendi.
+
 ## Test yöntemi
 | Ne test edilir | Nasıl |
 | :--- | :--- |

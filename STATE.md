@@ -3,7 +3,10 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-24 — v1.6.1 Tam Kod Denetimi (salt-okunur) ve `asama-baslat` Protokol Güncellemesi tamamlandı:**
+**2026-11-25 — Genele Hitap Etme, Rakip İncelemesi ve Sade Tanıtım Araştırması (salt-okunur) tamamlandı:**
+- Gelir amacı gütmeden ve süre baskısı olmadan (~1.000 kullanıcı/indirme hedefiyle) Dikte'nin mevcut kodu, vitrini ve benzer ücretsiz/açık kaynak projeler (`Handy`, `Buzz`, `OpenWhispr`, `Vibe`, `Whispering`, `HoldToSpeak`, `LocalFlow`, `PieFlow`) Exa ile araştırıldı.
+- Sonuçlar `reports/2026-11-25-yayin-ve-buyume-raporu.md` dosyasına kaydedildi ve `reports/README.md` dizinine eklendi; uygulama koduna dokunulmadı.
+- **2026-11-24 — v1.6.1 Tam Kod Denetimi (salt-okunur) ve `asama-baslat` Protokol Güncellemesi tamamlandı:**
 - `calisma-duzeni.md` uyarınca commit `102cfc6` üzerinde 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` işçisi ve koordinatör satır doğrulamasıyla kapsamlı kod denetimi yapıldı; rapor `reports/2026-11-24-kod-denetimi-raporu.md` dosyasına yazıldı ve `reports/README.md` dizinine eklendi (**0 blocker, 6 yüksek, ~40 orta, 7 test maskesi, ~500 satır kısaltma fırsatı**). Kod dosyalarına dokunulmadı; başlangıç ölçüsü **AST 25/25 OK** ve **413 passed, 1 skipped** (100,4 sn).
 - `.agent/skills/asama-baslat/SKILL.md` (ve şablon/yedek kopyaları), `.agent/skills/asama-bitir/SKILL.md` ve `calisma-duzeni.md` §10 güncellendi: alt ajan/işçi modeli **Gemini 4 Hydrogen** ve zorluğa göre değiştirilebilir düşünme seviyesi (`low`/`medium`/`high`/`xhigh`) olarak netleştirildi; `asama-baslat` içine önceki oturumları ve kararları kontrol etmek için **Obsidian MCP hafıza kontrolü** eklendi.
 - **2026-11-21 — Çok Dilli Vitrin: İngilizce Varsayılan README ve GitHub Pages (EN / TR) tamamlandı:**
@@ -19,6 +22,9 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı topluluk dağıtımı (`winget`, AlternativeTo).
 
 ## Biten (kanıtla)
+- **Genele Hitap Etme ve Sade Tanıtım Araştırması (2026-11-25):**
+  - **Rapor:** `reports/2026-11-25-yayin-ve-buyume-raporu.md` (`reports/README.md` güncellendi); Exa rakip/ekosistem araştırması + mevcut kod/vitrin incelemesi. Uygulama kodu değişmedi (`dikte/`, `docs/`, `installer/`, `tests/` dokunulmadı).
+  - **Obsidian Kaydı:** `02-Projeler/dikte-projesi/2026-11-25-yayin-ve-buyume-stratejisi.md` ve `_genel-bakis.md` güncellendi.
 - **v1.6.1 Tam Kod Denetimi ve `asama-baslat` Protokol Güncellemesi (2026-11-24):**
   - **Denetim Raporu:** `reports/2026-11-24-kod-denetimi-raporu.md` (`reports/README.md` güncellendi); 4 paralel `Gemini 4 Hydrogen (Medium)` işçisi + 7 kritik iddianın satır doğrulaması; 0 blocker, 6 yüksek (`controller.py:287`, `hotkey.py:392`, `text_models.py:568-573`, `app.js:2211-2218`, `app.js` 5 köprü çağrısı, `Dikte.iss:73`), ~40 orta, 7 test maskesi, ~500 satır kısaltma planı.
   - **Doğrulama:** AST 25/25 dosya OK, `pytest -q` **413 passed, 1 skipped** (100,4 sn), gizli bilgi taraması temiz.
@@ -165,6 +171,7 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **2026-11-20 (Tanıtım Videosu):** `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu üretildi; `docs/assets/dikte-tanitim.mp4` (`+faststart`, `9,18 MB`) + kapak görseli GitHub Pages (`docs/index.html`) ve `README.md` alt bölümüne eklendi; `video/node_modules`, `.remotion`, `out/`, `public/sfx/` `.gitignore` ile hariç tutuldu.
 - **2026-11-21 (Çok Dilli Vitrin — EN / TR):** GitHub depo ana sayfası (`README.md`) varsayılan İngilizce, Türkçe sürümü `README.tr.md` ve üstlerinde karşılıklı tıklanabilir `English | Türkçe` bağlantıları olacak şekilde ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
 - **2026-11-24 (Kod Denetimi ve `asama-baslat` Güncellemesi):** v1.6.1 kodu salt-okunur tam denetimden geçirildi (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat` skill'ine önceki oturumlar için **Obsidian MCP kontrolü** ve alt aşamalar/işçiler için değiştirilebilir düşünme seviyeli **Gemini 4 Hydrogen** (`low`/`medium`/`high`/`xhigh`) kuralı eklendi.
+- **2026-11-25 (Sade Yayın & Tanıtım Araştırması):** Gelir amacı güdülmüyor; ~1.000 kullanıcı/indirme yeterli, süre sınırı ve abartılı büyüme kampanyası yok. Bu oturumda yalnızca araştırma yapılıp rapor (`reports/2026-11-25-yayin-ve-buyume-raporu.md`) ve Obsidian notu kaydedildi; uygulama koduna dokunulmadı.
 
 ## Test durumu
 | Test | Sonuç |

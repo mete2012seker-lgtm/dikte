@@ -162,6 +162,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
 - **2026-11-24 kararları (kod denetimi ve protokol güncellemesi, kullanıcı onaylı):**
   - **`asama-baslat` Güncellemesi:** Oturum başında önceki işlere ve kararlara bakmak için **Obsidian hafıza kasasını (`obsidian` MCP)** kontrol etmek zorunludur; alt aşamalar/alt ajanlar **Gemini 4 Hydrogen** ile çalıştırılır ve düşünme seviyesi (`low`/`medium`/`high`/`xhigh`) işin zorluğuna göre değiştirilebilir.
   - **v1.6.1 Tam Kod Denetimi:** Salt-okunur denetim tamamlandı (`reports/2026-11-24-kod-denetimi-raporu.md`); kod değişikliği yapılmadı, 4 fazlı düzeltme/kısaltma planı bir sonraki oturumda kullanıcı onayıyla başlatılacak.
+- **2026-11-25 kararları (yayın/tanıtım yönü, kullanıcı onaylı):**
+  - **Hedef ve Kapsam:** Gelir amacı yok; ~1.000 kullanıcı/indirme yeterli, süre sınırı ve abartılı büyüme kampanyaları yok. Odak, genele hitap eden basit dokunuşlar ve sıfır bütçeli sade tanıtım fikirleri (`reports/2026-11-25-yayin-ve-buyume-raporu.md`). Bu oturumda yalnızca araştırma ve kayıt yapıldı.
 
 
 ## Öneriler (onaylanmadı)

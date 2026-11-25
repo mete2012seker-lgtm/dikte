@@ -68,6 +68,7 @@ Akış:
 | `tests/test_version.py` | Tek sürüm kaynağı (1.6.1), latest.json, User-Agent uyumu | Geçti |
 | `.agent/skills/` & `.kilo/skills/` | `asama-baslat` (Obsidian + Gemini 4 Hydrogen), `asama-bitir`, `proje-baslat`, `belirsizleri-sor` vb. skill'ler | Güncellendi (2026-11-24) |
 | `reports/2026-11-24-kod-denetimi-raporu.md` | v1.6.1 tam kod denetimi (0 blocker, 6 yüksek, ~40 orta, 7 test maskesi, ~500 satır kısaltma, 4 fazlı plan) | Yeni (2026-11-24) |
+| `reports/2026-11-25-yayin-ve-buyume-raporu.md` | Genele hitap etme, rakip incelemesi ve sıfır bütçeli basit tanıtım fikirleri (~1.000 kişi, zamansız) | Yeni (2026-11-25) |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
@@ -191,3 +192,4 @@ Akış:
 - 2026-11-20 (Remotion Tanıtım Videosu, Web Sitesi ve README Yayını): `video/` altında 45 sn 1080p 7 sahneli Remotion tanıtım videosu ve deterministik WAV ses kiti üretildi; web için sıkıştırılan `docs/assets/dikte-tanitim.mp4` (`9,18 MB`) + kapak görseli `docs/index.html` (`#tanitim-videosu`) ve `README.md` alt bölümüne eklendi.
 - 2026-11-21 (Çok Dilli Vitrin — EN / TR): `README.md` İngilizce varsayılan, `README.tr.md` Türkçe olarak ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
 - 2026-11-24 (v1.6.1 Tam Kod Denetimi ve `asama-baslat` Güncellemesi): 4 paralel `Gemini 4 Hydrogen (Medium)` işçisiyle salt-okunur kod denetimi yapıldı (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat`/`asama-bitir`/`calisma-duzeni.md` içine değiştirilebilir düşünme seviyeli `Gemini 4 Hydrogen` ve Obsidian MCP geçmiş kontrolü eklendi.
+- 2026-11-25 (Sade Yayın ve Tanıtım Araştırması): Gelir amacı gütmeden ve süre sınırı olmadan ~1.000 kullanıcı hedefiyle rakip incelemesi (`Handy`, `Buzz`, `OpenWhispr`, `Vibe` vb.), genele hitap eden basit dokunuşlar ve sıfır bütçeli YouTube/Shorts/forum fikirleri araştırılıp `reports/2026-11-25-yayin-ve-buyume-raporu.md` ile Obsidian kasasına kaydedildi; kod değişmedi.
