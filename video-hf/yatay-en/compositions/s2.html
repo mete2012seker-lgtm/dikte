@@ -1,0 +1,229 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #0b0f1a;
+      color: #f2f5fc;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    .s2-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 800px 500px at 30% 55%, rgba(79, 109, 255, 0.16), transparent 70%);
+      pointer-events: none;
+    }
+
+    .s2-safe {
+      position: absolute;
+      inset: 108px 192px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 36px;
+    }
+
+    .s2-header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .s2-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #f2f5fc;
+      line-height: 1.12;
+    }
+
+    .s2-sub {
+      font-size: 25px;
+      font-weight: 500;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+
+    .s2-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
+      flex: 1;
+    }
+
+    .s2-screen-wrap {
+      flex: 1.35;
+      perspective: 1400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s2-screen-card {
+      width: 100%;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #121829;
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.55), 0 0 40px rgba(79, 109, 255, 0.18);
+    }
+
+    .s2-screen-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+
+    .s2-badges {
+      flex: 0.9;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .s2-badge-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 24px 28px;
+      border-radius: 18px;
+      background: #121829;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .s2-badge-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(79, 109, 255, 0.16);
+      border: 1px solid rgba(79, 109, 255, 0.38);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .s2-badge-icon.green {
+      background: rgba(34, 197, 94, 0.14);
+      border-color: rgba(34, 197, 94, 0.38);
+    }
+
+    .s2-badge-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: #f2f5fc;
+      margin-bottom: 4px;
+    }
+
+    .s2-badge-desc {
+      font-size: 18px;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s2" data-width="1920" data-height="1080">
+    <div class="s2-glow" data-layout-ignore></div>
+
+    <div class="s2-safe">
+      <div class="s2-header" id="s2-header">
+        <h2 class="s2-title">100% Local. Offline. Free Forever.</h2>
+        <p class="s2-sub">Powered by faster-whisper (NVIDIA GPU or CPU). Zero cloud.</p>
+      </div>
+
+      <div class="s2-body">
+        <div class="s2-screen-wrap">
+          <div class="s2-screen-card" id="s2-screen">
+            <img class="s2-screen-img" src="assets/ekran-dikte-koyu.png" alt="Dikte Dark Theme" />
+          </div>
+        </div>
+
+        <div class="s2-badges">
+          <div class="s2-badge-card" id="s2-b1">
+            <div class="s2-badge-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#84A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+            </div>
+            <div>
+              <div class="s2-badge-title">No Subscription</div>
+              <div class="s2-badge-desc">Pay $0 and own your dictation tool forever.</div>
+            </div>
+          </div>
+
+          <div class="s2-badge-card" id="s2-b2">
+            <div class="s2-badge-icon green">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+              </svg>
+            </div>
+            <div>
+              <div class="s2-badge-title">Audio Deleted Locally</div>
+              <div class="s2-badge-desc">Voice recordings never leave your Windows PC.</div>
+            </div>
+          </div>
+
+          <div class="s2-badge-card" id="s2-b3">
+            <div class="s2-badge-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#84A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </div>
+            <div>
+              <div class="s2-badge-title">MIT Open Source</div>
+              <div class="s2-badge-desc">Transparent, auditable, and community-driven.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(
+        "#s2-header",
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" },
+        0
+      );
+
+      tl.fromTo(
+        "#s2-screen",
+        { opacity: 0, scale: 0.94, rotateY: 10 },
+        { opacity: 1, scale: 1, rotateY: 2, duration: 1.2, ease: "power2.out" },
+        0.1
+      );
+
+      tl.fromTo(
+        "#s2-b1",
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" },
+        1.2
+      );
+      tl.fromTo(
+        "#s2-b2",
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" },
+        2.2
+      );
+      tl.fromTo(
+        "#s2-b3",
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" },
+        3.2
+      );
+
+      window.__timelines["s2"] = tl;
+    })();
+  </script>
+</template>

@@ -202,7 +202,7 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 ### Aşama 20 — v1.6.1 Tam Kod Denetimi ve `asama-baslat` Protokol Güncellemesi (2026-11-24 tamamlandı)
 - [x] `calisma-duzeni.md` uyarınca 4 paralel salt-okunur `Gemini 4 Hydrogen (Medium)` işçisi ve koordinatör satır doğrulamasıyla tam kod denetimi yapıldı (`reports/2026-11-24-kod-denetimi-raporu.md`, `reports/README.md`).
 - [x] `asama-baslat` (ve şablon/yedek kopyaları), `asama-bitir` ve `calisma-duzeni.md` §10 güncellendi: alt ajan/işçi modeli **Gemini 4 Hydrogen** (değiştirilebilir düşünme seviyesi) ve `asama-baslat` içinde **Obsidian MCP geçmiş kontrolü** tanımlandı.
-- [ ] **Sıradaki uygulama (Faz 1–4):** `reports/2026-11-24-kod-denetimi-raporu.md` §8'deki 4 fazlı düzeltme ve ~500 satırlık kısaltma planı (kullanıcı onayıyla sonraki oturumda başlanacak).
+- [x] **Sıradaki uygulama (Faz 1–4):** `reports/2026-11-24-kod-denetimi-raporu.md` §8'deki 4 fazlı düzeltme ve ~500 satırlık kısaltma planı (2026-11-26'da Aşama 22'de tamamlandı).
 - Kanıt: AST 25/25 OK, **413 passed, 1 skipped** (`pytest -q`, 100,4 sn), gizli bilgi taraması temiz, 7 kritik iddia kod satırından doğrulandı.
 
 ### Aşama 21 — Genele Hitap Etme ve Basit Tanıtım Araştırması (2026-11-25 tamamlandı)
@@ -210,6 +210,13 @@ Ayrıntı ve kabul ölçütleri: `uygulanacak plan.md` §2, §3 ve §4.
 - [x] Benzer ücretsiz/açık kaynak dikte projeleri (`Handy`, `Buzz`, `OpenWhispr`, `Vibe`, `Whispering`, `HoldToSpeak`, `LocalFlow`, `PieFlow`) Exa ile araştırıldı.
 - [x] Gelir amacı ve süre sınırı olmadan (~1.000 kişi hedefiyle) basit uygulama dokunuşları, vitrin güzelleştirmeleri ve sıfır bütçeli YouTube/Shorts/forum fikirleri `reports/2026-11-25-yayin-ve-buyume-raporu.md` ve Obsidian kasasına kaydedildi.
 - Kanıt: `reports/2026-11-25-yayin-ve-buyume-raporu.md`, `reports/README.md`, Obsidian `02-Projeler/dikte-projesi/2026-11-25-yayin-ve-buyume-stratejisi.md`. Kullanıcı onayı: yalnızca araştırma ve kayıt istendi.
+
+### Aşama 22 — Kod Denetimi Faz 1–4, Genele Hitap Eden 5 Dokunuş, Vitrin ve 4 HyperFrames Videosu (2026-11-26 tamamlandı)
+- [x] Kod Denetimi Faz 1–4: Y1–Y6, O1, ~40 orta bulgu, `dikte/fsutil.py` + `app.js`/`text_engine.py` ortaklaştırma ve 7 test maskesi temizliği TDD ile uygulandı.
+- [x] Genele Hitap Eden 5 Dokunuş: Bas-Bırak (`hotkey_mode`), Mikrofon seçimi (`list_input_devices`, `input_device`), odak çalmayan mini "Dinliyor/Yazıyor" göstergesi (`dikte/indicator.py`) ve Sade Dil / Gelişmiş Ayarlar eklendi.
+- [x] Vitrin yenilemesi: `docs/assets/og-card.png` (1200×630), 4 günlük kullanım senaryosu, SmartScreen notu, EN/TR 50s video seçici ve `README.md` / `README.tr.md` güncellendi.
+- [x] 4 HyperFrames videosu: `video-arastirma` brifi (`reports/2026-11-26-video-arastirma-brifi.md`) ile `video-hf/` altında 2 yatay (`1920×1080`, 50s TR/EN) + 2 Shorts (`1080×1920`, 30s TR/EN) + 2 web kopyası (`docs/assets/dikte-tanitim-tr/en.mp4`) üretildi.
+- Kanıt: **465 passed, 1 skipped** (`77.17s`), `--selftest` (`GPU / float16`, exit 0), Playwright Edge `docs/index.html` 6/6 OK, `ffprobe` 6/6 MP4 OK. Kullanıcı onayı: Swarm + HyperFrames + kurucu derlemesinin test sonrasına bırakılması onaylandı.
 
 ## Test yöntemi
 | Ne test edilir | Nasıl |

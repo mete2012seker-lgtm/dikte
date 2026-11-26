@@ -1,0 +1,168 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      src: url('assets/fonts/inter-latin-500-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/inter-latin-700-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 800;
+      src: url('assets/fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: normal;
+      font-weight: 600;
+      src: url('assets/fonts/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0B0F1A;
+      font-family: 'Inter', sans-serif;
+      color: #F2F5FC;
+    }
+
+    .bg-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 46% 48%, rgba(79, 109, 255, 0.24) 0%, rgba(11, 15, 26, 0) 60%);
+      pointer-events: none;
+    }
+
+    .safe-zone {
+      position: absolute;
+      left: 90px;
+      top: 260px;
+      width: 790px;
+      height: 1120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 16px 8px;
+    }
+
+    .cta-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 36px;
+    }
+
+    .logo-ring {
+      width: 180px;
+      height: 180px;
+      border-radius: 44px;
+      background: rgba(79, 109, 255, 0.14);
+      border: 2px solid rgba(79, 109, 255, 0.45);
+      box-shadow: 0 0 60px rgba(79, 109, 255, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-img {
+      width: 126px;
+      height: 126px;
+      border-radius: 28px;
+      display: block;
+    }
+
+    .headline {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: #F2F5FC;
+    }
+
+    .url-pill {
+      padding: 24px 36px;
+      border-radius: 999px;
+      background: #4F6DFF;
+      box-shadow: 0 16px 44px rgba(79, 109, 255, 0.5);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .footer-strip {
+      font-size: 28px;
+      font-weight: 600;
+      color: #94A3B8;
+    }
+
+    .loop-orb {
+      position: absolute;
+      left: 332px;
+      top: 552px;
+      width: 156px;
+      height: 156px;
+      border-radius: 50%;
+      border: 2px solid rgba(147, 197, 253, 0.55);
+      background: radial-gradient(circle at 50% 42%, #60A5FA 0%, #4F6DFF 58%, #2B45C7 100%);
+      box-shadow: 0 0 44px rgba(79, 109, 255, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s6" data-width="1080" data-height="1920">
+    <div class="bg-glow" data-layout-ignore></div>
+
+    <div class="safe-zone">
+      <div id="s6-cta" class="cta-wrap">
+        <div class="logo-ring">
+          <img class="logo-img" src="assets/icon.png" alt="Dikte icon" />
+        </div>
+        <h1 class="headline">Get Dikte Free</h1>
+        <div class="url-pill">mete2012seker-lgtm.github.io/dikte</div>
+        <p class="footer-strip">GitHub MIT • Link in pinned comment</p>
+      </div>
+
+      <div id="s6-loop-orb" class="loop-orb">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#F2F5FC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#s6-cta", { opacity: 0, scale: 0.9, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: 0.42, ease: "back.out(1.4)" }, 0);
+
+    tl.to("#s6-cta", { opacity: 0, scale: 0.85, duration: 0.5, ease: "power2.inOut" }, 3.9);
+    tl.fromTo("#s6-loop-orb", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.55, ease: "power2.out" }, 3.9);
+
+    window.__timelines["s6"] = tl;
+    tl.seek(0);
+  </script>
+</template>

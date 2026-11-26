@@ -76,7 +76,10 @@ class FakeWinreg:
     def __init__(self):
         self.values = {}
 
-    def OpenKey(self, _root, _path, _res, _access):
+    def OpenKey(self, root, path, _res, access):
+        assert root == self.HKEY_CURRENT_USER
+        assert path == config.AUTOSTART_RUN_KEY
+        assert access in (self.KEY_SET_VALUE, self.KEY_QUERY_VALUE)
         return FakeKey()
 
     def SetValueEx(self, _key, name, _res, _typ, value):

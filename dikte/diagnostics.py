@@ -6,6 +6,7 @@ import logging
 import logging.handlers
 import os
 import sys
+import threading
 from pathlib import Path
 
 from . import config
@@ -13,6 +14,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 _cuda_prepared = False
+_cuda_lock = threading.Lock()
 _dll_handles: list = []
 
 
@@ -23,54 +25,55 @@ def prepare_cuda_dlls() -> None:
     nvidia paketleri PATH'e otomatik eklenmediği için burada ekliyoruz.
     """
     global _cuda_prepared
-    if _cuda_prepared or sys.platform != "win32":
+    with _cuda_lock:
+        if _cuda_prepared or sys.platform != "win32":
+            _cuda_prepared = True
+            return
         _cuda_prepared = True
-        return
-    _cuda_prepared = True
-    try:
-        import importlib
-        import sysconfig
-
-        bases = set()
-        if getattr(sys, "frozen", False):
-            frozen_nvidia = config.exe_dir() / "nvidia"
-            if frozen_nvidia.is_dir():
-                bases.add(frozen_nvidia)
-        # nvidia paketleri namespace paket olabilir; __file__ boş kalırsa
-        # doğrudan sanal ortamın site-packages klasörünü kullan.
         try:
-            site_packages = Path(sysconfig.get_paths()["purelib"])
-            base_candidate = site_packages / "nvidia"
-            if base_candidate.is_dir():
-                bases.add(base_candidate)
-        except Exception:
-            pass
+            import importlib
+            import sysconfig
 
-        for module_name in ("nvidia.cublas", "nvidia.cudnn", "nvidia.cuda_runtime"):
+            bases = set()
+            if getattr(sys, "frozen", False):
+                frozen_nvidia = config.exe_dir() / "nvidia"
+                if frozen_nvidia.is_dir():
+                    bases.add(frozen_nvidia)
+            # nvidia paketleri namespace paket olabilir; __file__ boş kalırsa
+            # doğrudan sanal ortamın site-packages klasörünü kullan.
             try:
-                module = importlib.import_module(module_name)
-                if module.__file__:
-                    bases.add(Path(module.__file__).resolve().parent.parent)
+                site_packages = Path(sysconfig.get_paths()["purelib"])
+                base_candidate = site_packages / "nvidia"
+                if base_candidate.is_dir():
+                    bases.add(base_candidate)
             except Exception:
-                continue
+                pass
 
-        added = []
-        for base in bases:
-            for relative in (("cublas", "bin"), ("cudnn", "bin"), ("cudnn", "lib"), ("cuda_runtime", "bin")):
-                folder = base.joinpath(*relative)
-                if not folder.is_dir():
-                    continue
+            for module_name in ("nvidia.cublas", "nvidia.cudnn", "nvidia.cuda_runtime"):
                 try:
-                    # Handle yaşamalı; aksi halde Windows klasörü kaldırır.
-                    _dll_handles.append(os.add_dll_directory(str(folder)))
+                    module = importlib.import_module(module_name)
+                    if module.__file__:
+                        bases.add(Path(module.__file__).resolve().parent.parent)
                 except Exception:
-                    pass
-                os.environ["PATH"] = str(folder) + os.pathsep + os.environ.get("PATH", "")
-                added.append(str(folder))
-        if added:
-            logger.info("CUDA DLL klasörleri PATH'e eklendi: %s", ", ".join(added))
-    except Exception as exc:
-        logger.debug("CUDA DLL hazırlığı yapılamadı: %s", exc)
+                    continue
+
+            added = []
+            for base in bases:
+                for relative in (("cublas", "bin"), ("cudnn", "bin"), ("cudnn", "lib"), ("cuda_runtime", "bin")):
+                    folder = base.joinpath(*relative)
+                    if not folder.is_dir():
+                        continue
+                    try:
+                        # Handle yaşamalı; aksi halde Windows klasörü kaldırır.
+                        _dll_handles.append(os.add_dll_directory(str(folder)))
+                    except Exception:
+                        pass
+                    os.environ["PATH"] = str(folder) + os.pathsep + os.environ.get("PATH", "")
+                    added.append(str(folder))
+            if added:
+                logger.info("CUDA DLL klasörleri PATH'e eklendi: %s", ", ".join(added))
+        except Exception as exc:
+            logger.debug("CUDA DLL hazırlığı yapılamadı: %s", exc)
 
 
 

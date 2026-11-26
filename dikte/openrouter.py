@@ -9,7 +9,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,9 @@ def _request_json(
             body = response.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         code = str(exc.code)
-        if code not in {"401", "402", "429"}:
+        if code in {"400", "404"}:
+            code = "bad_response"
+        elif code not in {"401", "402", "403", "429"}:
             code = "net"
         raise OpenRouterError(code, f"OpenRouter HTTP {exc.code}") from exc
     except Exception as exc:
@@ -179,13 +181,12 @@ def cache_is_fresh(cached: dict | None) -> bool:
 def write_cache(models: list[dict]) -> None:
     path = cache_file()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "fetched": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "scope": "all",
             "models": models,
         }
-        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        fsutil.atomic_write_json(path, payload)
     except Exception as exc:
         logger.warning("Model önbelleği yazılamadı: %s", exc)
 

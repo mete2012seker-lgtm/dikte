@@ -11,6 +11,7 @@ from ctypes import wintypes
 import logging
 import os
 import sys
+import threading
 import time
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ KEYEVENTF_KEYUP = 0x0002
 INPUT_KEYBOARD = 1
 
 _is_pasting = False
+_paste_lock = threading.Lock()
 
 
 def is_pasting() -> bool:
@@ -141,53 +143,54 @@ def send_ctrl_v() -> bool:
     pano IPC oturma payını bekler ve sıralı olarak Ctrl+V basıp bırakır.
     """
     global _is_pasting
-    _is_pasting = True
-    try:
-        user32 = _user32()
+    with _paste_lock:
+        _is_pasting = True
+        try:
+            user32 = _user32()
 
-        # a) Değiştirici tuşların (Ctrl, Shift, Alt) bırakılmasını bekle (en fazla 200 ms)
-        all_modifiers = (
-            VK_CONTROL,
-            VK_LCONTROL,
-            VK_RCONTROL,
-            VK_SHIFT,
-            VK_LSHIFT,
-            VK_RSHIFT,
-            VK_MENU,
-            VK_LMENU,
-            VK_RMENU,
-        )
-        start_wait = time.time()
-        while time.time() - start_wait < 0.200:
-            pressed = any(
-                bool(user32.GetAsyncKeyState(vk) & 0x8000)
-                for vk in all_modifiers
+            # a) Değiştirici tuşların (Ctrl, Shift, Alt) bırakılmasını bekle (en fazla 200 ms)
+            all_modifiers = (
+                VK_CONTROL,
+                VK_LCONTROL,
+                VK_RCONTROL,
+                VK_SHIFT,
+                VK_LSHIFT,
+                VK_RSHIFT,
+                VK_MENU,
+                VK_LMENU,
+                VK_RMENU,
             )
-            if not pressed:
-                break
+            start_wait = time.time()
+            while time.time() - start_wait < 0.200:
+                pressed = any(
+                    bool(user32.GetAsyncKeyState(vk) & 0x8000)
+                    for vk in all_modifiers
+                )
+                if not pressed:
+                    break
+                time.sleep(0.015)
+
+            # YALNIZCA hâlâ basılı kalmış olan tuşlar için açıkça KEYEVENTF_KEYUP gönder
+            # (Basılı olmayan Alt'a keyup göndermek hedef pencerenin menü çubuğuna odak kaptırabilir!)
+            for vk in all_modifiers:
+                if bool(user32.GetAsyncKeyState(vk) & 0x8000):
+                    _send_key(vk, up=True)
+
+            # b) Pano IPC ve klavye durumunun oturması için bekleme (25 ms)
+            time.sleep(0.025)
+
+            # c) Ctrl down -> bekle -> V down -> bekle -> V up -> bekle -> Ctrl up
+            ok = _send_key(VK_CONTROL, up=False)
             time.sleep(0.015)
-
-        # YALNIZCA hâlâ basılı kalmış olan tuşlar için açıkça KEYEVENTF_KEYUP gönder
-        # (Basılı olmayan Alt'a keyup göndermek hedef pencerenin menü çubuğuna odak kaptırabilir!)
-        for vk in all_modifiers:
-            if bool(user32.GetAsyncKeyState(vk) & 0x8000):
-                _send_key(vk, up=True)
-
-        # b) Pano IPC ve klavye durumunun oturması için bekleme (25 ms)
-        time.sleep(0.025)
-
-        # c) Ctrl down -> bekle -> V down -> bekle -> V up -> bekle -> Ctrl up
-        ok = _send_key(VK_CONTROL, up=False)
-        time.sleep(0.015)
-        ok = _send_key(VK_V, up=False) and ok
-        time.sleep(0.015)
-        ok = _send_key(VK_V, up=True) and ok
-        time.sleep(0.015)
-        ok = _send_key(VK_CONTROL, up=True) and ok
-        return ok
-    finally:
-        time.sleep(0.020)
-        _is_pasting = False
+            ok = _send_key(VK_V, up=False) and ok
+            time.sleep(0.015)
+            ok = _send_key(VK_V, up=True) and ok
+            time.sleep(0.015)
+            ok = _send_key(VK_CONTROL, up=True) and ok
+            return ok
+        finally:
+            time.sleep(0.020)
+            _is_pasting = False
 
 
 def _is_own_or_child_pid(pid: int) -> bool:

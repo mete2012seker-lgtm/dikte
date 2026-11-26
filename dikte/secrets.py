@@ -10,14 +10,12 @@ import base64
 import ctypes
 import json
 import logging
-import os
 import sys
 import threading
-import uuid
 from ctypes import wintypes
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -141,22 +139,9 @@ class SecretStore:
 
     def _write(self, data: dict) -> None:
         with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            temp = self.path.with_name(
-                f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
-            )
             try:
-                payload = json.dumps(data, ensure_ascii=False, indent=2)
-                with open(temp, "w", encoding="utf-8") as handle:
-                    handle.write(payload)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(temp, self.path)
+                fsutil.atomic_write_json(self.path, data)
             except Exception as exc:
-                try:
-                    temp.unlink(missing_ok=True)
-                except Exception:
-                    pass
                 raise SecretError("Anahtar kaydedilemedi.") from exc
 
     def has_key(self) -> bool:

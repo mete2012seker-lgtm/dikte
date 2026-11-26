@@ -135,3 +135,10 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 3. **Bas-Bırak (Toggle) ve Yüzen Gösterge (Overlay):** Basılı tutmanın yanında tek tıkla başlat/durdur seçeneği ve tepsideyken ekranın altında beliren küçük bir "Dinliyor…" işareti, sıradan kullanıcıların sesli dikteyi günlük alışkanlığa çevirmesinde en çok aradığı iki kolaylıktır.
 4. **Gerçek Ekran Kaydı Etkisi:** Sıfır bütçeli tanıtımda karmaşık animasyonlar yerine 20–30 saniyelik gerçek ekran kaydında konuşarak metin yazdırmayı göstermek daha doğal güven ve indirme getirir.
 
+## 2026-11-26 — Faz 1–4 Sağlamlaştırma, 5 Dokunuş ve HyperFrames Videoları
+
+1. **Odak Çalmayan Pencere (`WS_EX_NOACTIVATE`):** Windows'ta ekranın üstünde beliren küçük bir durum kutusu ("Dinliyor…") varsayılan olarak etkin pencereden (Word, WhatsApp) odağı çalar ve yapıştırmayı bozar; pencereye `WS_EX_NOACTIVATE` bayrağı vermek kutunun görünür kalıp imleci bozmamasını sağlar.
+2. **Görünürlük Olayı (`visibilitychange`) ile Pil Tasarrufu:** Uygulama sistem tepsisine gizlendiğinde arayüzün saniyede 60 kare animasyon çizmeye ve 250 ms'de bir sunucuyu yoklamaya devam etmesi gereksiz CPU tüketir; `document.hidden` olduğunda döngüyü durdurmak boşta tüketimi sıfıra yaklaştırır.
+3. **HyperFrames ile HTML'den Video:** Tarayıcıdaki HTML/CSS/GSAP zaman çizelgesini kare kare yakalayarak (`check`, `snapshot`, `render`) hem 16:9 yatay hem 9:16 dikey (Shorts) videoları deterministik biçimde ve yerel Türkçe fontlarla üretmek mümkün.
+4. **Ortak Yardımcı Modül (`fsutil.py`):** 6 ayrı dosyada tekrarlanan atomik JSON yazma ve bozuk dosya yedekleme mantığını tek modülde toplamak hem kod boyutunu küçültür hem de tek yerden hata düzeltmeyi kolaylaştırır.
+

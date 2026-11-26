@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-ext-400-normal.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-400-normal.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-ext-500-normal.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-500-normal.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-ext-600-normal.woff2") format("woff2");
+        font-weight: 600;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-600-normal.woff2") format("woff2");
+        font-weight: 600;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-ext-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("assets/fonts/plus-jakarta-sans-latin-ext-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("assets/fonts/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("assets/fonts/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2");
+        font-weight: 800;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("assets/fonts/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
+        font-weight: 800;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-ext-500-normal.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-ext-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D4-02D6, U+02D8-02DC, U+02DE, U+02E0-02E4, U+02EC, U+02EE, U+0300-036F, U+0374-0375, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0b0f1a;
+        color: #f2f5fc;
+        font-family: "Inter", sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0b0f1a;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="50"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+    >
+      <!-- 7 Scenes (Track 1) -->
+      <div
+        id="s1"
+        data-composition-id="s1"
+        data-composition-src="compositions/s1.html"
+        data-start="0"
+        data-duration="4"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s2"
+        data-composition-id="s2"
+        data-composition-src="compositions/s2.html"
+        data-start="4"
+        data-duration="8"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s3"
+        data-composition-id="s3"
+        data-composition-src="compositions/s3.html"
+        data-start="12"
+        data-duration="9"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s4"
+        data-composition-id="s4"
+        data-composition-src="compositions/s4.html"
+        data-start="21"
+        data-duration="10"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s5"
+        data-composition-id="s5"
+        data-composition-src="compositions/s5.html"
+        data-start="31"
+        data-duration="9"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s6"
+        data-composition-id="s6"
+        data-composition-src="compositions/s6.html"
+        data-start="40"
+        data-duration="5"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+      <div
+        id="s7"
+        data-composition-id="s7"
+        data-composition-src="compositions/s7.html"
+        data-start="45"
+        data-duration="5"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+
+      <!-- Background Music (Track 3) -->
+      <audio
+        id="bgm"
+        class="clip"
+        src="assets/audio/bgm_124bpm_50s.wav"
+        data-start="0"
+        data-duration="50"
+        data-volume="0.34"
+        data-fade-out="2.5"
+        data-track-index="3"
+      ></audio>
+
+      <!-- Sound Effects (Track 2 & 4) -->
+      <audio id="sfx-click-1" class="clip" src="assets/audio/click_key.wav" data-start="0.55" data-duration="0.08" data-volume="0.70" data-track-index="2"></audio>
+      <audio id="sfx-bass-1" class="clip" src="assets/audio/bass_hit.wav" data-start="0.70" data-duration="0.45" data-volume="0.75" data-track-index="4"></audio>
+
+      <audio id="sfx-drop-1" class="clip" src="assets/audio/drop.wav" data-start="5.2" data-duration="0.14" data-volume="0.60" data-track-index="2"></audio>
+      <audio id="sfx-drop-2" class="clip" src="assets/audio/drop.wav" data-start="6.2" data-duration="0.14" data-volume="0.60" data-track-index="2"></audio>
+      <audio id="sfx-drop-3" class="clip" src="assets/audio/drop.wav" data-start="7.2" data-duration="0.14" data-volume="0.60" data-track-index="2"></audio>
+
+      <audio id="sfx-switch-1" class="clip" src="assets/audio/switch.wav" data-start="13.5" data-duration="0.16" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-switch-2" class="clip" src="assets/audio/switch.wav" data-start="15.0" data-duration="0.16" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-chime-1" class="clip" src="assets/audio/chime.wav" data-start="16.5" data-duration="0.28" data-volume="0.60" data-track-index="2"></audio>
+
+      <audio id="sfx-paste-1" class="clip" src="assets/audio/paste_pop.wav" data-start="22.2" data-duration="0.12" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-paste-2" class="clip" src="assets/audio/paste_pop.wav" data-start="24.4" data-duration="0.12" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-paste-3" class="clip" src="assets/audio/paste_pop.wav" data-start="26.6" data-duration="0.12" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-paste-4" class="clip" src="assets/audio/paste_pop.wav" data-start="28.8" data-duration="0.12" data-volume="0.65" data-track-index="2"></audio>
+
+      <audio id="sfx-whoosh-1" class="clip" src="assets/audio/whoosh.wav" data-start="31.0" data-duration="0.36" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-drop-4" class="clip" src="assets/audio/drop.wav" data-start="34.5" data-duration="0.14" data-volume="0.65" data-track-index="2"></audio>
+      <audio id="sfx-chime-2" class="clip" src="assets/audio/chime.wav" data-start="37.0" data-duration="0.28" data-volume="0.60" data-track-index="2"></audio>
+
+      <audio id="sfx-switch-3" class="clip" src="assets/audio/switch.wav" data-start="41.95" data-duration="0.16" data-volume="0.70" data-track-index="2"></audio>
+      <audio id="sfx-bell-1" class="clip" src="assets/audio/bell_outro.wav" data-start="45.0" data-duration="1.4" data-volume="0.70" data-track-index="2"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

@@ -17,11 +17,12 @@ try:
     from . import error_reporter
 except ImportError:
     error_reporter = None  # type: ignore[assignment]
-from .audio import AudioError, AudioRecorder, Recording
+from .audio import AudioError, AudioRecorder, Recording, list_input_devices
 from .clipboard import ClipboardError
 from .engine import EngineError, TranscriptionEngine
-from .history import HistoryError, HistoryStore
-from .hotkey import HotkeyError, HotkeyListener
+from .history import HistoryStore
+from .hotkey import HOTKEY_CHOICES, HotkeyError, HotkeyListener
+from .indicator import FloatingIndicator
 from .instance import (
     DEFAULT_APP_ID,
     apply_window_icon,
@@ -36,10 +37,14 @@ from .text_models import LocalTextModel
 from .settings import (
     AUTO_MODEL,
     DEFAULT_HOTKEY,
-    HOTKEY_CHOICES,
+    DEFAULT_HOTKEY_MODE,
+    DEFAULT_INPUT_DEVICE,
+    DEFAULT_SHOW_INDICATOR,
+    HOTKEY_MODE_CHOICES,
     SettingsError,
     SettingsStore,
     hotkey_label,
+    hotkey_mode_label,
     output_language_label,
     text_provider_label,
 )
@@ -98,6 +103,7 @@ class Controller:
         text_downloader=None,
         paster=None,
         on_exit=None,
+        indicator=None,
     ) -> None:
         self.engine = engine if engine is not None else TranscriptionEngine()
         self.recorder = recorder if recorder is not None else AudioRecorder()
@@ -130,6 +136,8 @@ class Controller:
         self._activity: deque[dict] = deque(maxlen=7)
         self._seq = 0
         self._refresh_seq = 0
+        self._refresh_token = 0
+        self._cleaning_owner: str | None = None
         self._last_history_id: str | None = None
         self._latest = ""
         self._replace_last = False
@@ -142,6 +150,7 @@ class Controller:
         self._models_cache: tuple[float, dict | None] = (0.0, None)
         self._download: dict | None = None
         self._download_thread: threading.Thread | None = None
+        self._voice_download_token = 0
         self._text_download: dict | None = None
         self._text_download_thread: threading.Thread | None = None
         self._text_download_token = 0
@@ -165,12 +174,30 @@ class Controller:
 
         self._save_history = bool(self.settings.get("save_history", True))
         self._hotkey_id = str(self.settings.get("hotkey", DEFAULT_HOTKEY))
+        self._hotkey_mode = str(self.settings.get("hotkey_mode", DEFAULT_HOTKEY_MODE))
+        self._input_device = str(self.settings.get("input_device", DEFAULT_INPUT_DEVICE))
+        self._show_indicator = bool(self.settings.get("show_indicator", DEFAULT_SHOW_INDICATOR))
+        self._indicator = (
+            indicator if indicator is not None else FloatingIndicator(enabled=self._show_indicator)
+        )
+        set_ind_enabled = getattr(self._indicator, "set_enabled", None)
+        if indicator is not None and callable(set_ind_enabled):
+            set_ind_enabled(self._show_indicator)
+        self._prepare_audio()
         self._prepare_model_choice()
         self._prepare_hotkey()
         self._prepare_ai_model()
         self._remove_last_recording()
 
     # ---------- kurulum ----------
+
+    def _prepare_audio(self) -> None:
+        set_dev = getattr(self.recorder, "set_device", None)
+        if callable(set_dev):
+            try:
+                set_dev(self._input_device)
+            except Exception as exc:
+                logger.warning("Mikrofon ayarı uygulanamadı: %s", exc)
 
     def _prepare_model_choice(self) -> None:
         active = str(self.settings.get("active_model", AUTO_MODEL))
@@ -198,17 +225,27 @@ class Controller:
 
     def _prepare_hotkey(self) -> None:
         configure = getattr(self.hotkey, "configure", None)
-        if configure is None:
-            return
-        try:
-            configure(self._hotkey_id)
-        except Exception as exc:
-            logger.warning("Kısayol ayarı uygulanamadı: %s", exc)
-            self._hotkey_id = DEFAULT_HOTKEY
+        if configure is not None:
             try:
-                configure(DEFAULT_HOTKEY)
-            except Exception:
-                pass
+                configure(self._hotkey_id)
+            except Exception as exc:
+                logger.warning("Kısayol ayarı uygulanamadı: %s", exc)
+                self._hotkey_id = DEFAULT_HOTKEY
+                try:
+                    configure(DEFAULT_HOTKEY)
+                except Exception:
+                    pass
+        set_mode = getattr(self.hotkey, "set_mode", None)
+        if callable(set_mode):
+            try:
+                set_mode(self._hotkey_mode)
+            except Exception as exc:
+                logger.warning("Kısayol modu uygulanamadı: %s", exc)
+                self._hotkey_mode = DEFAULT_HOTKEY_MODE
+                try:
+                    set_mode(DEFAULT_HOTKEY_MODE)
+                except Exception:
+                    pass
 
     def _prepare_ai_model(self) -> None:
         """Eski sürümden kalan yönlendirici model kimliğini temizler (gerçek model değil)."""
@@ -284,7 +321,8 @@ class Controller:
                 self._info = info
                 self._whisper_loaded = True
                 self._error = None
-                self._set_state(READY)
+                if self._machine.state == LOADING:
+                    self._set_state(READY)
                 self._add_activity(
                     "Model yüklendi",
                     f"{info.model_label} · {info.device} · {info.compute_type}",
@@ -358,6 +396,11 @@ class Controller:
             self.recorder.cancel()
         except Exception:
             pass
+        try:
+            if hasattr(self, "_indicator") and self._indicator is not None:
+                self._indicator.close()
+        except Exception:
+            pass
         for thread in threads:
             if thread is not None and thread.is_alive() and thread is not threading.current_thread():
                 thread.join(timeout=2.0)
@@ -425,13 +468,16 @@ class Controller:
                         self._set_state(READY)
                         state = READY
                     if state != READY:
+                        self._sync_hotkey_toggle(False)
                         continue
                 self._prepare_whisper()
                 with self._lock:
                     if self._closed or self._machine.state != READY:
+                        self._sync_hotkey_toggle(False)
                         continue
                     if self._hotkey_events and self._hotkey_events[0] == "release":
                         self._hotkey_events.popleft()
+                        self._sync_hotkey_toggle(False)
                         continue
                     self._start_recording()
             elif event == "release":
@@ -477,6 +523,15 @@ class Controller:
                 }
         return self._start_recording()
 
+    def _play_beep(self, kind: str) -> None:
+        def _run() -> None:
+            try:
+                self._beeper(kind)
+            except Exception:
+                pass
+
+        threading.Thread(target=_run, name=f"bip-{kind}", daemon=True).start()
+
     def _start_recording(self) -> dict:
         with self._lock:
             if self._machine.state != READY:
@@ -486,11 +541,13 @@ class Controller:
             except AudioError as exc:
                 self._error = str(exc)
                 self._set_state(ERROR)
+                self._sync_hotkey_toggle(False)
                 self._add_activity("Mikrofon açılamadı", str(exc), "err")
                 return {"ok": False, "state": ERROR, "message": str(exc)}
             self._set_state(RECORDING)
-            self._beeper("start")
-            return {"ok": True, "state": RECORDING}
+            self._sync_hotkey_toggle(True)
+        self._play_beep("start")
+        return {"ok": True, "state": RECORDING}
 
     def _stop_recording(self, trigger: str = "kısayol") -> dict:
         with self._lock:
@@ -501,10 +558,11 @@ class Controller:
             except AudioError as exc:
                 self._error = str(exc)
                 self._set_state(ERROR)
+                self._sync_hotkey_toggle(False)
                 self._add_activity("Kayıt durdurulamadı", str(exc), "err")
                 return {"ok": False, "state": ERROR, "message": str(exc)}
+            self._sync_hotkey_toggle(False)
 
-            self._beeper("stop")
             if recording is None or recording.duration < config.MIN_RECORD_SECONDS:
                 if recording is not None:
                     self.recorder.cleanup(recording.path)
@@ -514,18 +572,20 @@ class Controller:
                     "Kayıt çok kısaydı (en az 0,4 sn).",
                     "warn",
                 )
-                return {"ok": True, "state": READY, "skipped": True}
-
-            self._set_state(PROCESSING)
-            self._worker = threading.Thread(
-                target=self._process,
-                args=(recording,),
-                name="ceviri",
-                daemon=True,
-            )
-            self._worker.start()
-            logger.info("Çeviri başladı (%s, %.2f sn)", trigger, recording.duration)
-            return {"ok": True, "state": PROCESSING}
+                result = {"ok": True, "state": READY, "skipped": True}
+            else:
+                self._set_state(PROCESSING)
+                self._worker = threading.Thread(
+                    target=self._process,
+                    args=(recording,),
+                    name="ceviri",
+                    daemon=True,
+                )
+                self._worker.start()
+                logger.info("Çeviri başladı (%s, %.2f sn)", trigger, recording.duration)
+                result = {"ok": True, "state": PROCESSING}
+        self._play_beep("stop")
+        return result
 
     # ---------- çeviri işçileri ----------
 
@@ -578,27 +638,34 @@ class Controller:
         except Exception as exc:
             logger.warning("Yenileme kaydı saklanamadı: %s", exc)
 
+    def _run_transcription_pipeline(self, path: Path, *, keep_source: bool = False) -> tuple[str, bool] | None:
+        result = self._transcribe_path(path)
+        text = result.text.strip()
+        if not text:
+            with self._lock:
+                self._add_activity("Ses algılanamadı", "Konuşma anlaşılamadı.", "warn")
+            return None
+
+        copy_ok = True
+        try:
+            self._clipper(text)
+        except ClipboardError as exc:
+            copy_ok = False
+            logger.warning("Pano hatası: %s", exc)
+
+        if keep_source:
+            self._keep_last_recording(path)
+
+        self._last_ai_copy_ok = copy_ok
+        text = self._auto_ai_text(text)
+        return text, self._last_ai_copy_ok
+
     def _process(self, recording: Recording) -> None:
         try:
-            result = self._transcribe_path(recording.path)
-            text = result.text.strip()
-            if not text:
-                with self._lock:
-                    self._add_activity("Ses algılanamadı", "Konuşma anlaşılamadı.", "warn")
+            prepared = self._run_transcription_pipeline(recording.path, keep_source=True)
+            if prepared is None:
                 return
-
-            copy_ok = True
-            try:
-                self._clipper(text)
-            except ClipboardError as exc:
-                copy_ok = False
-                logger.warning("Pano hatası: %s", exc)
-
-            self._keep_last_recording(recording.path)
-
-            self._last_ai_copy_ok = copy_ok
-            text = self._auto_ai_text(text)
-            copy_ok = self._last_ai_copy_ok
+            text, copy_ok = prepared
 
             pasted = False
             if copy_ok and bool(self.settings.get("auto_paste", True)):
@@ -682,35 +749,25 @@ class Controller:
                     "state": self._machine.state,
                     "message": self._error or "Ses modeli hazır değil.",
                 }
+            self._cleaning_owner = "refresh"
+            self._refresh_token += 1
+            token = self._refresh_token
             self._set_state(CLEANING)
             self._worker = threading.Thread(
                 target=self._refresh_worker,
-                args=(path,),
+                args=(path, token),
                 name="yenile",
                 daemon=True,
             )
             self._worker.start()
         return {"ok": True, "state": CLEANING}
 
-    def _refresh_worker(self, path: Path) -> None:
+    def _refresh_worker(self, path: Path, token: int | None = None) -> None:
         try:
-            result = self._transcribe_path(path)
-            text = result.text.strip()
-            if not text:
-                with self._lock:
-                    self._add_activity("Ses algılanamadı", "Konuşma anlaşılamadı.", "warn")
+            prepared = self._run_transcription_pipeline(path, keep_source=False)
+            if prepared is None:
                 return
-
-            copy_ok = True
-            try:
-                self._clipper(text)
-            except ClipboardError as exc:
-                copy_ok = False
-                logger.warning("Pano hatası: %s", exc)
-
-            self._last_ai_copy_ok = copy_ok
-            text = self._auto_ai_text(text)
-            copy_ok = self._last_ai_copy_ok
+            text, copy_ok = prepared
 
             with self._lock:
                 self._latest = text
@@ -738,8 +795,10 @@ class Controller:
                 self._add_activity("Yenileme hatası", self._error, "err")
         finally:
             with self._lock:
-                if self._machine.state in (PROCESSING, CLEANING):
-                    self._set_state(READY)
+                if self._cleaning_owner == "refresh" and (token is None or token == self._refresh_token):
+                    self._cleaning_owner = None
+                    if self._machine.state == CLEANING:
+                        self._set_state(READY)
 
     # ---------- pano ve anlık görüntü ----------
 
@@ -771,6 +830,9 @@ class Controller:
                 "error": self._error,
                 "hotkey": hotkey_label(self._hotkey_id),
                 "hotkey_id": self._hotkey_id,
+                "hotkey_mode": self._hotkey_mode,
+                "input_device": self._input_device,
+                "show_indicator": self._show_indicator,
                 "design_style": str(self.settings.get("design_style", "dikte_ai")),
                 "setup_done": bool(self.settings.get("setup_done", False)),
                 "sidebar_collapsed": bool(self.settings.get("sidebar_collapsed", False)),
@@ -910,10 +972,22 @@ class Controller:
         except Exception:
             already_installed = False
         with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
             if self._download and self._download.get("state") == "downloading":
                 return {"ok": False, "message": "Başka bir model indiriliyor, lütfen bekle."}
             if already_installed:
                 return {"ok": False, "message": "Bu model zaten indirilmiş."}
+            prev = self._download_thread
+        if prev is not None and prev.is_alive() and prev is not threading.current_thread():
+            prev.join(timeout=2.0)
+        with self._lock:
+            if self._closed:
+                return {"ok": False, "message": "Uygulama kapatıldı."}
+            if self._download and self._download.get("state") == "downloading":
+                return {"ok": False, "message": "Başka bir model indiriliyor, lütfen bekle."}
+            self._voice_download_token += 1
+            token = self._voice_download_token
             self._download = {
                 "name": name,
                 "label": spec.label,
@@ -924,19 +998,23 @@ class Controller:
                 "error": None,
             }
             self._models_cache = (0.0, None)
-
-        self._download_thread = threading.Thread(
-            target=self._download_worker,
-            args=(name,),
-            name="model-indir",
-            daemon=True,
-        )
-        self._download_thread.start()
+            self._download_thread = threading.Thread(
+                target=self._download_worker,
+                args=(name, token),
+                name="model-indir",
+                daemon=True,
+            )
+            self._download_thread.start()
         return {"ok": True, "message": f"{spec.label} indiriliyor."}
 
-    def _download_worker(self, name: str) -> None:
+    def _download_worker(self, name: str, token: int | None = None) -> None:
+        if token is None:
+            token = self._voice_download_token
+
         def on_progress(size: int) -> None:
             with self._lock:
+                if self._voice_download_token != token:
+                    return
                 download = self._download
                 if not download or download.get("name") != name:
                     return
@@ -953,7 +1031,7 @@ class Controller:
         except Exception as exc:
             logger.warning("Model indirilemedi: %s", exc)
             with self._lock:
-                if self._download and self._download.get("name") == name:
+                if self._voice_download_token == token and self._download and self._download.get("name") == name:
                     if self._download.get("state") != "cancelled":
                         self._download["state"] = "error"
                         self._download["error"] = str(exc)
@@ -962,11 +1040,11 @@ class Controller:
             return
 
         with self._lock:
-            if self._download and self._download.get("name") == name:
+            if self._voice_download_token == token and self._download and self._download.get("name") == name:
                 self._download["state"] = "done"
                 self._download["percent"] = 100
                 self._download["bytes"] = size
-            self._add_activity("Model indirildi", name, "ok")
+                self._add_activity("Model indirildi", name, "ok")
         self._models_cache = (0.0, None)
 
     def model_activate(self, name: str) -> dict:
@@ -1057,7 +1135,8 @@ class Controller:
                 self._info = info
                 self._whisper_loaded = True
                 self._error = None
-                self._set_state(READY)
+                if self._machine.state == LOADING:
+                    self._set_state(READY)
                 self._add_activity(
                     "Model değiştirildi",
                     f"{info.model_label} · {info.device} · {info.compute_type}",
@@ -1096,39 +1175,48 @@ class Controller:
             self._add_activity("Ses modeli indirme iptal edildi", "", "warn")
         return {"ok": True, "message": "İndirme iptal edildi."}
 
+    def _run_custom_model_op(self, op, activity_title: str, activity_sub: str, kind: str, log_label: str, *, message: str | None = None) -> dict:
+        try:
+            res = op()
+        except Exception as exc:
+            logger.warning("%s: %s", log_label, exc)
+            return {"ok": False, "message": str(exc)}
+        self._models_cache = (0.0, None)
+        with self._lock:
+            self._add_activity(activity_title, activity_sub, kind)
+        payload: dict = {"ok": True}
+        if message is not None:
+            payload["message"] = message
+        else:
+            payload["model"] = res
+        return payload
+
     def models_add_custom(self, repo_id: str, label: str = "") -> dict:
         """Hugging Face ses modeli ekler."""
-        try:
+        def _op():
             add_fn = getattr(self.models, "add_custom_model", None)
             if add_fn is not None:
-                model = add_fn(repo_id, label)
-            else:
-                from . import models as m_mod
-                model = m_mod.add_custom_model(repo_id, label)
-            self._models_cache = (0.0, None)
-            with self._lock:
-                self._add_activity("Özel ses modeli eklendi", label or repo_id, "ok")
-            return {"ok": True, "model": model}
-        except Exception as exc:
-            logger.warning("Özel ses modeli eklenemedi: %s", exc)
-            return {"ok": False, "message": str(exc)}
+                return add_fn(repo_id, label)
+            from . import models as m_mod
+            return m_mod.add_custom_model(repo_id, label)
+
+        return self._run_custom_model_op(
+            _op, "Özel ses modeli eklendi", label or repo_id, "ok", "Özel ses modeli eklenemedi"
+        )
 
     def models_remove_custom(self, name: str) -> dict:
         """Özel ses modelini listeden tamamen kaldırır."""
-        try:
+        def _op():
             rem_fn = getattr(self.models, "remove_custom_model", None)
             if rem_fn is not None:
-                rem_fn(name)
-            else:
-                from . import models as m_mod
-                m_mod.remove_custom_model(name, getattr(self.models, "models_dir", None))
-            self._models_cache = (0.0, None)
-            with self._lock:
-                self._add_activity("Özel model listeden kaldırıldı", name, "info")
-            return {"ok": True, "message": f"{name} listeden kaldırıldı."}
-        except Exception as exc:
-            logger.warning("Özel model kaldırılamadı: %s", exc)
-            return {"ok": False, "message": str(exc)}
+                return rem_fn(name)
+            from . import models as m_mod
+            return m_mod.remove_custom_model(name, getattr(self.models, "models_dir", None))
+
+        return self._run_custom_model_op(
+            _op, "Özel model listeden kaldırıldı", name, "info", "Özel model kaldırılamadı",
+            message=f"{name} listeden kaldırıldı.",
+        )
 
     # ---------- metin modelleri ----------
 
@@ -1344,9 +1432,11 @@ class Controller:
         return {"ok": True, "message": f"{spec.label} yüklendi ({device})."}
 
     def text_model_delete(self, name: str) -> dict:
-        if self._text_runtime.model_name == name:
-            return {"ok": False, "message": "Yüklü metin modeli silinemez. Önce başka model seç."}
         with self._lock:
+            if self._machine.state == LOADING:
+                return {"ok": False, "message": "Model yüklenirken silinemez, lütfen bekle."}
+            if self._text_runtime.model_name == name:
+                return {"ok": False, "message": "Yüklü metin modeli silinemez. Önce başka model seç."}
             if self._text_download and self._text_download.get("name") == name and self._text_download.get("state") in (
                 "downloading", "pausing"
             ):
@@ -1373,35 +1463,40 @@ class Controller:
         self, repo_or_url: str, filename: str = "", label: str = ""
     ) -> dict:
         """Hugging Face GGUF metin modeli ekler."""
-        try:
-            add_fn = getattr(text_models, "add_custom_text_model", None)
-            if add_fn is None:
-                return {"ok": False, "message": "Özel metin modeli desteği henüz hazır değil."}
-            model = add_fn(repo_or_url, filename=filename, label=label)
-            self._models_cache = (0.0, None)
-            with self._lock:
-                self._add_activity("Özel metin modeli eklendi", label or filename or repo_or_url, "ok")
-            return {"ok": True, "model": model}
-        except Exception as exc:
-            logger.warning("Özel metin modeli eklenemedi: %s", exc)
-            return {"ok": False, "message": str(exc)}
+        add_fn = getattr(text_models, "add_custom_text_model", None)
+        if add_fn is None:
+            return {"ok": False, "message": "Özel metin modeli desteği henüz hazır değil."}
+        return self._run_custom_model_op(
+            lambda: add_fn(repo_or_url, filename=filename, label=label),
+            "Özel metin modeli eklendi",
+            label or filename or repo_or_url,
+            "ok",
+            "Özel metin modeli eklenemedi",
+        )
 
     def text_models_remove_custom(self, model_id: str) -> dict:
         """Özel metin modelini listeden tamamen kaldırır."""
-        try:
-            rem_fn = getattr(text_models, "remove_custom_text_model", None)
-            if rem_fn is None:
-                return {"ok": False, "message": "Özel metin modeli kaldırma henüz hazır değil."}
-            rem_fn(model_id)
-            self._models_cache = (0.0, None)
-            with self._lock:
-                self._add_activity("Özel metin modeli kaldırıldı", model_id, "info")
-            return {"ok": True, "message": f"{model_id} listeden kaldırıldı."}
-        except Exception as exc:
-            logger.warning("Özel metin modeli kaldırılamadı: %s", exc)
-            return {"ok": False, "message": str(exc)}
+        rem_fn = getattr(text_models, "remove_custom_text_model", None)
+        if rem_fn is None:
+            return {"ok": False, "message": "Özel metin modeli kaldırma henüz hazır değil."}
+        return self._run_custom_model_op(
+            lambda: rem_fn(model_id),
+            "Özel metin modeli kaldırıldı",
+            model_id,
+            "info",
+            "Özel metin modeli kaldırılamadı",
+            message=f"{model_id} listeden kaldırıldı.",
+        )
 
     # ---------- ayarlar ----------
+
+    def audio_devices(self) -> dict:
+        """Kullanılabilir ses giriş (mikrofon) cihazlarını döndürür."""
+        return {
+            "ok": True,
+            "devices": list_input_devices(),
+            "active": self._input_device,
+        }
 
     def settings_get(self) -> dict:
         with self._lock:
@@ -1410,6 +1505,13 @@ class Controller:
             "save_history": self._save_history,
             "hotkey": self._hotkey_id,
             "hotkey_label": hotkey_label(self._hotkey_id),
+            "hotkey_mode": self._hotkey_mode,
+            "hotkey_mode_label": hotkey_mode_label(self._hotkey_mode),
+            "hotkey_mode_choices": [
+                {"id": key, "label": label} for key, label in HOTKEY_MODE_CHOICES.items()
+            ],
+            "input_device": self._input_device,
+            "show_indicator": self._show_indicator,
             "active_model": str(self.settings.get("active_model", AUTO_MODEL)),
             "design_style": str(self.settings.get("design_style", "dikte_ai")),
             "setup_done": bool(self.settings.get("setup_done", False)),
@@ -1430,6 +1532,7 @@ class Controller:
             if state in (RECORDING, PROCESSING, LOADING, CLEANING):
                 return {"ok": False, "message": "Kayıt, çeviri veya model yüklemesi sürerken ayarlar kaydedilemez."}
             current_hotkey = self._hotkey_id
+            current_mode = self._hotkey_mode
 
         changes: dict = {}
         new_hotkey = payload.get("hotkey")
@@ -1447,6 +1550,38 @@ class Controller:
                 return {"ok": False, "message": f"Kısayol değiştirilemedi: {exc}"}
             changes["hotkey"] = new_hotkey
 
+        mode_changed = False
+        if "hotkey_mode" in payload:
+            new_mode = str(payload["hotkey_mode"] or "").strip()
+            if new_mode not in HOTKEY_MODE_CHOICES:
+                if hotkey_changed:
+                    try:
+                        self.hotkey.set_key(current_hotkey)
+                    except Exception:
+                        pass
+                return {"ok": False, "message": "Geçersiz kısayol modu."}
+            if new_mode != current_mode:
+                set_mode = getattr(self.hotkey, "set_mode", None)
+                if callable(set_mode):
+                    try:
+                        set_mode(new_mode)
+                    except Exception as exc:
+                        if hotkey_changed:
+                            try:
+                                self.hotkey.set_key(current_hotkey)
+                            except Exception:
+                                pass
+                        return {"ok": False, "message": str(exc)}
+                mode_changed = True
+            changes["hotkey_mode"] = new_mode
+
+        if "input_device" in payload:
+            raw_dev = payload["input_device"]
+            changes["input_device"] = (
+                str(raw_dev).strip() if isinstance(raw_dev, str) and raw_dev.strip() else DEFAULT_INPUT_DEVICE
+            )
+        if "show_indicator" in payload:
+            changes["show_indicator"] = bool(payload["show_indicator"])
         if "save_history" in payload:
             changes["save_history"] = bool(payload["save_history"])
         if "design_style" in payload:
@@ -1473,12 +1608,31 @@ class Controller:
                     self.hotkey.set_key(current_hotkey)
                 except Exception:
                     logger.exception("Kısayol geri alınamadı")
+            if mode_changed:
+                set_mode = getattr(self.hotkey, "set_mode", None)
+                if callable(set_mode):
+                    try:
+                        set_mode(current_mode)
+                    except Exception:
+                        logger.exception("Kısayol modu geri alınamadı")
             return {"ok": False, "message": str(exc)}
 
         with self._lock:
             self._save_history = bool(data.get("save_history", True))
             self._hotkey_id = str(data.get("hotkey", DEFAULT_HOTKEY))
+            self._hotkey_mode = str(data.get("hotkey_mode", DEFAULT_HOTKEY_MODE))
+            self._input_device = str(data.get("input_device", DEFAULT_INPUT_DEVICE))
+            self._show_indicator = bool(data.get("show_indicator", DEFAULT_SHOW_INDICATOR))
             self._add_activity("Ayarlar kaydedildi", "Kısayol ve geçmiş tercihi güncellendi.", "info")
+
+        self._prepare_audio()
+        if hasattr(self, "_indicator") and self._indicator is not None:
+            set_ind = getattr(self._indicator, "set_enabled", None)
+            if callable(set_ind):
+                try:
+                    set_ind(self._show_indicator)
+                except Exception:
+                    logger.debug("Gösterge ayarı uygulanamadı", exc_info=True)
 
         if new_active_model is not None and new_active_model != old_active_model:
             if new_active_model == AUTO_MODEL:
@@ -1636,6 +1790,8 @@ class Controller:
         "incomplete": "İndirme tamamlanmadı. Tekrar dene.",
         "sha_mismatch": "İndirilen dosyanın özeti uyuşmuyor; dosya silindi.",
         "missing_installer": "Kurucu dosyası bulunamadı.",
+        "cancelled": "Güncelleme indirmesi iptal edildi.",
+        "launch_failed": "Kurucu başlatılamadı.",
     }
 
     def update_check(self, force: bool = False) -> dict:
@@ -1681,6 +1837,64 @@ class Controller:
 
         threading.Thread(target=_trigger_exit, name="guncelle-cikis", daemon=True).start()
 
+    def _download_and_apply_installer(
+        self,
+        url: str,
+        sha: str,
+        *,
+        dl_fn=None,
+        success_message: str = "Kurulum başlatıldı; uygulama kapanacak.",
+    ) -> dict:
+        fn = dl_fn or updater.download
+        cancel_ev = getattr(self, "_update_cancel_event", None)
+        if cancel_ev is not None:
+            cancel_ev.clear()
+        kwargs: dict = {}
+        verified_by_downloader = False
+        try:
+            import inspect
+
+            sig = inspect.signature(fn)
+            if "cancel_event" in sig.parameters and cancel_ev is not None:
+                kwargs["cancel_event"] = cancel_ev
+            if "sha256" in sig.parameters and sha:
+                kwargs["sha256"] = sha
+                verified_by_downloader = True
+        except (TypeError, ValueError):
+            pass
+        try:
+            path = fn(url, **kwargs)
+        except updater.UpdaterError as exc:
+            logger.info("Kurucu indirilemedi (%s)", exc.code)
+            return {
+                "ok": False,
+                "code": exc.code,
+                "message": self.UPDATE_MESSAGES.get(exc.code, "İndirme başarısız. Bağlantını kontrol et."),
+            }
+        except Exception as exc:
+            logger.warning("Kurucu indirilemedi: %s", exc)
+            return {"ok": False, "message": f"İndirme başarısız: {exc}"}
+
+        if not verified_by_downloader and hasattr(updater, "verify_sha256"):
+            if not updater.verify_sha256(path, sha):
+                return {"ok": False, "code": "sha_mismatch", "message": self.UPDATE_MESSAGES["sha_mismatch"]}
+
+        try:
+            updater.apply(path)
+        except updater.UpdaterError as exc:
+            return {
+                "ok": False,
+                "code": exc.code,
+                "message": self.UPDATE_MESSAGES.get(exc.code, "Kurulum başlatılamadı."),
+            }
+        except Exception as exc:
+            return {"ok": False, "message": f"Kurulum başlatılamadı: {exc}"}
+
+        sched = getattr(self, "_schedule_exit_after_apply", None)
+        if callable(sched):
+            sched()
+        return {"ok": True, "message": success_message}
+
     def update_apply(self) -> dict:
         """Denetim, indirme, SHA-256 doğrulama ve sessiz kurulum tek sonuç üzerinden yürür."""
         try:
@@ -1689,36 +1903,12 @@ class Controller:
             return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Denetlenemedi.")}
         if result is None or not result.get("update_available"):
             return {"ok": False, "code": "no_update", "message": "Yeni sürüm yok."}
-        sha = result.get("sha256", "")
-        url = result.get("url", "")
-        cancel_ev = getattr(self, "_update_cancel_event", None)
-        if cancel_ev is not None:
-            cancel_ev.clear()
-        try:
-            import inspect
-            kwargs: dict = {}
-            try:
-                sig = inspect.signature(updater.download)
-                if "cancel_event" in sig.parameters and cancel_ev is not None:
-                    kwargs["cancel_event"] = cancel_ev
-                if "sha256" in sig.parameters and sha:
-                    kwargs["sha256"] = sha
-            except (TypeError, ValueError):
-                pass
-            path = updater.download(url, **kwargs)
-        except updater.UpdaterError as exc:
-            logger.info("Güncelleme indirilemedi (%s)", exc.code)
-            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "İndirme başarısız. Bağlantını kontrol et.")}
-        if not updater.verify_sha256(path, sha):
-            return {"ok": False, "code": "sha_mismatch", "message": self.UPDATE_MESSAGES["sha_mismatch"]}
-        try:
-            updater.apply(path)
-        except updater.UpdaterError as exc:
-            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Kurulum başlatılamadı.")}
-        sched = getattr(self, "_schedule_exit_after_apply", None)
-        if callable(sched):
-            sched()
-        return {"ok": True, "message": "Kurulum başlatıldı; uygulama kapanacak."}
+        return Controller._download_and_apply_installer(
+            self,
+            result.get("url", ""),
+            result.get("sha256", ""),
+            dl_fn=updater.download,
+        )
 
     def update_list_releases(self) -> dict:
         """GitHub Releases üzerinden geçmiş sürümleri listeler."""
@@ -1749,40 +1939,16 @@ class Controller:
         sha_norm = str(sha256 or "").strip().lower()
         if not re.fullmatch(r"[0-9a-f]{64}", sha_norm):
             return {"ok": False, "code": "no_sha", "message": self.UPDATE_MESSAGES["no_sha"]}
-        self._update_cancel_event.clear()
-        try:
-            dl_fn = getattr(updater, "download_installer", None) or getattr(updater, "download", None)
-            if dl_fn is None:
-                return {"ok": False, "message": "İndirme aracı bulunamadı."}
-            import inspect
-            sig = inspect.signature(dl_fn)
-            kwargs = {}
-            if "cancel_event" in sig.parameters:
-                kwargs["cancel_event"] = self._update_cancel_event
-            if "sha256" in sig.parameters:
-                kwargs["sha256"] = sha_norm
-            path = dl_fn(installer_url, **kwargs)
-        except updater.UpdaterError as exc:
-            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, str(exc))}
-        except Exception as exc:
-            logger.warning("Rollback indirilemedi: %s", exc)
-            return {"ok": False, "message": f"İndirme başarısız: {exc}"}
-
-        if hasattr(updater, "verify_sha256"):
-            if not updater.verify_sha256(path, sha_norm):
-                return {"ok": False, "code": "sha_mismatch", "message": self.UPDATE_MESSAGES["sha_mismatch"]}
-
-        try:
-            updater.apply(path)
-        except updater.UpdaterError as exc:
-            return {"ok": False, "code": exc.code, "message": self.UPDATE_MESSAGES.get(exc.code, "Kurulum başlatılamadı.")}
-        except Exception as exc:
-            return {"ok": False, "message": f"Kurulum başlatılamadı: {exc}"}
-
-        sched = getattr(self, "_schedule_exit_after_apply", None)
-        if callable(sched):
-            sched()
-        return {"ok": True, "message": f"Sürüm {version} kurulumu başlatıldı; uygulama kapanacak."}
+        dl_fn = getattr(updater, "download_installer", None) or getattr(updater, "download", None)
+        if dl_fn is None:
+            return {"ok": False, "message": "İndirme aracı bulunamadı."}
+        return Controller._download_and_apply_installer(
+            self,
+            installer_url,
+            sha_norm,
+            dl_fn=dl_fn,
+            success_message=f"Sürüm {version} kurulumu başlatıldı; uygulama kapanacak.",
+        )
 
     # ---------- karşılama sihirbazı (Faz 4.4) ----------
 
@@ -1830,6 +1996,9 @@ class Controller:
 
     def wizard_complete(self, payload: dict | None = None) -> dict:
         payload = payload or {}
+        with self._lock:
+            current_hotkey = self._hotkey_id
+
         changes = {"setup_done": True}
         if "design_style" in payload:
             changes["design_style"] = str(payload["design_style"])
@@ -1838,17 +2007,20 @@ class Controller:
         if "save_history" in payload:
             changes["save_history"] = bool(payload["save_history"])
 
-        if "hotkey" in payload:
-            new_hotkey = str(payload["hotkey"])
-            if new_hotkey != self._hotkey_id:
-                set_key = getattr(self.hotkey, "set_key", None)
-                if set_key is not None:
-                    try:
-                        set_key(new_hotkey)
-                    except Exception as exc:
-                        logger.warning("Sihirbazda kısayol ayarlanamadı: %s", exc)
-                        return {"ok": False, "message": f"Kısayol ayarlanamadı: {exc}"}
-            changes["hotkey"] = new_hotkey
+        new_hotkey = payload.get("hotkey")
+        hotkey_changed = bool(new_hotkey and str(new_hotkey) != current_hotkey)
+        if hotkey_changed:
+            new_hotkey_str = str(new_hotkey)
+            set_key = getattr(self.hotkey, "set_key", None)
+            if set_key is not None:
+                try:
+                    set_key(new_hotkey_str)
+                except Exception as exc:
+                    logger.warning("Sihirbazda kısayol ayarlanamadı: %s", exc)
+                    return {"ok": False, "message": f"Kısayol ayarlanamadı: {exc}"}
+            changes["hotkey"] = new_hotkey_str
+        elif "hotkey" in payload:
+            changes["hotkey"] = str(payload["hotkey"])
 
         if "active_model" in payload and payload["active_model"] != AUTO_MODEL:
             try:
@@ -1861,12 +2033,19 @@ class Controller:
         try:
             self.settings.save(**changes)
         except Exception as exc:
+            if hotkey_changed:
+                try:
+                    self.hotkey.set_key(current_hotkey)
+                except Exception:
+                    logger.exception("Sihirbazda kısayol geri alınamadı")
             logger.warning("Sihirbaz ayarları kaydedilemedi: %s", exc)
             return {"ok": False, "message": str(exc)}
 
         with self._lock:
             if "hotkey" in changes:
                 self._hotkey_id = str(changes["hotkey"])
+            if "save_history" in changes:
+                self._save_history = bool(changes["save_history"])
             self._add_activity("Kurulum sihirbazı tamamlandı", "Ayarlar kaydedildi.", "ok")
 
         return {"ok": True, "message": "Kurulum tamamlandı.", "settings": self.settings_get()}
@@ -1961,11 +2140,16 @@ class Controller:
 
     def ai_cancel(self) -> dict:
         with self._lock:
-            self._ai_task_token += 1
-            self._ai_cancel_event.set()
-            if self._machine.state == CLEANING:
-                self._set_state(READY)
-                self._add_activity("Yapay zeka iptal edildi", "İşlem kullanıcı tarafından durduruldu.", "warn")
+            if self._cleaning_owner == "ai":
+                self._ai_task_token += 1
+                self._ai_cancel_event.set()
+                if self._machine.state == CLEANING:
+                    self._cleaning_owner = None
+                    self._set_state(READY)
+                    self._add_activity("Yapay zeka iptal edildi", "İşlem kullanıcı tarafından durduruldu.", "warn")
+            elif self._machine.state != CLEANING:
+                self._ai_task_token += 1
+                self._ai_cancel_event.set()
         return {"ok": True, "message": "İptal edildi."}
 
     def clean_text_async(self, text: str) -> dict:
@@ -1985,6 +2169,7 @@ class Controller:
             self._ai_cancel_event.clear()
             self._ai_task_token += 1
             task_token = self._ai_task_token
+            self._cleaning_owner = "ai"
             self._set_state(CLEANING)
 
         def worker() -> None:
@@ -2026,8 +2211,10 @@ class Controller:
                         self._add_activity("Metin işlenemedi", str(exc), "err")
             finally:
                 with self._lock:
-                    if task_token == self._ai_task_token and self._machine.state == CLEANING:
-                        self._set_state(READY)
+                    if task_token == self._ai_task_token and self._cleaning_owner == "ai":
+                        self._cleaning_owner = None
+                        if self._machine.state == CLEANING:
+                            self._set_state(READY)
 
         with self._lock:
             self._ai_worker = threading.Thread(target=worker, name="ai-task", daemon=True)
@@ -2053,6 +2240,9 @@ class Controller:
                 return {"ok": False, "message": "Şu anda işlenemez, lütfen bekle."}
             self._error = None
             self._ai_cancel_event.clear()
+            self._ai_task_token += 1
+            run_token = self._ai_task_token
+            self._cleaning_owner = "ai"
             self._set_state(CLEANING)
         try:
             result = self._process_text(text, translate)
@@ -2072,8 +2262,10 @@ class Controller:
             }
         finally:
             with self._lock:
-                if self._machine.state == CLEANING:
-                    self._set_state(READY)
+                if run_token == self._ai_task_token and self._cleaning_owner == "ai":
+                    self._cleaning_owner = None
+                    if self._machine.state == CLEANING:
+                        self._set_state(READY)
 
         if self._ai_cancel_event.is_set():
             return {
@@ -2143,9 +2335,6 @@ class Controller:
             )
         target = str(self.settings.get("output_language", "tr"))
         prompt = str(self.settings.get("system_prompt") or config.DEFAULT_SYSTEM_PROMPT)
-        budget = max(512, text_engine.count_words(text) * 8 + 256)
-        messages = text_engine.build_messages(text, target, translate, prompt, strict=False)
-        last_error = None
         with self._engine_lock:
             with self._local_ai_lock:
                 if self._text_runtime.model_name != name:
@@ -2157,37 +2346,15 @@ class Controller:
                     with self._lock:
                         self._add_activity("Metin modeli yüklendi", f"{spec.label} · {device}", "info")
 
-                for attempt in range(2):
-                    raw = self._text_runtime.generate(
-                        messages[0]["content"], messages[1]["content"], max_tokens=budget
-                    )
-                    candidate = text_engine.strip_response(raw)
-                    try:
-                        text_engine.validate_output(text, candidate, translate, target)
-                    except text_engine.TextEngineError as exc:
-                        last_error = exc
-                        if attempt == 0:
-                            messages = text_engine.build_messages(
-                                text, target, translate, prompt, strict=True
-                            )
-                            budget = max(1024, budget * 2)
-                            continue
-                        raise
-                    same = (
-                        translate
-                        and text_engine.count_words(text) >= 3
-                        and candidate.strip().lower() == text.strip().lower()
-                    )
-                    if same and attempt == 0:
-                        messages = text_engine.build_messages(
-                            text, target, translate, prompt, strict=True
-                        )
-                        budget = max(1024, budget * 2)
-                        continue
-                    return text_engine.TextResult(
-                        text=candidate, translated=bool(translate) and not same, unchanged=same
-                    )
-        raise last_error or text_engine.TextEngineError("bad_response")
+                return text_engine.generate(
+                    text,
+                    target_language=target,
+                    translate=translate,
+                    provider="local",
+                    system_prompt=prompt,
+                    local_runtime=self._text_runtime,
+                    cancel_event=self._ai_cancel_event,
+                )
 
     def _auto_ai_text(self, text: str) -> str:
         """Otomatik çevir açıksa dikte sonrası metni temizler/çevirir."""
@@ -2206,6 +2373,8 @@ class Controller:
             with self._lock:
                 self._add_activity("Kısa metin", "Çeviri atlandı (3 kelimeden kısa).", "warn")
             return text
+        if not self._closed:
+            self._ai_cancel_event.clear()
         try:
             result = self._process_text(text, translate=True)
         except text_engine.TextEngineError as exc:
@@ -2336,6 +2505,14 @@ class Controller:
         self._memory_cache = (now, value)
         return value
 
+    def _sync_hotkey_toggle(self, active: bool) -> None:
+        sync_fn = getattr(self.hotkey, "sync_toggle_state", None)
+        if callable(sync_fn):
+            try:
+                sync_fn(active)
+            except Exception:
+                pass
+
     def _set_state(self, new_state: str) -> None:
         if new_state not in ALLOWED.get(self._machine.state, set()):
             logger.warning("Geçersiz durum geçişi: %s -> %s", self._machine.state, new_state)
@@ -2344,6 +2521,12 @@ class Controller:
             self._machine.set(new_state)
         except InvalidTransition:
             logger.warning("Durum değiştirilemedi: %s", new_state)
+            return
+        if hasattr(self, "_indicator") and self._indicator is not None:
+            try:
+                self._indicator.update(new_state)
+            except Exception:
+                logger.debug("Gösterge güncellenemedi", exc_info=True)
 
     def _add_activity(self, title: str, sub: str, kind: str = "info") -> None:
         self._activity.appendleft(

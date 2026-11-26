@@ -3,7 +3,12 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-25 — Genele Hitap Etme, Rakip İncelemesi ve Sade Tanıtım Araştırması (salt-okunur) tamamlandı:**
+**2026-11-26 — Kod Denetimi Faz 1–4, Genele Hitap Eden 5 Dokunuş, Vitrin Yenilemesi ve 4 HyperFrames Videosu tamamlandı:**
+- **Kod Denetimi Faz 1–4:** `reports/2026-11-24-kod-denetimi-raporu.md` içindeki tüm yüksek (Y1–Y6) ve orta bulgular, ~500 satırlık ortaklaştırma (`dikte/fsutil.py`, `app.js` model kartı/detay paneli birleştirmesi, `text_engine.py` yerel AI tekilleştirmesi, ölü kod temizliği) ve 7 test maskesi TDD ile giderildi.
+- **Genele Hitap Eden 5 Dokunuş:** Ayarlar'a **Bas-Bırak** kısayol modu (`hotkey_mode`), **Mikrofon seçimi** (`audio.py` `list_input_devices`), Windows'ta odak çalmayan **mini "Dinliyor / Yazıyor" göstergesi** (`dikte/indicator.py`) ve teknik ayarları **Gelişmiş Ayarlar** altında toplayan sade düzen eklendi.
+- **Vitrin & 4 HyperFrames Videosu:** `docs/index.html` + `README*.md` içine `docs/assets/og-card.png` (1200×630), 4 günlük kullanım senaryosu, SmartScreen açıklaması ve EN/TR 50s video seçici eklendi; `video-arastirma` (Neon) brifiyle (`reports/2026-11-26-video-arastirma-brifi.md`) `video-uretim` (Neon) ekibi HyperFrames üzerinden 4 MP4 (Yatay 16:9 50s TR/EN + Shorts 9:16 30s TR/EN) ve 2 web optimize kopya (`docs/assets/dikte-tanitim-tr.mp4`, `dikte-tanitim-en.mp4`) üretti.
+- **Doğrulama:** **465 passed, 1 skipped** (`77.17s`), `--selftest` (`Whisper Large | GPU | float16`) çıkış kodu `0`, Playwright Edge `docs/index.html` 6 kombinasyon (`EN`/`TR` × `1440/768/360px`) `overflow: False`, `0` hata.
+- **2026-11-25 — Genele Hitap Etme, Rakip İncelemesi ve Sade Tanıtım Araştırması (salt-okunur) tamamlandı:**
 - Gelir amacı gütmeden ve süre baskısı olmadan (~1.000 kullanıcı/indirme hedefiyle) Dikte'nin mevcut kodu, vitrini ve benzer ücretsiz/açık kaynak projeler (`Handy`, `Buzz`, `OpenWhispr`, `Vibe`, `Whispering`, `HoldToSpeak`, `LocalFlow`, `PieFlow`) Exa ile araştırıldı.
 - Sonuçlar `reports/2026-11-25-yayin-ve-buyume-raporu.md` dosyasına kaydedildi ve `reports/README.md` dizinine eklendi; uygulama koduna dokunulmadı.
 - **2026-11-24 — v1.6.1 Tam Kod Denetimi (salt-okunur) ve `asama-baslat` Protokol Güncellemesi tamamlandı:**
@@ -22,6 +27,11 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - Sıradaki adım: yeni `Dikte-Setup-1.6.1.exe` ile son konuşma/güncelleme testi ve isteğe bağlı topluluk dağıtımı (`winget`, AlternativeTo).
 
 ## Biten (kanıtla)
+- **Kod Denetimi Faz 1–4, 5 Dokunuş, Vitrin Yenilemesi ve 4 HyperFrames Videosu (2026-11-26):**
+  - **Faz 1–4:** `dikte/controller.py` (Y1 `_cleaning_owner` + `_refresh_token`), `dikte/hotkey.py` (Y2 `Key.value.vk`), `dikte/text_models.py` (Y3 `effective_total` + ağ/kilit), `dikte/ui/app.js` (Y4–Y5 `callApi`, `visibilitychange` tepsi pil tasarrufu, menü/modal Escape), `installer/Dikte.iss` (Y6 `{%TEMP}\dikte` + model sorusu), `dikte/fsutil.py` (ortak atomik yazma/yedek/HF/elevate), 7 test maskesi temizliği (`tests/test_faz1_audit.py`, `tests/test_faz234_audit.py`).
+  - **5 Dokunuş:** `hotkey_mode` (`hold`/`toggle`), `list_input_devices()` + `input_device`, `dikte/indicator.py` (`FloatingIndicator`, `WS_EX_NOACTIVATE`), `<details id="advancedSettings" open>` (`tests/test_genele_dokunuslar.py`).
+  - **Vitrin & Video:** `docs/assets/og-card.png`, `docs/index.html` (4 senaryo, SmartScreen, EN/TR 50s video seçici), `reports/2026-11-26-video-arastirma-brifi.md`, `video-hf/` (4 HyperFrames MP4 + 2 web MP4 + 2 poster).
+  - **Kanıt:** `pytest -q` **465 passed, 1 skipped** (`77.17s`), `--selftest` çıkış kodu `0` (`GPU / float16`, `%80` benzerlik), Playwright Edge `docs/index.html` 6/6 OK, `ffprobe` 6/6 MP4 OK. Obsidian: `02-Projeler/dikte-projesi/2026-11-26-faz1-4-dokunuslar-ve-hyperframes.md`.
 - **Genele Hitap Etme ve Sade Tanıtım Araştırması (2026-11-25):**
   - **Rapor:** `reports/2026-11-25-yayin-ve-buyume-raporu.md` (`reports/README.md` güncellendi); Exa rakip/ekosistem araştırması + mevcut kod/vitrin incelemesi. Uygulama kodu değişmedi (`dikte/`, `docs/`, `installer/`, `tests/` dokunulmadı).
   - **Obsidian Kaydı:** `02-Projeler/dikte-projesi/2026-11-25-yayin-ve-buyume-stratejisi.md` ve `_genel-bakis.md` güncellendi.
@@ -109,15 +119,12 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Faz 2 veri kaybı ve çökme hataları tamamlandı (2026-11-11):** `uygulanacak plan.md` §4'teki 11 maddenin tamamı TDD ile uygulandı; 18 yeni regresyon testi eklendi (**263 passed, 1 skipped**); `Model: "flash"` alt ajanıyla kod ve testler satır satır denetlendi. Masaüstüne `C:\Users\aksek\Desktop\Dikte.lnk` kısayolu oluşturuldu.
 
 ## Yarım kalan
-- **2026-11-24 Kod Denetimi Düzeltme Fazları (Faz 1–4):** Rapor (`reports/2026-11-24-kod-denetimi-raporu.md`) hazır, henüz kod değişikliğine başlanmadı.
-- **Sihirbaz 2. adım CUDA indirme butonu:** `#wizardCudaActions` / `#wizardCudaMsg` yer tutucusu duruyor; isteğe bağlı CUDA indirme uç noktası henüz bağlı değil (rapor §5).
-- **v1.5 / v1.6 kullanıcı kabul testi:** `Dikte-Setup-1.6.1.exe` ile gerçek bilgisayarda temiz kurulum, canlı konuşma, güncelleme denetimi ve kaldırma testi kullanıcıda bekliyor.
+- **Sihirbaz 2. adım CUDA indirme butonu:** `#wizardCudaActions` / `#wizardCudaMsg` yer tutucusu duruyor; isteğe bağlı CUDA indirme uç noktası henüz bağlı değil.
+- **v1.7.0 kullanıcı yerel testi ve kurucu derlemesi:** Kullanıcının yeni özellikleri (Bas-Bırak, mikrofon seçimi, mini "Dinliyor" göstergesi) ve 4 HyperFrames videosunu yerel olarak onaylamasından sonra `APP_VERSION` `1.7.0`'a çıkarılıp `build.ps1` ile kurucu derlenecek.
 
 ## Sıradaki ilk adım
-1. **2026-11-24 Denetim Raporu — Faz 1 (Çökme ve durum makinesi):**
-   - `reports/2026-11-24-kod-denetimi-raporu.md` §8 Faz 1 maddelerini (Y1 `controller.py:287` READY kaçağı, Y2 `hotkey.py:392` `Key.value.vk` takılı tuş kurtarma, Y3 `text_models.py:568` `effective_total` yarım GGUF kontrolü + kilit/geçmiş/indirme yarışı) TDD ile uygulamak; ardından Faz 2 (arayüz), Faz 3 (kurucu/gizlilik) ve Faz 4 (~500 satır kısaltma + test maskeleri).
-2. **Son Kullanıcı Doğrulaması ve Dağıtım:**
-   - Canlı indirme sitesinden (`https://mete2012seker-lgtm.github.io/dikte/`) `Dikte-Setup-1.6.1.exe` kurucusunu kurup konuşma çevirisini, **Ayarlar → Güncellemeleri Denetle** sonucunu ve canlı `#tanitim-videosu` bölümünü doğrulamak.
+1. Kullanıcının `.venv\Scripts\python.exe -m dikte` ile Bas-Bırak, mikrofon seçimi ve odak çalmayan mini "Dinliyor/Yazıyor" göstergesini gerçek ortamda test etmesi; `video-hf/out/` içindeki 4 videoyu gözden geçirmesi.
+2. Onay sonrası sürümü `1.7.0`'a çıkarıp `build.ps1` ile `Dikte-Setup-1.7.0.exe` derlemek ve isteğe bağlı `gh release` ile yayınlamak.
 
 ## Açık sorunlar
 - **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.
@@ -172,11 +179,14 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **2026-11-21 (Çok Dilli Vitrin — EN / TR):** GitHub depo ana sayfası (`README.md`) varsayılan İngilizce, Türkçe sürümü `README.tr.md` ve üstlerinde karşılıklı tıklanabilir `English | Türkçe` bağlantıları olacak şekilde ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
 - **2026-11-24 (Kod Denetimi ve `asama-baslat` Güncellemesi):** v1.6.1 kodu salt-okunur tam denetimden geçirildi (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat` skill'ine önceki oturumlar için **Obsidian MCP kontrolü** ve alt aşamalar/işçiler için değiştirilebilir düşünme seviyeli **Gemini 4 Hydrogen** (`low`/`medium`/`high`/`xhigh`) kuralı eklendi.
 - **2026-11-25 (Sade Yayın & Tanıtım Araştırması):** Gelir amacı güdülmüyor; ~1.000 kullanıcı/indirme yeterli, süre sınırı ve abartılı büyüme kampanyası yok. Bu oturumda yalnızca araştırma yapılıp rapor (`reports/2026-11-25-yayin-ve-buyume-raporu.md`) ve Obsidian notu kaydedildi; uygulama koduna dokunulmadı.
+- **2026-11-26 (Swarm ile Faz 1–4, 5 Dokunuş, Vitrin ve 4 HyperFrames Videosu):** Kullanıcı v1.6.1 testlerini tamamladı; Swarm onayıyla Kod Denetimi Faz 1–4, genele hitap eden 5 dokunuş (Bas-Bırak, mikrofon seçimi, mini "Dinliyor/Yazıyor" göstergesi, Gelişmiş Ayarlar), vitrin/OG kartı yenilemesi ve HyperFrames ile 4 tanıtım videosu (Yatay 16:9 50s TR/EN + Shorts 9:16 30s TR/EN + web EN/TR kopyaları) tamamlandı. `v1.7.0` kurucu derlemesi kullanıcının yerel testinden sonraya bırakıldı.
 
 ## Test durumu
 | Test | Sonuç |
 | :--- | :--- |
-| `pytest -q` | **413 passed, 1 skipped** (2026-11-24 doğrulandı, 100,4 sn; AST 25/25 OK) |
+| `pytest -q` | **465 passed, 1 skipped** (2026-11-26 doğrulandı, 77,17 sn) |
+| HyperFrames 4 video + 2 web MP4 (`ffprobe`) | **Geçti:** `dikte-yatay-tr/en.mp4` (`1920×1080`, `50s`), `dikte-shorts-tr/en.mp4` (`1080×1920`, `30s`), `docs/assets/dikte-tanitim-tr/en.mp4` (`+faststart`, `h264+aac`) |
+| GitHub Pages EN/TR & video geçişi | **Geçti:** Playwright Edge `1440×900`, `768×1024`, `360×800` × EN & TR (`overflow: False`, `0` hata, `og-card.png` 200, dil bazlı MP4/poster 200) |
 | Remotion TypeScript (`tsc --noEmit`) | **Geçti** (exit 0, 2026-11-20) |
 | Tanıtım videosu render & `ffprobe` | **Geçti:** `video/out/dikte-tanitim.mp4` (`18,6 MB`) ve web MP4 `docs/assets/dikte-tanitim.mp4` (`9,18 MB`, `h264 1920x1080 30fps + aac, 45.013s`), 15 kontrol karesi incelendi |
 | GitHub Pages video & responsive | **Geçti:** Playwright `1440x900`, `768x1024`, `360x800` `overflow: False`, `#promoVideo` + `mp4_http=200` (2026-11-20) |

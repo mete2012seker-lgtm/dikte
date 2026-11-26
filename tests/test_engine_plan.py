@@ -52,6 +52,8 @@ def test_engine_transcribe_language_mapping(tmp_path):
     wav = tmp_path / "test.wav"
     wav.write_bytes(b"dummy")
 
+    vad_params = {"min_silence_duration_ms": 500, "speech_pad_ms": 400, "threshold": 0.35}
+
     # 1. language="auto" -> faster-whisper gets language=None
     res = engine.transcribe(wav, language="auto")
     assert res.text == "Hello world"
@@ -61,9 +63,10 @@ def test_engine_transcribe_language_mapping(tmp_path):
         beam_size=5,
         vad_filter=True,
         condition_on_previous_text=False,
+        vad_parameters=vad_params,
     )
 
-    # 2. language="tr" -> faster-whisper gets language="tr"
+    # 2. language="tr" -> faster-whisper gets language="tr" + initial_prompt
     engine.transcribe(wav, language="tr")
     mock_model.transcribe.assert_called_with(
         str(wav),
@@ -71,6 +74,8 @@ def test_engine_transcribe_language_mapping(tmp_path):
         beam_size=5,
         vad_filter=True,
         condition_on_previous_text=False,
+        vad_parameters=vad_params,
+        initial_prompt="Türkçe sesli dikte kaydı, doğru imla ve noktalama ile.",
     )
 
     # 3. language="en" -> faster-whisper gets language="en"
@@ -81,6 +86,7 @@ def test_engine_transcribe_language_mapping(tmp_path):
         beam_size=5,
         vad_filter=True,
         condition_on_previous_text=False,
+        vad_parameters=vad_params,
     )
 
 

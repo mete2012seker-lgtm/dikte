@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
-import time
-import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +33,6 @@ def fold(text: str) -> str:
 
 class HistoryError(RuntimeError):
     pass
-
-
-def _backup_path(path: Path) -> Path:
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    candidate = path.with_name(f"{path.stem}.bozuk-{stamp}{path.suffix}")
-    counter = 1
-    while candidate.exists():
-        candidate = path.with_name(f"{path.stem}.bozuk-{stamp}-{counter}{path.suffix}")
-        counter += 1
-    return candidate
 
 
 class HistoryStore:
@@ -91,7 +78,7 @@ class HistoryStore:
 
     def _backup(self) -> None:
         try:
-            self.path.rename(_backup_path(self.path))
+            self.path.rename(fsutil.backup_corrupt_path(self.path))
         except Exception as exc:
             logger.warning("Bozuk geçmiş dosyası yedeklenemedi: %s", exc)
 
@@ -125,23 +112,11 @@ class HistoryStore:
             "text": text,
         }
 
-    def _save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_name(
-            f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
-        )
+    def _save(self, items: list[dict] | None = None) -> None:
+        target = self._items if items is None else items
         try:
-            payload = json.dumps(self._items, ensure_ascii=False, indent=2)
-            with open(temp, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temp, self.path)
+            fsutil.atomic_write_json(self.path, target)
         except Exception as exc:
-            try:
-                temp.unlink(missing_ok=True)
-            except Exception:
-                pass
             raise HistoryError("Geçmiş kaydedilemedi.") from exc
 
     def _next_id(self, now: datetime) -> str:
@@ -161,18 +136,25 @@ class HistoryStore:
             raise HistoryError("Boş metin kaydedilmez.")
         now = self._now()
         with self._lock:
-            self._counter += 1
+            counter = self._counter + 1
+            base = now.strftime("%Y%m%d-%H%M%S")
+            existing = {item["id"] for item in self._items}
+            record_id = f"{base}-{counter}"
+            while record_id in existing:
+                counter += 1
+                record_id = f"{base}-{counter}"
             record = {
-                "id": self._next_id(now),
+                "id": record_id,
                 "created_at": now.isoformat(timespec="seconds"),
                 "duration": round(max(0.0, float(duration)), 2),
                 "words": max(1, int(words or len(text.split()))),
                 "model": str(model or ""),
                 "text": text,
             }
-            self._items.insert(0, record)
-            del self._items[self.limit :]
-            self._save()
+            candidate_items = [record, *self._items][: self.limit]
+            self._save(candidate_items)
+            self._counter = counter
+            self._items = candidate_items
             return dict(record)
 
     def list(self, query: str = "", period: str = "all") -> list[dict]:
@@ -189,6 +171,8 @@ class HistoryStore:
                     created = datetime.fromisoformat(item["created_at"])
                 except ValueError:
                     continue
+                if created.tzinfo is not None and start.tzinfo is None:
+                    created = created.replace(tzinfo=None)
                 if created >= start:
                     filtered.append(item)
             items = filtered
@@ -210,11 +194,11 @@ class HistoryStore:
 
     def delete(self, record_id: str) -> bool:
         with self._lock:
-            before = len(self._items)
-            self._items = [item for item in self._items if item["id"] != record_id]
-            if len(self._items) == before:
+            candidate_items = [item for item in self._items if item["id"] != record_id]
+            if len(candidate_items) == len(self._items):
                 return False
-            self._save()
+            self._save(candidate_items)
+            self._items = candidate_items
             return True
 
     def update_last(self, text: str) -> bool:
@@ -228,19 +212,21 @@ class HistoryStore:
         if not text:
             return False
         with self._lock:
-            for record in self._items:
-                if record["id"] == record_id:
-                    record["text"] = text
-                    record["words"] = max(1, len(text.split()))
-                    self._save()
-                    return True
-        return False
+            idx = next((i for i, r in enumerate(self._items) if r["id"] == record_id), None)
+            if idx is None:
+                return False
+            candidate_items = [dict(item) for item in self._items]
+            candidate_items[idx]["text"] = text
+            candidate_items[idx]["words"] = max(1, len(text.split()))
+            self._save(candidate_items)
+            self._items = candidate_items
+            return True
 
     def clear(self) -> None:
         with self._lock:
+            self._save([])
             self._items = []
             self._counter = 0
-            self._save()
 
     def count(self) -> int:
         with self._lock:

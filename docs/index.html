@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dikte — Free, Local Voice Dictation App for Windows</title>
   <meta name="description" content="Free, open-source, and fully local voice dictation app for Windows. Hold Right Ctrl, speak, and paste text instantly." />
+  <link rel="canonical" href="https://mete2012seker-lgtm.github.io/dikte/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mete2012seker-lgtm.github.io/dikte/" />
+  <meta property="og:title" content="Dikte — Free, Local Voice Dictation App for Windows" />
+  <meta property="og:description" content="Free, open-source, and fully local voice dictation app for Windows. Hold Right Ctrl, speak, and paste text instantly." />
+  <meta property="og:image" content="https://mete2012seker-lgtm.github.io/dikte/assets/og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="Dikte" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Dikte — Free, Local Voice Dictation App for Windows" />
+  <meta name="twitter:description" content="Free, open-source, and fully local voice dictation app for Windows. Hold Right Ctrl, speak, and paste text instantly." />
+  <meta name="twitter:image" content="https://mete2012seker-lgtm.github.io/dikte/assets/og-card.png" />
   <link rel="icon" type="image/png" href="assets/icon.png" />
   <style>
     :root {
@@ -98,8 +111,10 @@
     .nav-links a {
       color: var(--muted);
       text-decoration: none;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.15s ease;
     }
     .nav-links a:hover { color: var(--text); }
     .theme-btn {
@@ -144,8 +159,24 @@
 
     /* Hero */
     .hero {
+      position: relative;
       padding: clamp(36px, 7vw, 72px) 0 clamp(28px, 5vw, 48px);
       text-align: center;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: -40px auto auto 50%;
+      transform: translateX(-50%);
+      width: min(860px, 100vw);
+      height: 440px;
+      background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero > * {
+      position: relative;
+      z-index: 1;
     }
     .badge {
       display: inline-flex;
@@ -170,9 +201,10 @@
       flex-shrink: 0;
     }
     h1 {
-      font-size: clamp(1.75rem, 5.2vw, 3.35rem);
-      line-height: 1.15;
-      letter-spacing: -0.03em;
+      font-size: clamp(1.82rem, 5.2vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.035em;
       max-width: 780px;
       margin: 0 auto 16px;
     }
@@ -258,6 +290,43 @@
       flex-shrink: 0;
     }
     .copy-mini:hover { border-color: var(--accent); }
+    .smartscreen-note {
+      max-width: 680px;
+      margin: 14px auto 0;
+      padding: 11px 16px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 88%, var(--accent) 4%);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: clamp(0.8rem, 2.2vw, 0.86rem);
+      line-height: 1.5;
+      text-align: left;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .smartscreen-note-badge {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+    .smartscreen-note strong { color: var(--text); }
+    .smartscreen-note a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .smartscreen-note a:hover { text-decoration: underline; }
 
     /* Ekran goruntusu vitrini */
     .showcase {
@@ -293,9 +362,13 @@
     .shot-frame {
       border-radius: clamp(10px, 2vw, 16px);
       overflow: hidden;
-      border: 1px solid var(--border);
+      border: 1px solid color-mix(in srgb, var(--border) 80%, var(--accent) 20%);
       background: var(--surface);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+    .shot-frame:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
     }
     .shot-frame img {
       display: block;
@@ -311,9 +384,13 @@
     .video-frame {
       border-radius: clamp(10px, 2vw, 16px);
       overflow: hidden;
-      border: 1px solid var(--border);
+      border: 1px solid color-mix(in srgb, var(--border) 80%, var(--accent) 20%);
       background: #060A14;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+      transition: border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+    .video-frame:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
     }
     .video-frame video {
       display: block;
@@ -367,6 +444,43 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: clamp(18px, 3vw, 24px);
+      box-shadow: 0 4px 16px rgba(16, 24, 40, 0.04);
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+      box-shadow: var(--shadow);
+    }
+    .usecase-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(14px, 2.5vw, 18px);
+    }
+    .usecase-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .usecase-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .usecase-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .card h3 {
       font-size: 1.04rem;
@@ -480,11 +594,13 @@
     /* Tablet */
     @media (max-width: 960px) {
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .nav-links { gap: 10px; }
+      .nav-links a { font-size: 0.84rem; }
     }
 
     /* Telefon */
     @media (max-width: 640px) {
-      .grid { grid-template-columns: 1fr; }
+      .grid, .usecase-grid { grid-template-columns: 1fr; }
       .nav-links a { display: none; }
       .nav-links { gap: 8px; }
       .theme-btn { padding: 6px 10px; font-size: 0.78rem; }
@@ -500,6 +616,14 @@
       .video-meta { flex-direction: column; text-align: center; }
       .footer-inner { flex-direction: column; text-align: center; }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -512,6 +636,7 @@
       <div class="nav-links">
         <a href="#tanitim-videosu" data-i18n="nav_video">Promo Video</a>
         <a href="#ozellikler" data-i18n="nav_features">Features</a>
+        <a href="#kullanim-senaryolari" data-i18n="nav_usecases">Use Cases</a>
         <a href="#guvenlik" data-i18n="nav_security">Security</a>
         <a href="#sss" data-i18n="nav_faq">FAQ</a>
         <a href="https://github.com/mete2012seker-lgtm/dikte" target="_blank" rel="noopener">GitHub</a>
@@ -568,6 +693,13 @@
         <button class="copy-mini" id="copyShaBtn" type="button" data-i18n="copy_btn">Copy</button>
       </div>
 
+      <div class="smartscreen-note" id="smartscreenNote">
+        <span class="smartscreen-note-badge" aria-hidden="true">i</span>
+        <span data-i18n-html="smartscreen_note_html">
+          <strong>Windows SmartScreen note:</strong> Because Dikte is free open-source software without a paid code-signing certificate yet, Windows may show a blue prompt on first run. Click <strong>More info → Run anyway</strong>, or verify the SHA-256 checksum above. <a href="#guvenlik">PowerShell verification command →</a>
+        </span>
+      </div>
+
       <div class="showcase">
         <div class="shot-tabs" id="shotTabs" role="tablist" aria-label="Screenshots">
           <button class="shot-tab active" type="button" data-shot="assets/ekran-dikte-koyu.png" data-i18n="tab_dark">Dark Theme</button>
@@ -581,7 +713,7 @@
     </section>
 
     <section id="tanitim-videosu">
-      <h2 class="section-title" data-i18n="video_title">Dikte in 45 Seconds</h2>
+      <h2 class="section-title" data-i18n="video_title">Dikte in 50 Seconds</h2>
       <p class="section-desc" data-i18n="video_desc">
         Watch how speaking outpaces typing, along with the local Whisper flow, optional AI cleanup, and Magic UI theme transitions.
       </p>
@@ -592,15 +724,16 @@
             controls
             playsinline
             preload="metadata"
-            poster="assets/dikte-tanitim-poster.png"
+            poster="assets/dikte-tanitim-poster-en.png"
+            data-current-src="assets/dikte-tanitim-en.mp4"
           >
-            <source src="assets/dikte-tanitim.mp4" type="video/mp4" />
-            <span data-i18n-html="video_fallback">Your browser does not support video playback. <a href="assets/dikte-tanitim.mp4">Download the promo video</a>.</span>
+            <source id="videoSource" src="assets/dikte-tanitim-en.mp4" type="video/mp4" />
+            <span data-i18n-html="video_fallback">Your browser does not support video playback. <a id="videoFallbackLink" href="assets/dikte-tanitim-en.mp4">Download the promo video</a>.</span>
           </video>
         </div>
         <div class="video-meta">
-          <span data-i18n="video_meta">1080p • 45s • Promo with audio (Remotion)</span>
-          <a href="assets/dikte-tanitim.mp4" download="Dikte-Tanitim.mp4" data-i18n="video_download">Download video (.mp4)</a>
+          <span data-i18n="video_meta">1080p • 50s • Promo with audio (HyperFrames)</span>
+          <a id="videoDownloadLink" href="assets/dikte-tanitim-en.mp4" download="Dikte-Promo.mp4" data-i18n="video_download">Download video (.mp4)</a>
         </div>
       </div>
     </section>
@@ -640,6 +773,55 @@
           <span class="tag" data-i18n="f6_tag">Reliability</span>
           <h3 data-i18n="f6_title">Auto-Update &amp; Diagnostics</h3>
           <p data-i18n="f6_desc">Includes SHA-256 verified updates, one-click version rollback, and a privacy-masked diagnostic report tool.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="kullanim-senaryolari">
+      <h2 class="section-title" data-i18n="uc_title">Everyday Use Cases</h2>
+      <p class="section-desc" data-i18n="uc_desc">
+        Hold your shortcut and speak wherever you type—messages, documents, study notes, or AI prompts.
+      </p>
+      <div class="usecase-grid">
+        <div class="card usecase-card">
+          <div class="usecase-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <span class="tag" data-i18n="uc1_tag">Messaging</span>
+            <h3 data-i18n="uc1_title">WhatsApp Web</h3>
+            <p data-i18n="uc1_desc">Send quick, clear voice replies without reaching for the keyboard or sending long voice notes.</p>
+          </div>
+        </div>
+        <div class="card usecase-card">
+          <div class="usecase-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div>
+            <span class="tag" data-i18n="uc2_tag">Documents</span>
+            <h3 data-i18n="uc2_title">Microsoft Word / Google Docs</h3>
+            <p data-i18n="uc2_desc">Dictate long reports, petitions, and article drafts naturally at speaking pace.</p>
+          </div>
+        </div>
+        <div class="card usecase-card">
+          <div class="usecase-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <div>
+            <span class="tag" data-i18n="uc3_tag">Study</span>
+            <h3 data-i18n="uc3_title">Homework &amp; Notes</h3>
+            <p data-i18n="uc3_desc">Capture lecture notes, reading summaries, and assignments effortlessly without hand fatigue.</p>
+          </div>
+        </div>
+        <div class="card usecase-card">
+          <div class="usecase-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div>
+            <span class="tag" data-i18n="uc4_tag">AI Prompts</span>
+            <h3 data-i18n="uc4_title">Prompting ChatGPT &amp; Claude by Voice</h3>
+            <p data-i18n="uc4_desc">Speak detailed instructions and context naturally instead of typing out multi-paragraph prompts.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -701,6 +883,7 @@
         brand_alt: "Dikte logo",
         nav_video: "Promo Video",
         nav_features: "Features",
+        nav_usecases: "Use Cases",
         nav_security: "Security",
         nav_faq: "FAQ",
         theme_to_light: "Light Theme",
@@ -714,6 +897,7 @@
         meta_size: "Installer: ~170 MB (.exe)",
         meta_gpu: "NVIDIA GPU + CPU supported",
         sha_title: "SHA-256 verification checksum of the installer",
+        smartscreen_note_html: '<strong>Windows SmartScreen note:</strong> Because Dikte is free open-source software without a paid code-signing certificate yet, Windows may show a blue prompt on first run. Click <strong>More info → Run anyway</strong>, or verify the SHA-256 checksum above. <a href="#guvenlik">PowerShell verification command →</a>',
         copy_btn: "Copy",
         copied_btn: "Copied",
         shots_aria: "Screenshots",
@@ -721,10 +905,10 @@
         tab_dark: "Dark Theme",
         tab_light: "Light Theme",
         tab_models: "Model Manager",
-        video_title: "Dikte in 45 Seconds",
+        video_title: "Dikte in 50 Seconds",
         video_desc: "Watch how speaking outpaces typing, along with the local Whisper flow, optional AI cleanup, and Magic UI theme transitions.",
-        video_fallback: 'Your browser does not support video playback. <a href="assets/dikte-tanitim.mp4">Download the promo video</a>.',
-        video_meta: "1080p • 45s • Promo with audio (Remotion)",
+        video_fallback: 'Your browser does not support video playback. <a href="assets/dikte-tanitim-en.mp4">Download the promo video</a>.',
+        video_meta: "1080p • 50s • Promo with audio (HyperFrames)",
         video_download: "Download video (.mp4)",
         feat_title: "Why Dikte?",
         feat_desc: "Built to multiply your everyday writing and note-taking speed—without subscriptions or cloud lock-in.",
@@ -746,6 +930,20 @@
         f6_tag: "Reliability",
         f6_title: "Auto-Update & Diagnostics",
         f6_desc: "Includes SHA-256 verified updates, one-click version rollback, and a privacy-masked diagnostic report tool.",
+        uc_title: "Everyday Use Cases",
+        uc_desc: "Hold your shortcut and speak wherever you type—messages, documents, study notes, or AI prompts.",
+        uc1_tag: "Messaging",
+        uc1_title: "WhatsApp Web",
+        uc1_desc: "Send quick, clear voice replies without reaching for the keyboard or sending long voice notes.",
+        uc2_tag: "Documents",
+        uc2_title: "Microsoft Word / Google Docs",
+        uc2_desc: "Dictate long reports, petitions, and article drafts naturally at speaking pace.",
+        uc3_tag: "Study",
+        uc3_title: "Homework & Notes",
+        uc3_desc: "Capture lecture notes, reading summaries, and assignments effortlessly without hand fatigue.",
+        uc4_tag: "AI Prompts",
+        uc4_title: "Prompting ChatGPT & Claude by Voice",
+        uc4_desc: "Speak detailed instructions and context naturally instead of typing out multi-paragraph prompts.",
         sec_title: 'Why does Windows SmartScreen ("Windows protected your PC") appear?',
         sec_desc: "Dikte is a free open-source project and the installer is not yet signed with a paid code-signing certificate. If Windows displays a blue warning on first run, click <strong>More info → Run anyway</strong> to continue. You can also verify the installer in PowerShell with this command and compare it against the SHA-256 checksum above:",
         faq_title: "Frequently Asked Questions",
@@ -768,6 +966,7 @@
         brand_alt: "Dikte logosu",
         nav_video: "Tanıtım Videosu",
         nav_features: "Özellikler",
+        nav_usecases: "Senaryolar",
         nav_security: "Güvenlik",
         nav_faq: "SSS",
         theme_to_light: "Açık Tema",
@@ -781,6 +980,7 @@
         meta_size: "Kurucu: ~170 MB (.exe)",
         meta_gpu: "NVIDIA GPU + CPU destekli",
         sha_title: "Kurucu dosyanın SHA-256 doğrulama özeti",
+        smartscreen_note_html: '<strong>Windows SmartScreen notu:</strong> Dikte ücretsiz ve henüz ücretli kod imzası olmayan açık kaynak bir uygulama olduğu için ilk açılışta mavi uyarı çıkabilir. <strong>Ek bilgi → Yine de çalıştır</strong> ile geçebilir veya yukarıdaki SHA-256 özetiyle doğrulayabilirsin. <a href="#guvenlik">PowerShell doğrulama komutu →</a>',
         copy_btn: "Kopyala",
         copied_btn: "Kopyalandı",
         shots_aria: "Ekran görüntüleri",
@@ -788,10 +988,10 @@
         tab_dark: "Koyu Tema",
         tab_light: "Açık Tema",
         tab_models: "Model Yöneticisi",
-        video_title: "45 Saniyede Dikte",
+        video_title: "50 Saniyede Dikte",
         video_desc: "Klavyeyle yazmak yerine konuşmanın hızını, yerel Whisper akışını, yapay zeka temizliğini ve Magic UI tema geçişlerini izle.",
-        video_fallback: 'Tarayıcın video oynatmayı desteklemiyor. <a href="assets/dikte-tanitim.mp4">Tanıtım videosunu indir</a>.',
-        video_meta: "1080p • 45 sn • Sesli tanıtım (Remotion)",
+        video_fallback: 'Tarayıcın video oynatmayı desteklemiyor. <a href="assets/dikte-tanitim-tr.mp4">Tanıtım videosunu indir</a>.',
+        video_meta: "1080p • 50 sn • Sesli tanıtım (HyperFrames)",
         video_download: "Videoyu indir (.mp4)",
         feat_title: "Neden Dikte?",
         feat_desc: "Abonelik ve bulut zorunluluğu olmadan, günlük yazışma ve not alma hızını katlamak için tasarlandı.",
@@ -813,6 +1013,20 @@
         f6_tag: "Kararlılık",
         f6_title: "Otomatik Güncelleme ve Tanılama",
         f6_desc: "SHA-256 doğrulamalı güncelleme, önceki sürüme tek tıkla geri dönme ve gizlilik maskeli hata raporu aracı dahildir.",
+        uc_title: "Günlük Kullanım Senaryoları",
+        uc_desc: "Mesajlaşmadan ödevlere, belgelerden yapay zeka istemlerine kadar yazı yazdığın her yerde kısayola basıp konuş.",
+        uc1_tag: "Mesajlaşma",
+        uc1_title: "WhatsApp Web",
+        uc1_desc: "Klavyeye uzanmadan veya uzun ses kaydı atmadan hızlı ve temiz sesli yanıtlar yaz.",
+        uc2_tag: "Belgeler",
+        uc2_title: "Microsoft Word / Google Docs",
+        uc2_desc: "Uzun raporları, dilekçeleri ve taslakları konuşma hızında doğrudan belgeye yazdır.",
+        uc3_tag: "Eğitim",
+        uc3_title: "Ödev & Notlar",
+        uc3_desc: "Ders notlarını, kitap özetlerini ve ödev taslaklarını elin yorulmadan hazırla.",
+        uc4_tag: "Yapay Zeka",
+        uc4_title: "ChatGPT / Claude'a Konuşarak Yazma",
+        uc4_desc: "Ayrıntılı yapay zeka istemlerini paragraflarca yazmak yerine doğal konuşarak aktar.",
         sec_title: 'Windows SmartScreen ("Kişisel bilgisayarınızı korudu") uyarısı neden çıkar?',
         sec_desc: "Dikte ücretsiz bir açık kaynak projedir ve kurucu dosya henüz ücretli bir kod imzalama sertifikasıyla imzalanmamıştır. İlk kurulumda Windows mavi uyarı penceresi gösterirse <strong>Ek bilgi → Yine de çalıştır</strong> adımıyla devam edebilirsin. İstersen indirdiğin kurucuyu PowerShell'de şu komutla doğrulayıp yukarıdaki SHA-256 ile karşılaştırabilirsin:",
         faq_title: "Sık Sorulan Sorular",
@@ -836,6 +1050,59 @@
     const themeToggle = document.getElementById("themeToggle");
     const langButtons = document.querySelectorAll(".lang-btn");
     let currentLang = "en";
+    let videoSyncToken = 0;
+
+    async function assetExists(url) {
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        return res.ok;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    async function syncPromoVideo(lang) {
+      const token = ++videoSyncToken;
+      const video = document.getElementById("promoVideo");
+      const source = document.getElementById("videoSource");
+      const downloadLink = document.getElementById("videoDownloadLink");
+      const fallbackLink = document.querySelector('[data-i18n-html="video_fallback"] a');
+      if (!video || !source) return;
+
+      const defaultVideo = "assets/dikte-tanitim.mp4";
+      const defaultPoster = "assets/dikte-tanitim-poster.png";
+      const langVideo = `assets/dikte-tanitim-${lang}.mp4`;
+      const langPoster = `assets/dikte-tanitim-poster-${lang}.png`;
+
+      const [hasVideo, hasPoster] = await Promise.all([
+        assetExists(langVideo),
+        assetExists(langPoster)
+      ]);
+      if (token !== videoSyncToken) return;
+
+      const nextVideo = hasVideo ? langVideo : defaultVideo;
+      const nextPoster = hasPoster ? langPoster : defaultPoster;
+
+      if (video.getAttribute("poster") !== nextPoster) {
+        video.setAttribute("poster", nextPoster);
+      }
+      if (fallbackLink) fallbackLink.setAttribute("href", nextVideo);
+      if (downloadLink) {
+        downloadLink.setAttribute("href", nextVideo);
+        downloadLink.setAttribute("download", lang === "tr" ? "Dikte-Tanitim.mp4" : "Dikte-Promo.mp4");
+      }
+
+      if (video.dataset.currentSrc !== nextVideo) {
+        video.dataset.currentSrc = nextVideo;
+        source.setAttribute("src", nextVideo);
+        video.load();
+      }
+    }
+
+    function setMetaContent(selector, value) {
+      const el = document.querySelector(selector);
+      if (el && value) el.setAttribute("content", value);
+    }
 
     function resolveInitialLang() {
       try {
@@ -863,8 +1130,11 @@
       const dict = TRANSLATIONS[currentLang];
       root.lang = currentLang;
       document.title = dict.page_title;
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (metaDesc) metaDesc.setAttribute("content", dict.page_desc);
+      setMetaContent('meta[name="description"]', dict.page_desc);
+      setMetaContent('meta[property="og:title"]', dict.page_title);
+      setMetaContent('meta[property="og:description"]', dict.page_desc);
+      setMetaContent('meta[name="twitter:title"]', dict.page_title);
+      setMetaContent('meta[name="twitter:description"]', dict.page_desc);
 
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.dataset.i18n;
@@ -891,6 +1161,7 @@
       });
 
       syncThemeLabel();
+      syncPromoVideo(currentLang);
 
       if (persist) {
         try { localStorage.setItem(LANG_STORAGE_KEY, currentLang); } catch (_) {}

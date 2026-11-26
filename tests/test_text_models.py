@@ -389,4 +389,23 @@ def test_text_manager_cancel_removes_part_after_close_and_does_not_poison_next(t
     assert text_model_path("test-1b").exists()
 
 
+def test_text_model_manager_honors_custom_models_dir_without_patching_config(tmp_path):
+    custom_root = tmp_path / "isolated_models"
+    mgr = text_models.TextModelManager(models_dir=custom_root)
+    expected_path = custom_root / "text" / text_models.get_text_model("qwen3-1.7b").filename
+    assert mgr.path("qwen3-1.7b") == expected_path
+    assert mgr.is_installed("qwen3-1.7b") is False
+    expected_path.parent.mkdir(parents=True, exist_ok=True)
+    # Create exact-size dummy GGUF file in custom_root without touching config.MODELS_DIR
+    spec = text_models.get_text_model("qwen3-1.7b")
+    with open(expected_path, "wb") as f:
+        f.write(b"GGUF")
+        f.truncate(spec.size_bytes)
+    assert mgr.is_installed("qwen3-1.7b") is True
+    scanned = {item["name"]: item for item in mgr.scan()}
+    assert scanned["qwen3-1.7b"]["installed"] is True
+    mgr.delete("qwen3-1.7b")
+    assert not expected_path.exists()
+
+
 

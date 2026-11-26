@@ -32,6 +32,13 @@ Seçtiğin kısayola (varsayılan **Sağ Ctrl**) basılı tutup konuş; bırakt�
 - **Otomatik güncelleme ve geri alma (rollback):** Yeni sürümleri SHA-256 doğrulamasıyla kurar, istersen önceki sürümlere tek tıkla dönebilirsin.
 - **Gömülü hata tespit aracı:** Hata oluşursa tek tıkla gizlilik maskeli tanılama raporu kopyalayıp sorun bildirebilirsin.
 
+## Günlük Kullanım Senaryoları
+
+- **WhatsApp Web:** Klavyeye uzanmadan hızlı sesli yanıtlar yaz.
+- **Microsoft Word / Google Docs:** Uzun raporları, dilekçeleri ve taslakları konuşarak yazdır.
+- **Ödev ve Notlar:** Ders notu, özet ve ödevleri yorulmadan hazırla.
+- **ChatGPT / Claude'a Konuşarak Yazma:** Ayrıntılı yapay zeka istemlerini doğal biçimde konuşarak aktar.
+
 <details>
 <summary>Daha fazla ekran görüntüsü (Açık tema ve Modeller sayfası)</summary>
 
@@ -107,12 +114,12 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 ## Tanıtım Videosu
 
-Klavyeyle yazmanın yavaşlığı yerine sesle daha hızlı, akıcı ve doğal ifade etmeyi; yerel Whisper bas-konuş akışını, yapay zeka temizliğini ve Magic UI geçişlerini anlatan 45 saniyelik tanıtım videosu:
+Klavyeyle yazmanın yavaşlığı yerine sesle daha hızlı, akıcı ve doğal ifade etmeyi; yerel Whisper bas-konuş akışını, yapay zeka temizliğini ve Magic UI geçişlerini anlatan 50 saniyelik tanıtım videosu:
 
-[![Dikte Tanıtım Videosu — İzlemek için tıkla](docs/assets/dikte-tanitim-poster.png)](https://mete2012seker-lgtm.github.io/dikte/?lang=tr#tanitim-videosu)
+[![Dikte Tanıtım Videosu — İzlemek için tıkla](docs/assets/dikte-tanitim-poster-tr.png)](https://mete2012seker-lgtm.github.io/dikte/?lang=tr#tanitim-videosu)
 
-- **[Tanıtım Videosunu Web Sitesinde İzle (45 sn, sesli)](https://mete2012seker-lgtm.github.io/dikte/?lang=tr#tanitim-videosu)**
-- **[MP4 Videosunu Doğrudan Aç / İndir](https://mete2012seker-lgtm.github.io/dikte/assets/dikte-tanitim.mp4)**
+- **[Tanıtım Videosunu Web Sitesinde İzle (50 sn, sesli)](https://mete2012seker-lgtm.github.io/dikte/?lang=tr#tanitim-videosu)**
+- **[MP4 Videosunu Doğrudan Aç / İndir](https://mete2012seker-lgtm.github.io/dikte/assets/dikte-tanitim-tr.mp4)**
 
 ---
 

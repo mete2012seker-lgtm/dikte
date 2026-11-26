@@ -75,14 +75,15 @@ class SingleInstance:
                 import ctypes
                 from ctypes import wintypes
 
-                kernel32 = ctypes.windll.kernel32
+                kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
                 kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
                 kernel32.CreateMutexW.restype = wintypes.HANDLE
-                kernel32.GetLastError.argtypes = []
-                kernel32.GetLastError.restype = wintypes.DWORD
+                kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+                kernel32.CloseHandle.restype = wintypes.BOOL
 
+                ctypes.set_last_error(0)
                 handle = kernel32.CreateMutexW(None, False, self.name)
-                last_error = kernel32.GetLastError()
+                last_error = ctypes.get_last_error()
 
                 if not handle or last_error == ERROR_ALREADY_EXISTS:
                     if handle:

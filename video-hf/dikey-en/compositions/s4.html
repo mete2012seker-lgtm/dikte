@@ -1,0 +1,208 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      src: url('assets/fonts/inter-latin-500-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/inter-latin-700-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 800;
+      src: url('assets/fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0B0F1A;
+      font-family: 'Inter', sans-serif;
+      color: #F2F5FC;
+    }
+
+    .bg-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 46% 52%, rgba(79, 109, 255, 0.18) 0%, rgba(11, 15, 26, 0) 64%);
+      pointer-events: none;
+    }
+
+    .safe-zone {
+      position: absolute;
+      left: 90px;
+      top: 260px;
+      width: 790px;
+      height: 1120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 8px 12px 8px;
+    }
+
+    .header-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .headline {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 60px;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: #F2F5FC;
+    }
+
+    .subtitle {
+      font-size: 30px;
+      font-weight: 500;
+      color: #94A3B8;
+    }
+
+    .cards-stack {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .app-card {
+      width: 100%;
+      background: #121829;
+      border: 1.5px solid rgba(255, 255, 255, 0.10);
+      border-radius: 22px;
+      padding: 20px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 0.42;
+    }
+
+    .app-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 28px;
+      font-weight: 700;
+      color: #F2F5FC;
+    }
+
+    .app-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .check-pill {
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.16);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: #4ADE80;
+      font-size: 28px;
+      font-weight: 700;
+      opacity: 0;
+    }
+
+    .app-text {
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1.38;
+      color: #E2E8F0;
+      opacity: 0;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s4" data-width="1080" data-height="1920">
+    <div class="bg-glow" data-layout-ignore></div>
+
+    <div class="safe-zone">
+      <div id="s4-header" class="header-block">
+        <h1 class="headline">Auto-Paste Into Any App</h1>
+        <p class="subtitle">WhatsApp Web, Word, Notes, ChatGPT</p>
+      </div>
+
+      <div class="cards-stack">
+        <div id="s4-c1" class="app-card">
+          <div class="app-top">
+            <div class="app-title"><span class="app-dot" style="background:#25D366;"></span><span>WhatsApp Web</span></div>
+            <span id="s4-k1" class="check-pill">Pasted ✓</span>
+          </div>
+          <p id="s4-t1" class="app-text">"See you at 7 PM, I just sent the files."</p>
+        </div>
+
+        <div id="s4-c2" class="app-card">
+          <div class="app-top">
+            <div class="app-title"><span class="app-dot" style="background:#3B82F6;"></span><span>Microsoft Word</span></div>
+            <span id="s4-k2" class="check-pill">Pasted ✓</span>
+          </div>
+          <p id="s4-t2" class="app-text">"Quarterly summary drafted hands-free in seconds."</p>
+        </div>
+
+        <div id="s4-c3" class="app-card">
+          <div class="app-top">
+            <div class="app-title"><span class="app-dot" style="background:#F59E0B;"></span><span>Notes</span></div>
+            <span id="s4-k3" class="check-pill">Pasted ✓</span>
+          </div>
+          <p id="s4-t3" class="app-text">"Action items: review PR, ship v1.6, record demo."</p>
+        </div>
+
+        <div id="s4-c4" class="app-card">
+          <div class="app-top">
+            <div class="app-title"><span class="app-dot" style="background:#10A37F;"></span><span>ChatGPT</span></div>
+            <span id="s4-k4" class="check-pill">Pasted ✓</span>
+          </div>
+          <p id="s4-t4" class="app-text">"Summarize these meeting notes into three bullets."</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#s4-header", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0);
+
+    const times = [0.1, 1.3, 2.5, 3.7];
+    times.forEach((t, idx) => {
+      const n = idx + 1;
+      tl.fromTo(
+        `#s4-c${n}`,
+        { opacity: 0.42, scale: 0.98, borderColor: "rgba(255,255,255,0.10)" },
+        { opacity: 1, scale: 1.02, borderColor: "#4F6DFF", boxShadow: "0 16px 40px rgba(79,109,255,0.22)", duration: 0.25, ease: "power2.out" },
+        t
+      );
+      tl.fromTo(`#s4-t${n}`, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, t + 0.08);
+      tl.fromTo(`#s4-k${n}`, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(1.7)" }, t + 0.14);
+      if (n < 4) {
+        tl.to(`#s4-c${n}`, { scale: 1, borderColor: "rgba(34,197,94,0.35)", duration: 0.2 }, t + 1.2);
+      }
+    });
+
+    window.__timelines["s4"] = tl;
+    tl.seek(0);
+  </script>
+</template>

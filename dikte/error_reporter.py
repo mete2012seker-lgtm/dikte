@@ -12,12 +12,11 @@ import sys
 import threading
 import time
 import traceback
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from . import config, diagnostics
+from . import config, diagnostics, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +42,13 @@ _RE_SK_OPENROUTER = re.compile(r"sk-or-v1-[A-Za-z0-9_-]+")
 _RE_SK_GENERIC = re.compile(r"sk-[A-Za-z0-9_-]{12,}")
 _RE_BEARER = re.compile(r"(?i)\bBearer\s+\S+")
 _RE_API_KEY = re.compile(r"(?i)api[_-]?key\s*[:=]\s*\S+")
-_RE_WIN_USER_BACKSLASH = re.compile(r"(?i)([A-Za-z]:\\Users\\)([^\\\"'<>|;,:\r\n]+)")
+_RE_WIN_USER_BACKSLASH = re.compile(r"(?i)([A-Za-z]:\\+Users\\+)([^\\\"'<>|;,:\r\n]+)")
 _RE_WIN_USER_SLASH = re.compile(r"(?i)([A-Za-z]:/Users/)([^/\"'<>|;,:\r\n]+)")
 
 _JS_THROTTLE_SECONDS = 30.0
 _MAX_LOG_BYTES = 64 * 1024
 _MAX_LOG_LINES = 120
+_MAX_NATIVE_CRASH_BYTES = 512 * 1024
 
 _hooks_installed = False
 _orig_sys_excepthook = sys.excepthook
@@ -80,26 +80,11 @@ def _now_iso() -> str:
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_name(
-        f"{path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
-    )
-    try:
-        with open(tmp_path, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        raise
+    fsutil.atomic_write_text(path, content)
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:
-    _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2))
+    fsutil.atomic_write_json(path, payload)
 
 
 def _crash_file() -> Path:
@@ -140,6 +125,12 @@ def install_global_hooks() -> None:
             native_path = _native_crash_file()
             native_path.parent.mkdir(parents=True, exist_ok=True)
             if _faulthandler_file is None or getattr(_faulthandler_file, "closed", True):
+                try:
+                    if native_path.exists() and native_path.stat().st_size > _MAX_NATIVE_CRASH_BYTES:
+                        tail_bytes = native_path.read_bytes()[-(_MAX_NATIVE_CRASH_BYTES // 2) :]
+                        native_path.write_bytes(tail_bytes)
+                except Exception:
+                    pass
                 _faulthandler_file = open(native_path, "a", encoding="utf-8")
                 faulthandler.enable(file=_faulthandler_file, all_threads=True)
         except Exception as exc:
@@ -589,19 +580,21 @@ def _analyze_collected(collected: dict) -> dict:
             False,
         )
 
-    # 5. Model eksik veya bozuk
+    # 5. Model eksik veya bozuk (aynı satırda eşle; ilgisiz GGUF bilgi satırı hata kuralını gölgelemesin)
+    _model_keys = (
+        "model bulunamad",
+        "unable to open file",
+        "invalid gguf",
+        "gguf",
+        "checksum",
+        "sha256",
+        "model bozuk",
+    )
+    _err_keys = ("hata", "error", "failed", "bulunamad", "bozuk", "corrupt")
     if any(
-        k in combined
-        for k in (
-            "model bulunamad",
-            "unable to open file",
-            "invalid gguf",
-            "gguf",
-            "checksum",
-            "sha256",
-            "model bozuk",
-        )
-    ) and any(k in combined for k in ("hata", "error", "failed", "bulunamad", "bozuk", "corrupt")):
+        any(k in line for k in _model_keys) and any(k in line for k in _err_keys)
+        for line in combined.splitlines()
+    ):
         return _build_diagnosis(
             True,
             "error",

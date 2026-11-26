@@ -39,6 +39,8 @@ Akış:
 | `dikte/tray.py` | Sistem tepsisi (SystemTrayManager): pystray + Pillow, menü (Göster/Gizle, Durum, Çıkış), bildirim, modül düzeyi singleton kilidi | Hazır |
 | `dikte/updater.py` | GitHub Releases listeleme, sürüm karşılaştırma, rollback, indirme ve sessiz kurucu çalıştırma | Hazır |
 | `dikte/uninstall.py` | Kaldırma desteği, kurulu sürüm kontrolü ve veri boyutu hesabı | Hazır |
+| `dikte/fsutil.py` | Ortak atomik yazma (`atomic_write_text`/`json`), bozuk dosya yedekleme, HF repo doğrulama ve Win32 `launch_elevated` | Yeni (2026-11-26) |
+| `dikte/indicator.py` | `FloatingIndicator`: Windows odak çalmayan (`WS_EX_NOACTIVATE`) yüzen "Dinliyor.../Yazıyor..." durum göstergesi | Yeni (2026-11-26) |
 | `dikte/ui/bridge.py` | pywebview penceresi ve JS API (snapshot, kayıt, geçmiş, ses/metin modelleri, ayarlar, yenile, temizle/çevir, HF özel model, sihirbaz, rollback, tepsi) | Hazır |
 | `dikte/ui/index.html` | Dört sayfa + Karşılama Sihirbazı + HF Model modalı + Rollback + Wave Canvas | Hazır |
 | `dikte/ui/style.css` | Tasarım token'ları (koyu + açık tema), Magic UI efektleri, Sade Dikte.AI teması, morphing mikrofon | Hazır |
@@ -68,7 +70,10 @@ Akış:
 | `tests/test_version.py` | Tek sürüm kaynağı (1.6.1), latest.json, User-Agent uyumu | Geçti |
 | `.agent/skills/` & `.kilo/skills/` | `asama-baslat` (Obsidian + Gemini 4 Hydrogen), `asama-bitir`, `proje-baslat`, `belirsizleri-sor` vb. skill'ler | Güncellendi (2026-11-24) |
 | `reports/2026-11-24-kod-denetimi-raporu.md` | v1.6.1 tam kod denetimi (0 blocker, 6 yüksek, ~40 orta, 7 test maskesi, ~500 satır kısaltma, 4 fazlı plan) | Yeni (2026-11-24) |
-| `reports/2026-11-25-yayin-ve-buyume-raporu.md` | Genele hitap etme, rakip incelemesi ve sıfır bütçeli basit tanıtım fikirleri (~1.000 kişi, zamansız) | Yeni (2026-11-25) |
+| `reports/2026-11-25-yayin-ve-buyume-raporu.md` | Genele hitap etme, rakip incelemesi ve sıfır bütçeli basit tanıtım fikirleri (~1.000 kişi, zamansız) | Hazır |
+| `reports/2026-11-26-video-arastirma-brifi.md` | 4 HyperFrames tanıtım videosu (16:9 50s & 9:16 30s, TR/EN) araştırma ve sahne brifi | Yeni (2026-11-26) |
+| `video-hf/` | 4 HyperFrames tanıtım videosu kaynak projeleri (`yatay-tr/en`, `dikey-tr/en`) ve sentez ses betiği (`out/`, `.hyperframes/`, `*.wav` git dışı) | Yeni (2026-11-26) |
+| `tests/test_faz1_audit.py`, `test_faz234_audit.py`, `test_genele_dokunuslar.py` | Faz 1–4 kod denetimi ve 5 dokunuş regresyon + Playwright UI testleri | 465 test geçti |
 | `AGENTS.md`, `STATE.md`, `PLAN.md`, `architecture.md`, `STIL.md`, `ogrenme-gunlugu.md` | Proje hafızası, yol haritası ve ajan tarzı | Hazır |
 | `olabilir.md` | v1.3-v1.5 ayrıntılı istek ve davranış spesifikasyonu | Hazır (büyük kısmı kodda; arşiv adayı) |
 | `design/` | Tasarım kaynağı (görseller, ui-spec, prototype) | Hazır |
@@ -149,7 +154,7 @@ Akış:
 - `input_language` ayarı varsayılan `"tr"` olarak hem `_transcribe_path` hem `_ai_payload` içinde hizalıdır.
 - llama.cpp ilk üretim çağrısı ~50 sn (CUDA başlatma ısınması); sonraki çağrılar ~60 tok/s. Gerekirse ön ısınma çağrısı eklenir.
 - v1.4 efektleri testlerle doğrulandı; kullanıcı 2026-11-04'te gözle onayladı.
-- **Yayın durumu (2026-11-24 itibarıyla):** v1.6.1 GitHub Release ve GitHub Pages yayında (**413 passed, 1 skipped**). 2026-11-24 tam kod denetimi 6 yüksek hata (`controller.py:287`, `hotkey.py:392`, `text_models.py:568-573`, `app.js:2211-2218`, `app.js` 5 köprü çağrısı, `Dikte.iss:73`), ~40 orta bulgu, 7 test maskesi ve ~500 satır kısaltma fırsatı tespit etti (`reports/2026-11-24-kod-denetimi-raporu.md`).
+- **Yayın durumu (2026-11-26 itibarıyla):** v1.6.1 GitHub Release ve GitHub Pages yayında. 2026-11-24 kod denetimindeki Faz 1–4 bulguları, genele hitap eden 5 dokunuş, vitrin/OG kartı yenilemesi ve 4 HyperFrames videosu tamamlandı (**465 passed, 1 skipped**). `v1.7.0` kurucu derlemesi kullanıcı yerel testinden sonraya bırakıldı.
 - **Test ekran görüntüleri:** `tests/test_ui.py` ekran görüntülerini `artifacts/` (git dışı) klasörüne yazar; `design/v2/` referans dosyalarına dokunmaz.
 - **HKCU Run kaydı:** Kurucu admin modda çalışır; kayıt, kurulumu yapan kullanıcının HKCU'suna yazılır. Farklı bir yönetici hesabıyla kurulursa kayıt beklenen yerde olmayabilir.
 - **`bin\` klasörü** (`%LOCALAPPDATA%\Dikte\bin`, 27 Ağustos) Dikte kodunun oluşturmadığı bir klasör; kaldırma kapsamı dışında bırakıldı.
@@ -193,3 +198,4 @@ Akış:
 - 2026-11-21 (Çok Dilli Vitrin — EN / TR): `README.md` İngilizce varsayılan, `README.tr.md` Türkçe olarak ayrıldı; `docs/index.html` varsayılan İngilizce yapılıp üst çubuğa `EN | TR` dil seçici eklendi.
 - 2026-11-24 (v1.6.1 Tam Kod Denetimi ve `asama-baslat` Güncellemesi): 4 paralel `Gemini 4 Hydrogen (Medium)` işçisiyle salt-okunur kod denetimi yapıldı (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat`/`asama-bitir`/`calisma-duzeni.md` içine değiştirilebilir düşünme seviyeli `Gemini 4 Hydrogen` ve Obsidian MCP geçmiş kontrolü eklendi.
 - 2026-11-25 (Sade Yayın ve Tanıtım Araştırması): Gelir amacı gütmeden ve süre sınırı olmadan ~1.000 kullanıcı hedefiyle rakip incelemesi (`Handy`, `Buzz`, `OpenWhispr`, `Vibe` vb.), genele hitap eden basit dokunuşlar ve sıfır bütçeli YouTube/Shorts/forum fikirleri araştırılıp `reports/2026-11-25-yayin-ve-buyume-raporu.md` ile Obsidian kasasına kaydedildi; kod değişmedi.
+- 2026-11-26 (Swarm ile Faz 1–4, 5 Dokunuş, Vitrin ve 4 HyperFrames Videosu): Kod Denetimi Faz 1–4 (`dikte/fsutil.py` ortaklaştırma + 7 test maskesi temizliği), 5 dokunuş (Bas-Bırak, mikrofon seçimi, `dikte/indicator.py` odak çalmayan gösterge, Gelişmiş Ayarlar), vitrin/OG kartı yenilemesi ve HyperFrames ile 4 video (`video-hf/`) + 2 web kopyası (`docs/assets/dikte-tanitim-tr/en.mp4`) tamamlandı (**465 passed, 1 skipped**).

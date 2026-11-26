@@ -110,10 +110,17 @@ def test_app_js_activity_timeline_deduplication():
 
 
 def test_app_js_instant_settings_save():
-    """app.js must provide triggerInstantSettingsSave."""
+    """app.js triggerInstantSettingsSave must call settings_save with ok guard, and switches must route via saveAi."""
     content = APP_JS.read_text(encoding="utf-8")
-    assert "function triggerInstantSettingsSave()" in content
-    assert "api.ai_settings_save" in content
+    m = re.search(r"function triggerInstantSettingsSave\(\)\s*\{.*?\n  \}", content, re.DOTALL)
+    assert m is not None
+    fn_body = m.group(0)
+    assert "api.settings_save" in fn_body
+    assert "result && result.ok" in fn_body
+    assert "saveAi({ autostart: next })" in content
+    assert "saveAi({ update_check_on_start: next })" in content
+    assert 'api.ai_settings_save({ autostart:' not in content
+    assert 'api.ai_settings_save({ update_check_on_start:' not in content
 
 
 def test_style_css_sidebar_logo_and_collapsed_rules():

@@ -5,19 +5,19 @@
 
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import logging
 import os
 import re
 import threading
 import urllib.error
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config, diagnostics
-from .models import human_size, load_custom_models, save_custom_models
+from . import config, diagnostics, fsutil
+from .models import _CUSTOM_MODELS_LOCK, human_size, load_custom_models, save_custom_models
 
 logger = logging.getLogger(__name__)
 
@@ -102,16 +102,18 @@ def get_text_model(name: str) -> TextModel:
     raise TextModelError("Bilinmeyen metin modeli.")
 
 
-def models_dir() -> Path:
+def models_dir(base_dir: Path | None = None) -> Path:
+    if base_dir is not None:
+        return Path(base_dir) / "text"
     return Path(config.text_models_dir())
 
 
-def text_model_path(name: str) -> Path:
-    return models_dir() / get_text_model(name).filename
+def text_model_path(name: str, base_dir: Path | None = None) -> Path:
+    return models_dir(base_dir) / get_text_model(name).filename
 
 
-def partial_path(name: str) -> Path:
-    path = text_model_path(name)
+def partial_path(name: str, base_dir: Path | None = None) -> Path:
+    path = text_model_path(name, base_dir)
     return path.with_name(path.name + ".part")
 
 
@@ -128,8 +130,8 @@ def _has_gguf_magic(path: Path) -> bool:
         return False
 
 
-def is_installed(name: str) -> bool:
-    path = text_model_path(name)
+def is_installed(name: str, base_dir: Path | None = None) -> bool:
+    path = text_model_path(name, base_dir)
     try:
         spec = get_text_model(name)
         if spec.size_bytes == 0:
@@ -151,33 +153,33 @@ def is_installed(name: str) -> bool:
 is_downloaded = is_installed
 
 
-def installed_bytes(name: str) -> int:
-    path = text_model_path(name)
+def installed_bytes(name: str, base_dir: Path | None = None) -> int:
+    path = text_model_path(name, base_dir)
     try:
         return path.stat().st_size if path.exists() else 0
     except OSError:
         return 0
 
 
-def partial_bytes(name: str) -> int:
-    path = partial_path(name)
+def partial_bytes(name: str, base_dir: Path | None = None) -> int:
+    path = partial_path(name, base_dir)
     try:
         return path.stat().st_size if path.exists() else 0
     except OSError:
         return 0
 
 
-def delete_part(name: str) -> None:
+def delete_part(name: str, base_dir: Path | None = None) -> None:
     """Yarım kalan `.part` dosyasını siler (iptal)."""
     try:
-        partial_path(name).unlink(missing_ok=True)
+        partial_path(name, base_dir).unlink(missing_ok=True)
     except OSError as exc:
         raise TextModelError("Yarım dosya silinemedi.") from exc
 
 
-def delete(name: str) -> None:
+def delete(name: str, base_dir: Path | None = None) -> None:
     spec = get_text_model(name)
-    for path in (text_model_path(name), partial_path(name)):
+    for path in (text_model_path(name, base_dir), partial_path(name, base_dir)):
         try:
             path.unlink(missing_ok=True)
         except OSError as exc:
@@ -201,13 +203,13 @@ def _text_model_metadata(name: str) -> tuple[str, str, str]:
     return "GGUF · Yerel", "Hızlı", "Yüksek"
 
 
-def scan() -> list[dict]:
+def scan(base_dir: Path | None = None) -> list[dict]:
     items = []
     # 1. Yerleşik metin modelleri
     for spec in TEXT_MODELS:
-        installed = is_installed(spec.name)
-        part = partial_bytes(spec.name)
-        p = text_model_path(spec.name)
+        installed = is_installed(spec.name, base_dir)
+        part = partial_bytes(spec.name, base_dir)
+        p = text_model_path(spec.name, base_dir)
         vram_lbl, speed_lbl, quality_lbl = _text_model_metadata(spec.name)
         items.append(
             {
@@ -223,7 +225,7 @@ def scan() -> list[dict]:
                 "size_label": human_size(spec.size_bytes) if installed else "—",
                 "installed": installed,
                 "partial": (not installed) and part > 0,
-                "bytes": installed_bytes(spec.name) if installed else part,
+                "bytes": installed_bytes(spec.name, base_dir) if installed else part,
                 "custom": False,
                 "repo": spec.repo,
                 "repo_id": spec.repo,
@@ -242,12 +244,12 @@ def scan() -> list[dict]:
         m_name = c.get("name") or c.get("id")
         if not m_name:
             continue
-        installed = is_installed(m_name)
-        part = partial_bytes(m_name)
-        inst_bytes = installed_bytes(m_name)
+        installed = is_installed(m_name, base_dir)
+        part = partial_bytes(m_name, base_dir)
+        inst_bytes = installed_bytes(m_name, base_dir)
         size_b = int(c.get("size_bytes") or 0)
         actual_size = inst_bytes if installed else size_b
-        p = text_model_path(m_name)
+        p = text_model_path(m_name, base_dir)
         vram_lbl, speed_lbl, quality_lbl = _text_model_metadata(m_name)
         items.append(
             {
@@ -278,46 +280,18 @@ def scan() -> list[dict]:
     return items
 
 
-_ALLOWED_HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
-_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-
-
-def _validate_repo_segments(owner: str, repo_name: str) -> str:
-    for seg in (owner, repo_name):
-        if seg in {".", ".."} or not _REPO_SEGMENT_RE.match(seg):
-            raise TextModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model).")
-    return f"{owner}/{repo_name}"
-
-
 def _normalize_text_repo_and_file(repo_or_url: str, filename: str = "") -> tuple[str, str]:
-    if not repo_or_url or not isinstance(repo_or_url, str):
-        raise TextModelError("Geçerli bir Hugging Face model adresi veya depo kimliği girin.")
-    val = repo_or_url.strip()
     extracted_filename = (filename or "").strip()
-
-    if val.lower().startswith("http://") or val.lower().startswith("https://"):
-        parsed = urllib.parse.urlparse(val)
-        if parsed.netloc.lower() not in _ALLOWED_HF_HOSTS:
-            raise TextModelError("Yalnızca huggingface.co adresleri desteklenir.")
-        parts = [p for p in parsed.path.strip("/").split("/") if p]
-        if len(parts) >= 2:
-            repo = _validate_repo_segments(parts[0], parts[1])
-            if not extracted_filename and len(parts) >= 3:
-                last = parts[-1]
-                if last.lower().endswith(".gguf"):
-                    extracted_filename = last
-        else:
-            raise TextModelError("Geçerli bir Hugging Face repo kimliği veya URL girin.")
-    else:
-        parts = [p.strip() for p in val.split("/") if p.strip()]
-        if len(parts) == 2:
-            repo = _validate_repo_segments(parts[0], parts[1])
-        elif len(parts) >= 3 and not extracted_filename:
-            repo = _validate_repo_segments(parts[0], parts[1])
-            if parts[-1].lower().endswith(".gguf"):
-                extracted_filename = parts[-1]
-        else:
-            raise TextModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model).")
+    repo, extra = fsutil.normalize_hf_repo(
+        repo_or_url,
+        allow_extra_path=True,
+        error_cls=TextModelError,
+        invalid_msg="Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model).",
+    )
+    if not extracted_filename and extra:
+        last = extra[-1]
+        if last.lower().endswith(".gguf"):
+            extracted_filename = last
 
     if not extracted_filename:
         sub = repo.split("/")[-1]
@@ -336,52 +310,54 @@ def add_custom_text_model(repo_or_url: str, filename: str = "", label: str = "")
     repo, clean_filename = _normalize_text_repo_and_file(repo_or_url, filename)
     slug = "custom-text-" + f"{repo}--{clean_filename}".replace("/", "--").replace(".", "-").lower()
 
-    data = load_custom_models()
-    text_list = data.get("text", [])
-    for existing in text_list:
-        if existing.get("name") == slug or (
-            existing.get("repo") == repo and existing.get("filename") == clean_filename
-        ):
-            if label.strip():
-                existing["label"] = label.strip()
-                save_custom_models(data)
-            return existing
+    with _CUSTOM_MODELS_LOCK:
+        data = load_custom_models()
+        text_list = data.get("text", [])
+        for existing in text_list:
+            if existing.get("name") == slug or (
+                existing.get("repo") == repo and existing.get("filename") == clean_filename
+            ):
+                if label.strip():
+                    existing["label"] = label.strip()
+                    save_custom_models(data)
+                return existing
 
-    new_model = {
-        "name": slug,
-        "id": slug,
-        "repo": repo,
-        "filename": clean_filename,
-        "label": label.strip() or clean_filename.replace(".gguf", "").replace("-", " ").title(),
-        "desc": f"Hugging Face: {repo}/{clean_filename}",
-        "size_bytes": 0,
-        "approx_label": "—",
-        "tags": ["Özel", "Hugging Face"],
-        "custom": True,
-    }
-    text_list.append(new_model)
-    data["text"] = text_list
-    save_custom_models(data)
+        new_model = {
+            "name": slug,
+            "id": slug,
+            "repo": repo,
+            "filename": clean_filename,
+            "label": label.strip() or re.sub(r"\.gguf$", "", clean_filename, flags=re.IGNORECASE).replace("-", " ").title(),
+            "desc": f"Hugging Face: {repo}/{clean_filename}",
+            "size_bytes": 0,
+            "approx_label": "—",
+            "tags": ["Özel", "Hugging Face"],
+            "custom": True,
+        }
+        text_list.append(new_model)
+        data["text"] = text_list
+        save_custom_models(data)
     logger.info("Özel metin modeli eklendi: %s (%s / %s)", slug, repo, clean_filename)
     return new_model
 
 
 def remove_custom_text_model(model_id: str) -> None:
     """Özel metin modelini diskten siler ve custom_models.json dosyasından kaldırır."""
-    data = load_custom_models()
-    text_list = data.get("text", [])
-    found = next((m for m in text_list if m.get("name") == model_id or m.get("id") == model_id), None)
-    if not found:
-        raise TextModelError("Özel model bulunamadı veya yerleşik modeller listeden kaldırılamaz.")
+    with _CUSTOM_MODELS_LOCK:
+        data = load_custom_models()
+        text_list = data.get("text", [])
+        found = next((m for m in text_list if m.get("name") == model_id or m.get("id") == model_id), None)
+        if not found:
+            raise TextModelError("Özel model bulunamadı veya yerleşik modeller listeden kaldırılamaz.")
 
-    m_name = found.get("name") or model_id
-    try:
-        delete(m_name)
-    except TextModelError:
-        pass
+        m_name = found.get("name") or model_id
+        try:
+            delete(m_name)
+        except TextModelError:
+            pass
 
-    data["text"] = [m for m in text_list if m.get("name") != m_name and m.get("id") != m_name]
-    save_custom_models(data)
+        data["text"] = [m for m in text_list if m.get("name") != m_name and m.get("id") != m_name]
+        save_custom_models(data)
     logger.info("Özel metin modeli listeden kaldırıldı: %s", m_name)
 
 
@@ -517,12 +493,13 @@ class Downloader:
 
         if spec.size_bytes <= 0 and effective_total > 0:
             try:
-                data = load_custom_models()
-                for c in data.get("text", []):
-                    if c.get("name") == name or c.get("id") == name:
-                        c["size_bytes"] = effective_total
-                        save_custom_models(data)
-                        break
+                with _CUSTOM_MODELS_LOCK:
+                    data = load_custom_models()
+                    for c in data.get("text", []):
+                        if c.get("name") == name or c.get("id") == name:
+                            c["size_bytes"] = effective_total
+                            save_custom_models(data)
+                            break
             except Exception:
                 pass
 
@@ -549,6 +526,8 @@ class Downloader:
                             progress(written, effective_total)
                         except TypeError:
                             progress(written)
+        except (TimeoutError, ConnectionResetError, OSError, http.client.IncompleteRead) as exc:
+            raise TextModelError(f"İndirme kesildi: {exc}") from exc
         finally:
             try:
                 response.close()
@@ -565,11 +544,11 @@ class Downloader:
         if paused:
             return {"completed": False, "paused": True, "cancelled": False, "size": written}
 
-        if spec.size_bytes > 0 and written != spec.size_bytes:
+        if effective_total > 0 and written != effective_total:
             raise TextModelError(
-                f"İndirme tamamlanmadı ({human_size(written)} / {human_size(spec.size_bytes)})."
+                f"İndirme tamamlanmadı ({human_size(written)} / {human_size(effective_total)})."
             )
-        if spec.size_bytes == 0 and written <= 1024:
+        if effective_total == 0 and written <= 1024:
             raise TextModelError("İndirilen model dosyası çok küçük veya eksik.")
         if not _has_gguf_magic(part):
             try:
@@ -597,6 +576,7 @@ class LocalTextModel:
         return importlib.util.find_spec("llama_cpp") is not None
 
     def load(self, name: str, prefer_gpu: bool = True) -> str:
+        self.unload()
         if not self.available():
             raise TextModelError("Yerel metin motoru kurulu değil (llama.cpp).")
         path = text_model_path(name)
@@ -624,14 +604,17 @@ class LocalTextModel:
     def generate(self, system: str, user: str, max_tokens: int = 512) -> str:
         if self._llm is None:
             raise TextModelError("Metin modeli yüklü değil.")
-        result = self._llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=0,
-            max_tokens=max_tokens,
-        )
+        try:
+            result = self._llm.create_chat_completion(
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=0,
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            raise TextModelError("Metin modeli yanıt üretemedi.") from exc
         choices = result.get("choices") if isinstance(result, dict) else None
         if not choices:
             return ""
@@ -663,24 +646,26 @@ class TextModelManager:
         self._downloader = Downloader()
 
     def scan(self) -> list[dict]:
-        return scan()
+        return scan(self._models_dir)
 
     def list_models(self) -> list[dict]:
         return self.scan()
 
     def is_installed(self, name: str) -> bool:
-        return is_installed(name)
+        return is_installed(name, self._models_dir)
 
     def is_downloaded(self, name: str) -> bool:
-        return is_installed(name)
+        return is_installed(name, self._models_dir)
 
     def path(self, name: str) -> Path:
-        return text_model_path(name)
+        return text_model_path(name, self._models_dir)
 
     def download(self, name: str, progress=None) -> dict:
         pause_event = threading.Event()
         cancel_event = threading.Event()
         with self._lock:
+            if self._current_download_name is not None:
+                raise TextModelError("Başka bir metin modeli indiriliyor, lütfen bekle.")
             self._pause_event = pause_event
             self._cancel_event = cancel_event
             self._current_download_name = name
@@ -695,9 +680,7 @@ class TextModelManager:
             with self._lock:
                 if self._cancel_event is cancel_event:
                     self._cancel_event = None
-                if self._pause_event is pause_event:
                     self._pause_event = None
-                if self._current_download_name == name:
                     self._current_download_name = None
 
     def pause_download(self) -> dict:
@@ -713,7 +696,7 @@ class TextModelManager:
         return {"cancelled": True}
 
     def delete(self, name: str) -> None:
-        delete(name)
+        delete(name, self._models_dir)
 
     def delete_model(self, name: str) -> None:
         self.delete(name)

@@ -25,6 +25,9 @@ window.__snap = {
   activity: [],
   error: null,
   hotkey: "Sağ Ctrl",
+  hotkey_mode: "hold",
+  input_device: "default",
+  show_indicator: true,
   language: "Türkçe",
   save_history: true,
   can_refresh: false,
@@ -41,10 +44,21 @@ window.__history = [
     words: 132, model: "small",
     text: "Sabah toplantısında konuşulan üç ana başlığı not aldım." }
 ];
+window.__audioDevices = [
+  { id: "default", label: "Sistem Varsayılanı" },
+  { id: "USB Kulaklık Mikrofonu", label: "USB Kulaklık Mikrofonu" }
+];
 window.__settings = {
   save_history: true,
   hotkey: "right_ctrl",
   hotkey_label: "Sağ Ctrl",
+  hotkey_mode: "hold",
+  hotkey_mode_choices: [
+    { id: "hold", label: "Basılı Tut" },
+    { id: "toggle", label: "Bas-Bırak" }
+  ],
+  input_device: "default",
+  show_indicator: true,
   active_model: "large-v3",
   state: "ready",
   design_style: "dikte_ai",
@@ -117,7 +131,7 @@ window.__ai = {
   effects: true,
   state: "ready",
   ready: true,
-  version: "1.3.0",
+  version: "1.6.1",
   update_check_on_start: true,
   update_last_check_text: "—"
 };
@@ -162,6 +176,10 @@ window.pywebview = {
     text_model_delete: async (name) => { window.__calls.push("text_delete:" + name); return { ok: true, message: "Silindi." }; },
     text_model_open_folder: async (name) => ({ ok: true, message: "klasör" }),
     settings_get: async () => JSON.parse(JSON.stringify(window.__settings)),
+    audio_devices: async () => {
+      window.__calls.push("audio_devices");
+      return { ok: true, devices: JSON.parse(JSON.stringify(window.__audioDevices)), active: window.__settings.input_device || "default" };
+    },
     update_check: async (force) => {
       window.__calls.push("update_check:" + String(force));
       return window.__updateResult || { ok: false, message: "Sunucuya ulaşılamadı." };
@@ -170,10 +188,16 @@ window.pywebview = {
       window.__calls.push("update_apply");
       return window.__updateApplyResult || { ok: true, message: "Kurulum başlatıldı." };
     },
-    uninstall_info: async () => ({ ok: true, installed: false, version: "1.3.0", size_text: "1,0 GB", autostart: false }),
+    uninstall_info: async () => ({ ok: true, installed: false, version: "1.6.1", size_text: "1,0 GB", autostart: false }),
     settings_save: async (payload) => {
       window.__calls.push("settings_save:" + JSON.stringify(payload));
+      if (window.__settingsSaveFail) {
+        return { ok: false, message: window.__settingsSaveFail };
+      }
       window.__settings = Object.assign(window.__settings, payload);
+      if ("hotkey_mode" in payload) window.__snap.hotkey_mode = payload.hotkey_mode;
+      if ("input_device" in payload) window.__snap.input_device = payload.input_device;
+      if ("show_indicator" in payload) window.__snap.show_indicator = payload.show_indicator;
       return { ok: true, message: "Ayarlar kaydedildi.", settings: window.__settings };
     },
     ai_state: async () => JSON.parse(JSON.stringify(window.__ai)),
@@ -356,7 +380,8 @@ def test_dikte_ekrani_durumlari(page):
     assert page.locator("#device").inner_text() == "GPU"
     assert page.locator("#memText").inner_text() == "4.8 GB / 12 GB"
     assert "Model yüklendi" in page.locator("#activityList").inner_text()
-    assert page.locator("#shortcutHint").inner_text() == "Sağ Ctrl (basılı tut)"
+    assert "Sağ Ctrl" in page.locator("#shortcutHint").inner_text()
+    assert "Basılı tut ve konuş" in page.locator("#shortcutHint").inner_text()
 
     set_snapshot(page, state="recording")
     page.wait_for_function(
@@ -872,7 +897,7 @@ def test_guncelleme_karti_durumu(page):
     fresh(page)
     page.locator('.nav-btn[data-page="page-ayarlar"]').click()
     page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
-    assert page.locator("#updateVersion").inner_text() == "1.3.0"
+    assert page.locator("#updateVersion").inner_text() == "1.6.1"
     assert page.locator("#updateApplyBtn").is_disabled()
 
 
@@ -1149,4 +1174,16 @@ def test_hotkey_recorder_escape_cancels(page):
     assert after_calls == before_calls
     assert "ESCAPE" not in page.locator("#hotkeyNow").inner_text()
     assert page.locator("#hotkeySelect").input_value() == "right_ctrl"
+
+
+def test_ayarlar_kayit_hatasi_gizlenmez(page):
+    fresh(page)
+    page.evaluate("() => { window.__settingsSaveFail = 'Yazma izni yok'; }")
+    page.locator('.nav-btn[data-page="page-ayarlar"]').click()
+    page.wait_for_function("() => document.querySelectorAll('#hotkeySelect option').length === 7")
+    page.locator("#hotkeySelect").select_option("f8")
+    page.wait_for_timeout(500)
+    assert not page.locator("#settingsDirty").is_hidden()
+    assert "Yazma izni yok" in page.locator("#toastWrap").inner_text()
+    page.evaluate("() => { window.__settingsSaveFail = null; }")
 

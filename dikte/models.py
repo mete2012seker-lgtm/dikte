@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import re
 import shutil
 import threading
-import urllib.parse
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
+
+from . import fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +99,20 @@ def _custom_models_path() -> Path:
     return Path(config.CUSTOM_MODELS_FILE)
 
 
+def _filter_custom_entries(entries) -> list[dict]:
+    if not isinstance(entries, list):
+        return []
+    cleaned: list[dict] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        cleaned.append(dict(item))
+    return cleaned
+
+
 def load_custom_models(path: Path | None = None) -> dict[str, list[dict]]:
     """custom_models.json dosyasını güvenle okur."""
     file_path = Path(path) if path else _custom_models_path()
@@ -110,13 +122,20 @@ def load_custom_models(path: Path | None = None) -> dict[str, list[dict]]:
         try:
             raw = json.loads(file_path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
-                return {"speech": [], "text": []}
+                raise ValueError("Özel modeller nesne değil")
             return {
-                "speech": list(raw.get("speech") or []),
-                "text": list(raw.get("text") or []),
+                "speech": _filter_custom_entries(raw.get("speech")),
+                "text": _filter_custom_entries(raw.get("text")),
             }
-        except Exception as exc:
-            logger.warning("Özel modeller okunamadı (%s)", exc)
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:
+            logger.warning("Özel modeller okunamadı (%s), yedekleniyor", exc)
+            try:
+                file_path.rename(fsutil.backup_corrupt_path(file_path))
+            except Exception as backup_exc:
+                logger.warning("Bozuk özel modeller dosyası yedeklenemedi: %s", backup_exc)
+            return {"speech": [], "text": []}
+        except OSError as exc:
+            logger.warning("Özel modeller dosyasına erişilemedi (%s)", exc)
             return {"speech": [], "text": []}
 
 
@@ -124,49 +143,21 @@ def save_custom_models(data: dict[str, list[dict]], path: Path | None = None) ->
     """custom_models.json dosyasını atomik yazar."""
     file_path = Path(path) if path else _custom_models_path()
     with _CUSTOM_MODELS_LOCK:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        temp = file_path.with_name(
-            f"{file_path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
-        )
         try:
-            payload = json.dumps(data, ensure_ascii=False, indent=2)
-            with open(temp, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temp, file_path)
+            fsutil.atomic_write_json(file_path, data)
         except Exception as exc:
-            try:
-                temp.unlink(missing_ok=True)
-            except Exception:
-                pass
             raise ModelError("Özel modeller kaydedilemedi.") from exc
-
-
-_ALLOWED_HF_HOSTS = {"huggingface.co", "www.huggingface.co"}
-_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 def _normalize_speech_repo(repo_or_url: str) -> str:
     """Hugging Face repo_id veya URL'sini 'owner/repo' biçimine normalize eder."""
-    if not repo_or_url or not isinstance(repo_or_url, str):
-        raise ModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).")
-    val = repo_or_url.strip()
-    if val.lower().startswith("http://") or val.lower().startswith("https://"):
-        parsed = urllib.parse.urlparse(val)
-        if parsed.netloc.lower() not in _ALLOWED_HF_HOSTS:
-            raise ModelError("Yalnızca huggingface.co adresleri desteklenir.")
-        parts = [p for p in parsed.path.strip("/").split("/") if p]
-        if len(parts) >= 2:
-            val = f"{parts[0]}/{parts[1]}"
-        else:
-            raise ModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).")
-    parts = [p.strip() for p in val.split("/") if p.strip()]
-    if len(parts) == 2 and all(
-        seg not in {".", ".."} and _REPO_SEGMENT_RE.match(seg) for seg in parts
-    ):
-        return f"{parts[0]}/{parts[1]}"
-    raise ModelError("Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).")
+    repo, _ = fsutil.normalize_hf_repo(
+        repo_or_url,
+        allow_extra_path=False,
+        error_cls=ModelError,
+        invalid_msg="Geçerli bir Hugging Face repo kimliği girin (ör. kullanici/model-adi).",
+    )
+    return repo
 
 
 def get_model(name: str) -> SpeechModel:
@@ -334,50 +325,52 @@ def add_custom_model(repo_id: str, label: str = "") -> dict:
     clean_repo = _normalize_speech_repo(repo_id)
     slug = "custom-" + clean_repo.replace("/", "--").replace(".", "-").lower()
 
-    data = load_custom_models()
-    speech_list = data.get("speech", [])
-    for existing in speech_list:
-        if existing.get("repo_id") == clean_repo or existing.get("name") == slug:
-            if label.strip():
-                existing["label"] = label.strip()
-                save_custom_models(data)
-            return existing
+    with _CUSTOM_MODELS_LOCK:
+        data = load_custom_models()
+        speech_list = data.get("speech", [])
+        for existing in speech_list:
+            if existing.get("repo_id") == clean_repo or existing.get("name") == slug:
+                if label.strip():
+                    existing["label"] = label.strip()
+                    save_custom_models(data)
+                return existing
 
-    new_model = {
-        "name": slug,
-        "repo_id": clean_repo,
-        "label": label.strip() or clean_repo.split("/")[-1],
-        "desc": f"Hugging Face özel modeli: {clean_repo}",
-        "approx_bytes": 0,
-        "approx_label": "—",
-        "tags": ["Özel", "Hugging Face"],
-        "custom": True,
-    }
-    speech_list.append(new_model)
-    data["speech"] = speech_list
-    save_custom_models(data)
+        new_model = {
+            "name": slug,
+            "repo_id": clean_repo,
+            "label": label.strip() or clean_repo.split("/")[-1],
+            "desc": f"Hugging Face özel modeli: {clean_repo}",
+            "approx_bytes": 0,
+            "approx_label": "—",
+            "tags": ["Özel", "Hugging Face"],
+            "custom": True,
+        }
+        speech_list.append(new_model)
+        data["speech"] = speech_list
+        save_custom_models(data)
     logger.info("Özel ses modeli eklendi: %s (%s)", slug, clean_repo)
     return new_model
 
 
 def remove_custom_model(name: str, models_dir: Path | None = None) -> None:
     """Özel ses modelini diskten siler ve custom_models.json dosyasından kaldırır."""
-    data = load_custom_models()
-    speech_list = data.get("speech", [])
-    found = next((m for m in speech_list if m.get("name") == name), None)
-    if not found:
-        raise ModelError("Özel model bulunamadı veya yerleşik modeller listeden kaldırılamaz.")
-
     from . import config
 
     mdir = Path(models_dir or config.MODELS_DIR)
-    try:
-        delete(name, mdir)
-    except ModelError:
-        pass
+    with _CUSTOM_MODELS_LOCK:
+        data = load_custom_models()
+        speech_list = data.get("speech", [])
+        found = next((m for m in speech_list if m.get("name") == name), None)
+        if not found:
+            raise ModelError("Özel model bulunamadı veya yerleşik modeller listeden kaldırılamaz.")
 
-    data["speech"] = [m for m in speech_list if m.get("name") != name]
-    save_custom_models(data)
+        try:
+            delete(name, mdir)
+        except ModelError:
+            pass
+
+        data["speech"] = [m for m in speech_list if m.get("name") != name]
+        save_custom_models(data)
     logger.info("Özel ses modeli listeden kaldırıldı: %s", name)
 
 
@@ -502,6 +495,8 @@ class ModelManager:
     def download(self, name: str, progress=None) -> str:
         cancel_event = threading.Event()
         with self._lock:
+            if self._current_download_name is not None:
+                raise ModelError("Başka bir model indiriliyor, lütfen bekle.")
             self._cancel_event = cancel_event
             self._current_download_name = name
         try:
@@ -515,7 +510,6 @@ class ModelManager:
             with self._lock:
                 if self._cancel_event is cancel_event:
                     self._cancel_event = None
-                if self._current_download_name == name:
                     self._current_download_name = None
 
     def cancel_download(self) -> dict:

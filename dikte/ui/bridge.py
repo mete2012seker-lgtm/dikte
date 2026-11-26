@@ -159,6 +159,9 @@ class Api:
     def settings_save(self, payload: dict | None = None) -> dict:
         return self._controller.settings_save(payload)
 
+    def audio_devices(self) -> dict:
+        return self._controller.audio_devices()
+
     # ---------- karşılama sihirbazı ----------
 
     def wizard_status(self) -> dict:

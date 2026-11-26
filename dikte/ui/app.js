@@ -42,6 +42,8 @@
 
   let api = null;
   let polling = false;
+  let pollTimer = null;
+  let waveRafId = null;
   let lastSeq = 0;
   let lastActivity = "";
   let lastError = null;
@@ -86,7 +88,7 @@
     if (persist) {
       userChangedSidebar = true;
       if (hasApi("settings_save")) {
-        api.settings_save({ sidebar_collapsed: isCollapsed }).catch(() => {});
+        callApi("settings_save", { sidebar_collapsed: isCollapsed }, { silent: true });
       }
     }
   }
@@ -121,9 +123,9 @@
     if (persist) {
       userChangedDesignStyle = true;
       if (hasApi("settings_save")) {
-        api.settings_save({ design_style: designStyle }).catch(() => {});
+        callApi("settings_save", { design_style: designStyle }, { silent: true });
       } else if (hasApi("ai_settings_save")) {
-        api.ai_settings_save({ design_style: designStyle }).catch(() => {});
+        callApi("ai_settings_save", { design_style: designStyle }, { silent: true });
       }
     }
   }
@@ -225,6 +227,8 @@
   }
 
   function renderWaveAnim(now) {
+    waveRafId = null;
+    if (document.hidden) return;
     if (waveCtx && waveCanvas && stage) {
       if (morphValue !== morphTo) {
         const elapsed = Math.max(0, now - morphStartTime);
@@ -297,9 +301,21 @@
         }
       }
     }
-    requestAnimationFrame(renderWaveAnim);
+    scheduleWaveFrame();
   }
-  requestAnimationFrame(renderWaveAnim);
+
+  function scheduleWaveFrame() {
+    if (document.hidden || waveRafId !== null) return;
+    waveRafId = requestAnimationFrame(renderWaveAnim);
+  }
+
+  function stopWaveAnim() {
+    if (waveRafId !== null) {
+      cancelAnimationFrame(waveRafId);
+      waveRafId = null;
+    }
+  }
+  scheduleWaveFrame();
 
   /* ---------- küçük yardımcılar ---------- */
 
@@ -327,6 +343,33 @@
 
   function hasApi(name) {
     return api && typeof api[name] === "function";
+  }
+
+  async function callApi(name, ...args) {
+    let opts = {};
+    if (
+      args.length > 0 &&
+      args[args.length - 1] &&
+      typeof args[args.length - 1] === "object" &&
+      !Array.isArray(args[args.length - 1]) &&
+      ("__callOpts" in args[args.length - 1] || "silent" in args[args.length - 1])
+    ) {
+      opts = args.pop();
+    }
+    if (!hasApi(name)) {
+      if (!opts.silent) toast("Uygulama bağlantısı hazır değil.", "info");
+      return null;
+    }
+    try {
+      const res = await api[name](...args);
+      if (!opts.silent && (!res || res.ok === false)) {
+        toast((res && res.message) || "İşlem yapılamadı.", "warn");
+      }
+      return res || null;
+    } catch (error) {
+      if (!opts.silent) toast("İşlem yapılamadı.", "error");
+      return null;
+    }
   }
 
   /* ---------- tema ---------- */
@@ -452,23 +495,6 @@
     }
   }
 
-  function buildWave(element, count, towardRight) {
-    if (!element) return;
-    element.innerHTML = "";
-    for (let i = 0; i < count; i++) {
-      const t = i / (count - 1);
-      const envelope = Math.pow(towardRight ? t : 1 - t, 1.5);
-      const height = Math.round(6 + envelope * 52 + Math.random() * 8);
-      const bar = document.createElement("span");
-      bar.style.height = height + "px";
-      bar.style.animationDelay = (-Math.random() * 3).toFixed(2) + "s";
-      bar.style.animationDuration = (2.6 + Math.random() * 1.4).toFixed(2) + "s";
-      element.appendChild(bar);
-    }
-  }
-  buildWave($("#waveLeft"), 26, true);
-  buildWave($("#waveRight"), 26, false);
-
   /* ---------- sayfa yönlendirici ---------- */
 
   function showPage(pageId) {
@@ -542,7 +568,11 @@
     } else if (state === "error") {
       shortcutHint.textContent = "Tekrar denemek için mikrofon düğmesine bas";
     } else {
-      shortcutHint.textContent = (window.__hotkeyLabel || "Sağ Ctrl") + " (basılı tut)";
+      const label = window.__hotkeyLabel || "Sağ Ctrl";
+      const mode = window.__hotkeyMode || "hold";
+      shortcutHint.textContent = mode === "toggle"
+        ? label + " · Başlatmak için bas, bitirmek için tekrar bas"
+        : label + " · Basılı tut ve konuş";
     }
     if (state !== lastState) {
       lastState = state;
@@ -684,6 +714,13 @@
       }
     }
     window.__hotkeyLabel = snapshot.hotkey || "Sağ Ctrl";
+    if (snapshot.hotkey_mode) {
+      window.__hotkeyMode = snapshot.hotkey_mode;
+    }
+    const sbMicName = $("#sbMicName");
+    if (sbMicName && snapshot.input_device) {
+      sbMicName.textContent = snapshot.input_device === "default" ? "Sistem Varsayılanı" : snapshot.input_device;
+    }
     applyState(snapshot.state);
     statusText.textContent = snapshot.error && snapshot.state === "error"
       ? snapshot.error
@@ -724,15 +761,49 @@
   /* ---------- Python köprüsü ---------- */
 
   async function pollOnce() {
-    if (!polling) return;
+    if (!polling || document.hidden) return;
     try {
       const snapshot = await api.snapshot();
       apply(snapshot);
     } catch (error) {
       console.error("Durum okunamadı:", error);
     }
-    if (polling) setTimeout(pollOnce, 250);
+    scheduleNextPoll();
   }
+
+  function scheduleNextPoll() {
+    if (!polling || document.hidden || pollTimer !== null) return;
+    pollTimer = window.setTimeout(() => {
+      pollTimer = null;
+      pollOnce();
+    }, 250);
+  }
+
+  function pauseBackgroundLoops() {
+    if (pollTimer !== null) {
+      window.clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+    stopWaveAnim();
+    stopModelsPolling();
+  }
+
+  function resumeBackgroundLoops() {
+    if (document.hidden) return;
+    scheduleWaveFrame();
+    if (polling) {
+      pollOnce();
+    }
+    if (currentPage === "page-modeller") {
+      loadModels();
+      startModelsPolling();
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pauseBackgroundLoops();
+    else resumeBackgroundLoops();
+  });
 
   let wizardCheckedOnStart = false;
 
@@ -740,7 +811,7 @@
     if (polling || !window.pywebview || !window.pywebview.api) return;
     api = window.pywebview.api;
     polling = true;
-    pollOnce();
+    if (!document.hidden) pollOnce();
     if (!wizardCheckedOnStart) {
       wizardCheckedOnStart = true;
       checkWelcomeWizard(null);
@@ -864,8 +935,10 @@
   }
 
   async function deleteHistory(id, row) {
-    if (!hasApi("history_delete")) return;
+    if (!hasApi("history_delete") || row.classList.contains("removing")) return;
     row.classList.add("removing");
+    const delBtn = row.querySelector(".btn-danger");
+    if (delBtn) delBtn.disabled = true;
     window.setTimeout(async () => {
       try {
         const result = await api.history_delete(id);
@@ -874,10 +947,12 @@
           loadHistory();
         } else {
           row.classList.remove("removing");
+          if (delBtn) delBtn.disabled = false;
           toast((result && result.message) || "Kayıt silinemedi.", "warn");
         }
       } catch (error) {
         row.classList.remove("removing");
+        if (delBtn) delBtn.disabled = false;
         toast("Kayıt silinemedi.", "error");
       }
     }, 200);
@@ -920,6 +995,146 @@
     return { text: "İndirilmedi", cls: "muted" };
   }
 
+  function closeAllModelDropdowns() {
+    $$(".model-dropdown.is-open").forEach((d) => d.classList.remove("is-open"));
+  }
+
+  function buildModelMenu(item, cfg) {
+    const menuWrap = document.createElement("div");
+    menuWrap.className = "model-menu-wrap";
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "model-menu-btn";
+    menuBtn.setAttribute("aria-label", "Model menüsü");
+    menuBtn.textContent = "⋯";
+    const menuDropdown = document.createElement("div");
+    menuDropdown.className = "model-dropdown";
+
+    if (item.installed && !item.active && !(cfg.isText && item.loaded)) {
+      const itemAct = document.createElement("button");
+      itemAct.className = "model-dropdown-item";
+      itemAct.textContent = "Aktifleştir";
+      itemAct.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.remove("is-open");
+        cfg.onActivate(item.name);
+      });
+      menuDropdown.appendChild(itemAct);
+    }
+
+    if (item.installed || item.partial) {
+      const itemDel = document.createElement("button");
+      itemDel.className = "model-dropdown-item danger";
+      itemDel.textContent = "Dosyayı Sil";
+      itemDel.disabled = Boolean(item.active || item.downloading || (cfg.isText && item.loaded));
+      itemDel.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (itemDel.disabled) return;
+        menuDropdown.classList.remove("is-open");
+        cfg.onDelete(item);
+      });
+      menuDropdown.appendChild(itemDel);
+    }
+
+    if (item.custom) {
+      const itemRem = document.createElement("button");
+      itemRem.className = "model-dropdown-item danger";
+      itemRem.textContent = "Listeden Kaldır";
+      itemRem.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.remove("is-open");
+        if (!window.confirm(item.label + " listeden tamamen kaldırılsın mı?")) return;
+        const res = await callApi(cfg.removeCustomMethod, item.name);
+        if (res && res.ok) {
+          toast(res.message || cfg.removeCustomOkMsg, "info");
+          loadModels();
+        }
+      });
+      menuDropdown.appendChild(itemRem);
+    }
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      $$(".model-dropdown.is-open").forEach((d) => {
+        if (d !== menuDropdown) d.classList.remove("is-open");
+      });
+      menuDropdown.classList.toggle("is-open");
+    });
+    menuWrap.append(menuBtn, menuDropdown);
+    return menuWrap;
+  }
+
+  function buildModelCard(item, cfg) {
+    const card = document.createElement("div");
+    card.className = "m-card" + (item.name === cfg.selectedName ? " is-selected" : "");
+    card.dataset.name = item.name;
+    if (cfg.isText) card.style.cursor = "pointer";
+
+    const icon = document.createElement("div");
+    icon.className = "m-ico";
+    icon.innerHTML = `<svg class="ic"><use href="#${cfg.iconId}"/></svg>`;
+
+    const main = document.createElement("div");
+    main.className = "m-main";
+    const name = document.createElement("div");
+    name.className = "m-name";
+    name.textContent = item.label;
+    const desc = document.createElement("div");
+    desc.className = "m-desc";
+    desc.textContent = item.desc;
+    const tags = document.createElement("div");
+    tags.className = "m-tags";
+    (item.tags || []).slice(0, 3).forEach((tag) => {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.textContent = tag;
+      tags.appendChild(span);
+    });
+    main.append(name, desc, tags);
+
+    if (cfg.showProgress) {
+      const wrap = document.createElement("div");
+      wrap.className = "dl-wrap";
+      const bar = document.createElement("div");
+      bar.className = "dl-bar";
+      const fill = document.createElement("i");
+      fill.style.width = Math.max(1, cfg.percent || 0) + "%";
+      bar.appendChild(fill);
+      const text = document.createElement("span");
+      text.className = "dl-text";
+      text.textContent = "%" + (cfg.percent || 0);
+      wrap.append(bar, text);
+      main.appendChild(wrap);
+    }
+
+    const size = document.createElement("div");
+    size.className = "m-size";
+    size.textContent = item.installed ? item.size_label : item.approx_label;
+    const quant = document.createElement("small");
+    quant.textContent = item.installed ? "diskte" : "indirme";
+    size.appendChild(quant);
+
+    const status = cfg.getStatus(item);
+    const statusBox = document.createElement("div");
+    statusBox.className = "m-status " + status.cls;
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    statusBox.append(dot, document.createTextNode(status.text));
+
+    const actions = document.createElement("div");
+    actions.className = "m-actions";
+    cfg.appendActionButtons(actions, item);
+    actions.appendChild(buildModelMenu(item, cfg));
+
+    card.append(icon, main, size, statusBox, actions);
+    card.addEventListener("click", (e) => {
+      if (cfg.isText && (e.target.closest("button") || e.target.closest(".model-menu-wrap") || e.target.closest(".model-dropdown"))) {
+        return;
+      }
+      cfg.onSelect(item.name);
+    });
+    return card;
+  }
+
   function renderTextModels(list, items) {
     const panel = $("#detailPanel");
     if (panel) panel.style.display = "";
@@ -942,199 +1157,88 @@
       empty.className = "empty";
       empty.textContent = "Aramanla eşleşen model yok.";
       list.appendChild(empty);
-      renderDetail();
       return;
     }
 
     const download = modelsState && modelsState.text_download;
-
     visible.forEach((item) => {
-      const card = document.createElement("div");
-      card.className = "m-card" + (item.name === selectedTextModel ? " is-selected" : "");
-      card.dataset.name = item.name;
-      card.style.cursor = "pointer";
-
-      const icon = document.createElement("div");
-      icon.className = "m-ico";
-      icon.innerHTML = '<svg class="ic"><use href="#i-spark"/></svg>';
-
-      const main = document.createElement("div");
-      main.className = "m-main";
-      const name = document.createElement("div");
-      name.className = "m-name";
-      name.textContent = item.label;
-      const desc = document.createElement("div");
-      desc.className = "m-desc";
-      desc.textContent = item.desc;
-      const tags = document.createElement("div");
-      tags.className = "m-tags";
-      (item.tags || []).slice(0, 3).forEach((tag) => {
-        const span = document.createElement("span");
-        span.className = "tag";
-        span.textContent = tag;
-        tags.appendChild(span);
-      });
-      main.append(name, desc, tags);
-
-      const isDownloading = download && download.name === item.name;
-      if (isDownloading && (download.state === "downloading" || download.state === "pausing")) {
-        const wrap = document.createElement("div");
-        wrap.className = "dl-wrap";
-        const bar = document.createElement("div");
-        bar.className = "dl-bar";
-        const fill = document.createElement("i");
-        fill.style.width = Math.max(1, download.percent || 0) + "%";
-        bar.appendChild(fill);
-        const text = document.createElement("span");
-        text.className = "dl-text";
-        text.textContent = "%" + (download.percent || 0);
-        wrap.append(bar, text);
-        main.appendChild(wrap);
-      }
-
-      const size = document.createElement("div");
-      size.className = "m-size";
-      size.textContent = item.installed ? item.size_label : item.approx_label;
-      const quant = document.createElement("small");
-      quant.textContent = item.installed ? "diskte" : "indirme";
-      size.appendChild(quant);
-
-      const status = textStatus(item);
-      const statusBox = document.createElement("div");
-      statusBox.className = "m-status " + status.cls;
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      statusBox.append(dot, document.createTextNode(status.text));
-
-      const actions = document.createElement("div");
-      actions.className = "m-actions";
-
+      const isDownloading = Boolean(download && download.name === item.name);
       const state = isDownloading ? download.state : null;
-      if (state === "downloading" || state === "pausing") {
-        const pause = document.createElement("button");
-        pause.className = "m-btn";
-        pause.textContent = "Duraklat";
-        pause.addEventListener("click", () => textModelAction("text_model_pause", item.name));
-        const cancel = document.createElement("button");
-        cancel.className = "m-btn";
-        cancel.textContent = "İptal";
-        cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
-        actions.append(pause, cancel);
-      } else if (state === "paused") {
-        const resume = document.createElement("button");
-        resume.className = "m-btn primary";
-        resume.textContent = "Devam et";
-        resume.addEventListener("click", () => textModelAction("text_model_resume", item.name));
-        const cancel = document.createElement("button");
-        cancel.className = "m-btn";
-        cancel.textContent = "İptal";
-        cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
-        actions.append(resume, cancel);
-      } else if (item.installed) {
-        const activate = document.createElement("button");
-        activate.className = "m-btn";
-        if (item.active || item.loaded) {
-          activate.classList.add("is-active");
-          activate.textContent = item.loaded ? "Yüklü" : "Aktif";
-          activate.disabled = true;
-        } else {
-          activate.classList.add("primary");
-          activate.textContent = "Aktifleştir";
-          activate.addEventListener("click", () => textModelAction("text_model_activate", item.name));
-        }
-        actions.appendChild(activate);
-      } else {
-        const downloadBtn = document.createElement("button");
-        downloadBtn.className = "m-btn primary";
-        downloadBtn.textContent = item.partial ? "Devam et" : "İndir";
-        downloadBtn.addEventListener("click", () => textModelAction("text_model_download", item.name));
-        actions.appendChild(downloadBtn);
-      }
-
-      if (item.installed || item.partial) {
-        const remove = document.createElement("button");
-        remove.className = "icon-btn";
-        remove.title = "Modeli sil";
-        remove.setAttribute("aria-label", "Modeli sil");
-        remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
-        remove.disabled = Boolean(item.active || item.downloading || item.loaded);
-        remove.addEventListener("click", () => {
-          if (remove.disabled) return;
-          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
-          textModelAction("text_model_delete", item.name);
-        });
-        actions.appendChild(remove);
-      }
-
-      // Faz 4.3: "⋯" (üç nokta) işlem menüsü
-      const menuWrap = document.createElement("div");
-      menuWrap.className = "model-menu-wrap";
-      const menuBtn = document.createElement("button");
-      menuBtn.className = "model-menu-btn";
-      menuBtn.setAttribute("aria-label", "Model menüsü");
-      menuBtn.textContent = "⋯";
-      const menuDropdown = document.createElement("div");
-      menuDropdown.className = "model-dropdown";
-
-      if (item.installed && !item.active && !item.loaded) {
-        const itemAct = document.createElement("button");
-        itemAct.className = "model-dropdown-item";
-        itemAct.textContent = "Aktifleştir";
-        itemAct.addEventListener("click", (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.remove("is-open");
-          textModelAction("text_model_activate", item.name);
-        });
-        menuDropdown.appendChild(itemAct);
-      }
-
-      if (item.installed || item.partial) {
-        const itemDel = document.createElement("button");
-        itemDel.className = "model-dropdown-item danger";
-        itemDel.textContent = "Dosyayı Sil";
-        itemDel.disabled = Boolean(item.active || item.downloading || item.loaded);
-        itemDel.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (itemDel.disabled) return;
-          menuDropdown.classList.remove("is-open");
-          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
-          textModelAction("text_model_delete", item.name);
-        });
-        menuDropdown.appendChild(itemDel);
-      }
-
-      if (item.custom) {
-        const itemRem = document.createElement("button");
-        itemRem.className = "model-dropdown-item danger";
-        itemRem.textContent = "Listeden Kaldır";
-        itemRem.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.remove("is-open");
-          if (!window.confirm(item.label + " listeden tamamen kaldırılsın mı?")) return;
-          if (hasApi("text_models_remove_custom")) {
-            await api.text_models_remove_custom(item.name);
-            toast("Özel model listeden kaldırıldı.", "info");
-            loadModels();
+      const card = buildModelCard(item, {
+        isText: true,
+        iconId: "i-spark",
+        selectedName: selectedTextModel,
+        showProgress: isDownloading && (state === "downloading" || state === "pausing"),
+        percent: download ? download.percent : 0,
+        getStatus: textStatus,
+        removeCustomMethod: "text_models_remove_custom",
+        removeCustomOkMsg: "Özel model listeden kaldırıldı.",
+        onActivate: (n) => textModelAction("text_model_activate", n),
+        onDelete: (it) => {
+          if (!window.confirm(it.label + " diskten silinsin mi?")) return;
+          textModelAction("text_model_delete", it.name);
+        },
+        onSelect: (n) => {
+          selectedTextModel = n;
+          renderModels();
+        },
+        appendActionButtons: (actions, item) => {
+          if (state === "downloading" || state === "pausing") {
+            const pause = document.createElement("button");
+            pause.className = "m-btn";
+            pause.textContent = "Duraklat";
+            pause.addEventListener("click", () => textModelAction("text_model_pause", item.name));
+            const cancel = document.createElement("button");
+            cancel.className = "m-btn";
+            cancel.textContent = "İptal";
+            cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+            actions.append(pause, cancel);
+          } else if (state === "paused") {
+            const resume = document.createElement("button");
+            resume.className = "m-btn primary";
+            resume.textContent = "Devam et";
+            resume.addEventListener("click", () => textModelAction("text_model_resume", item.name));
+            const cancel = document.createElement("button");
+            cancel.className = "m-btn";
+            cancel.textContent = "İptal";
+            cancel.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
+            actions.append(resume, cancel);
+          } else if (item.installed) {
+            const activate = document.createElement("button");
+            activate.className = "m-btn";
+            if (item.active || item.loaded) {
+              activate.classList.add("is-active");
+              activate.textContent = item.loaded ? "Yüklü" : "Aktif";
+              activate.disabled = true;
+            } else {
+              activate.classList.add("primary");
+              activate.textContent = "Aktifleştir";
+              activate.addEventListener("click", () => textModelAction("text_model_activate", item.name));
+            }
+            actions.appendChild(activate);
+          } else {
+            const downloadBtn = document.createElement("button");
+            downloadBtn.className = "m-btn primary";
+            downloadBtn.textContent = item.partial ? "Devam et" : "İndir";
+            downloadBtn.addEventListener("click", () => textModelAction("text_model_download", item.name));
+            actions.appendChild(downloadBtn);
           }
-        });
-        menuDropdown.appendChild(itemRem);
-      }
 
-      menuBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        $$(".model-dropdown.is-open").forEach(d => { if (d !== menuDropdown) d.classList.remove("is-open"); });
-        menuDropdown.classList.toggle("is-open");
-      });
-      menuWrap.append(menuBtn, menuDropdown);
-      actions.appendChild(menuWrap);
-
-      card.append(icon, main, size, statusBox, actions);
-      card.addEventListener("click", (e) => {
-        if (e.target.closest("button") || e.target.closest(".model-menu-wrap") || e.target.closest(".model-dropdown")) {
-          return;
-        }
-        selectedTextModel = item.name;
-        renderModels();
+          if (item.installed || item.partial) {
+            const remove = document.createElement("button");
+            remove.className = "icon-btn";
+            remove.title = "Modeli sil";
+            remove.setAttribute("aria-label", "Modeli sil");
+            remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
+            remove.disabled = Boolean(item.active || item.downloading || item.loaded);
+            remove.addEventListener("click", () => {
+              if (remove.disabled) return;
+              if (!window.confirm(item.label + " diskten silinsin mi?")) return;
+              textModelAction("text_model_delete", item.name);
+            });
+            actions.appendChild(remove);
+          }
+        },
       });
       list.appendChild(card);
     });
@@ -1167,7 +1271,6 @@
       return;
     }
     const panel = $("#detailPanel");
-    const descPanel = $("#descPanel");
     if (panel && modelsState) panel.style.display = "";
 
     const query = ($("#modelSearch").value || "").toLocaleLowerCase("tr");
@@ -1175,9 +1278,9 @@
       !query || (item.label + " " + item.desc).toLocaleLowerCase("tr").includes(query)
     );
 
-    if (!selectedModel || !items.some((item) => item.name === selectedModel)) {
-      const active = items.find((item) => item.active);
-      selectedModel = (active || items[0] || {}).name || null;
+    if (!selectedModel || !visible.some((item) => item.name === selectedModel)) {
+      const active = visible.find((item) => item.active);
+      selectedModel = (active || visible[0] || {}).name || null;
     }
 
     list.innerHTML = "";
@@ -1191,190 +1294,140 @@
     }
 
     const download = modelsState && modelsState.download;
-
     visible.forEach((item) => {
-      const card = document.createElement("div");
-      card.className = "m-card" + (item.name === selectedModel ? " is-selected" : "");
-      card.dataset.name = item.name;
-
-      const icon = document.createElement("div");
-      icon.className = "m-ico";
-      icon.innerHTML = '<svg class="ic"><use href="#i-mic"/></svg>';
-
-      const main = document.createElement("div");
-      main.className = "m-main";
-      const name = document.createElement("div");
-      name.className = "m-name";
-      name.textContent = item.label;
-      const desc = document.createElement("div");
-      desc.className = "m-desc";
-      desc.textContent = item.desc;
-      const tags = document.createElement("div");
-      tags.className = "m-tags";
-      (item.tags || []).slice(0, 3).forEach((tag) => {
-        const span = document.createElement("span");
-        span.className = "tag";
-        span.textContent = tag;
-        tags.appendChild(span);
-      });
-      main.append(name, desc, tags);
-
-      if (item.downloading && download && download.name === item.name) {
-        const wrap = document.createElement("div");
-        wrap.className = "dl-wrap";
-        const bar = document.createElement("div");
-        bar.className = "dl-bar";
-        const fill = document.createElement("i");
-        fill.style.width = Math.max(1, download.percent || 0) + "%";
-        bar.appendChild(fill);
-        const text = document.createElement("span");
-        text.className = "dl-text";
-        text.textContent = "%" + (download.percent || 0);
-        wrap.append(bar, text);
-        main.appendChild(wrap);
-      }
-
-      const size = document.createElement("div");
-      size.className = "m-size";
-      size.textContent = item.installed ? item.size_label : item.approx_label;
-      const quant = document.createElement("small");
-      quant.textContent = item.installed ? "diskte" : "indirme";
-      size.appendChild(quant);
-
-      const status = modelStatus(item);
-      const statusBox = document.createElement("div");
-      statusBox.className = "m-status " + status.cls;
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      statusBox.append(dot, document.createTextNode(status.text));
-
-      const actions = document.createElement("div");
-      actions.className = "m-actions";
-
-      const action = document.createElement("button");
-      action.className = "m-btn";
-      if (item.active) {
-        action.classList.add("is-active");
-        action.textContent = "Aktif";
-        action.disabled = true;
-      } else if (item.downloading) {
-        action.textContent = "İndiriliyor";
-        action.disabled = true;
-      } else if (item.installed) {
-        action.classList.add("primary");
-        action.textContent = "Aktifleştir";
-        action.addEventListener("click", (event) => {
-          event.stopPropagation();
-          activateModel(item.name);
-        });
-      } else {
-        action.textContent = "İndir";
-        action.addEventListener("click", (event) => {
-          event.stopPropagation();
-          downloadModel(item.name);
-        });
-      }
-      actions.appendChild(action);
-
-      if (item.installed || item.partial) {
-        const remove = document.createElement("button");
-        remove.className = "icon-btn";
-        remove.title = "Modeli sil";
-        remove.setAttribute("aria-label", "Modeli sil");
-        remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
-        remove.disabled = item.active || item.downloading;
-        remove.addEventListener("click", (event) => {
-          event.stopPropagation();
-          deleteModel(item.name, item.label);
-        });
-        actions.appendChild(remove);
-      }
-
-      // Faz 4.3: Ses modeli indirme iptali
-      if (item.downloading || (download && download.name === item.name && download.state === "downloading")) {
-        const cancelBtn = document.createElement("button");
-        cancelBtn.className = "m-btn";
-        cancelBtn.textContent = "İptal";
-        cancelBtn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          if (hasApi("models_cancel_download")) {
-            await api.models_cancel_download();
-            toast("Ses modeli indirme iptal edildi.", "info");
-            loadModels();
+      const isDownloading = Boolean(item.downloading && download && download.name === item.name);
+      const card = buildModelCard(item, {
+        isText: false,
+        iconId: "i-mic",
+        selectedName: selectedModel,
+        showProgress: isDownloading,
+        percent: download ? download.percent : 0,
+        getStatus: modelStatus,
+        removeCustomMethod: "models_remove_custom",
+        removeCustomOkMsg: "Özel ses modeli listeden kaldırıldı.",
+        onActivate: (n) => activateModel(n),
+        onDelete: (it) => deleteModel(it.name, it.label),
+        onSelect: (n) => {
+          selectedModel = n;
+          renderModels();
+        },
+        appendActionButtons: (actions, it) => {
+          const action = document.createElement("button");
+          action.className = "m-btn";
+          if (it.active) {
+            action.classList.add("is-active");
+            action.textContent = "Aktif";
+            action.disabled = true;
+          } else if (it.downloading) {
+            action.textContent = "İndiriliyor";
+            action.disabled = true;
+          } else if (it.installed) {
+            action.classList.add("primary");
+            action.textContent = "Aktifleştir";
+            action.addEventListener("click", (event) => {
+              event.stopPropagation();
+              activateModel(it.name);
+            });
+          } else {
+            action.textContent = "İndir";
+            action.addEventListener("click", (event) => {
+              event.stopPropagation();
+              downloadModel(it.name);
+            });
           }
-        });
-        actions.appendChild(cancelBtn);
-      }
+          actions.appendChild(action);
 
-      // Faz 4.3: "⋯" (üç nokta) işlem menüsü
-      const menuWrap = document.createElement("div");
-      menuWrap.className = "model-menu-wrap";
-      const menuBtn = document.createElement("button");
-      menuBtn.className = "model-menu-btn";
-      menuBtn.setAttribute("aria-label", "Model menüsü");
-      menuBtn.textContent = "⋯";
-      const menuDropdown = document.createElement("div");
-      menuDropdown.className = "model-dropdown";
-
-      if (item.installed && !item.active) {
-        const itemAct = document.createElement("button");
-        itemAct.className = "model-dropdown-item";
-        itemAct.textContent = "Aktifleştir";
-        itemAct.addEventListener("click", (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.remove("is-open");
-          activateModel(item.name);
-        });
-        menuDropdown.appendChild(itemAct);
-      }
-
-      if (item.installed || item.partial) {
-        const itemDel = document.createElement("button");
-        itemDel.className = "model-dropdown-item danger";
-        itemDel.textContent = "Dosyayı Sil";
-        itemDel.addEventListener("click", (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.remove("is-open");
-          deleteModel(item.name, item.label);
-        });
-        menuDropdown.appendChild(itemDel);
-      }
-
-      if (item.custom) {
-        const itemRem = document.createElement("button");
-        itemRem.className = "model-dropdown-item danger";
-        itemRem.textContent = "Listeden Kaldır";
-        itemRem.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.remove("is-open");
-          if (!window.confirm(item.label + " listeden tamamen kaldırılsın mı?")) return;
-          if (hasApi("models_remove_custom")) {
-            await api.models_remove_custom(item.name);
-            toast("Özel ses modeli listeden kaldırıldı.", "info");
-            loadModels();
+          if (it.installed || it.partial) {
+            const remove = document.createElement("button");
+            remove.className = "icon-btn";
+            remove.title = "Modeli sil";
+            remove.setAttribute("aria-label", "Modeli sil");
+            remove.innerHTML = '<svg class="ic" style="width:15px;height:15px"><use href="#i-trash"/></svg>';
+            remove.disabled = it.active || it.downloading;
+            remove.addEventListener("click", (event) => {
+              event.stopPropagation();
+              deleteModel(it.name, it.label);
+            });
+            actions.appendChild(remove);
           }
-        });
-        menuDropdown.appendChild(itemRem);
-      }
 
-      menuBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        $$(".model-dropdown.is-open").forEach(d => { if (d !== menuDropdown) d.classList.remove("is-open"); });
-        menuDropdown.classList.toggle("is-open");
-      });
-      menuWrap.append(menuBtn, menuDropdown);
-      actions.appendChild(menuWrap);
-
-      card.append(icon, main, size, statusBox, actions);
-      card.addEventListener("click", () => {
-        selectedModel = item.name;
-        renderModels();
-        renderDetail();
+          if (it.downloading || (download && download.name === it.name && download.state === "downloading")) {
+            const cancelBtn = document.createElement("button");
+            cancelBtn.className = "m-btn";
+            cancelBtn.textContent = "İptal";
+            cancelBtn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              const res = await callApi("models_cancel_download");
+              if (res && res.ok) {
+                toast(res.message || "Ses modeli indirme iptal edildi.", "info");
+                loadModels();
+              }
+            });
+            actions.appendChild(cancelBtn);
+          }
+        },
       });
       list.appendChild(card);
     });
 
     renderDetail();
+  }
+
+  function renderDetailPanel(panel, descPanel, cfg) {
+    const item = cfg.item;
+    if (!item) {
+      panel.innerHTML = '<div class="empty">Model bulunamadı.</div>';
+      descPanel.innerHTML = "";
+      return;
+    }
+
+    const rowsHtml = cfg.rows.map((r) =>
+      r.id
+        ? `<div class="d-row">${r.label}<span id="${r.id}"${r.style ? ` style="${r.style}"` : ""}></span></div>`
+        : `<div class="d-row">${r.label}<span>${r.value}</span></div>`
+    ).join("");
+
+    panel.innerHTML =
+      `<div class="detail-head"><svg class="ic"><use href="#${cfg.headIcon}"/></svg>Model Detayları` +
+        '<button class="icon-btn x" id="closeDetail" aria-label="Paneli kapat"><svg class="ic" style="width:15px;height:15px"><use href="#i-close"/></svg></button></div>' +
+      `<div class="detail-model"><div class="m-ico"><svg class="ic"><use href="#${cfg.modelIcon}"/></svg></div>` +
+        `<div><div class="model-name" id="detailName"></div><div class="model-sub">${cfg.subtitle}</div></div></div>` +
+      rowsHtml +
+      '<div class="divider"></div>' +
+      '<div class="d-row">Model Durumu<span id="detailStatus"></span></div>' +
+      cfg.actionsHtml;
+
+    panel.querySelector("#detailName").textContent = item.label;
+    panel.querySelector("#detailSize").textContent = item.installed
+      ? (item.size_label || "—") + " (diskte)"
+      : (item.approx_label || "—") + " (indirme)";
+    cfg.fillExtraRows(panel, item);
+
+    const statusSpan = panel.querySelector("#detailStatus");
+    const led = document.createElement("span");
+    led.className = "led";
+    led.style.background = cfg.ledColor;
+    led.style.boxShadow = cfg.ledShadow;
+    statusSpan.append(led, document.createTextNode(cfg.statusText));
+
+    cfg.bindActions(panel, item);
+
+    panel.querySelector("#closeDetail").addEventListener("click", () => {
+      panel.style.display = "none";
+    });
+    panel.style.display = "";
+
+    descPanel.innerHTML =
+      `<h3><svg class="ic"><use href="#${cfg.descIcon}"/></svg>Model Açıklaması</h3>` +
+      '<p id="descText"></p><ul class="desc-list" id="descList"></ul>';
+    descPanel.querySelector("#descText").textContent = cfg.descText;
+    const dList = descPanel.querySelector("#descList");
+    cfg.tags.forEach((tag) => {
+      const li = document.createElement("li");
+      li.innerHTML = '<svg class="ic"><use href="#i-check"/></svg><span></span>';
+      li.querySelector("span").textContent = tag;
+      dList.appendChild(li);
+    });
   }
 
   function renderDetail() {
@@ -1384,197 +1437,144 @@
 
     if (modelTab === "text") {
       const items = (modelsState && modelsState.text_items) || [];
-      const item = items.find((entry) => entry.name === selectedTextModel) ||
-                   items.find((entry) => entry.active) ||
-                   items[0];
-      if (!item) {
-        panel.innerHTML = '<div class="empty">Model bulunamadı.</div>';
-        descPanel.innerHTML = "";
-        return;
-      }
+      const item = selectedTextModel ? items.find((entry) => entry.name === selectedTextModel) : null;
       const download = modelsState && modelsState.text_download;
-      const isDownloading = download && download.name === item.name;
+      const isDownloading = Boolean(item && download && download.name === item.name);
       const state = isDownloading ? download.state : null;
-      const status = textStatus(item);
-
-      let statusText = status.text;
+      const status = item ? textStatus(item) : { text: "" };
+      let statusLabel = status.text;
       if (isDownloading && (download.state === "downloading" || download.state === "pausing")) {
-        statusText = `İndiriliyor (%${download.percent || 0})`;
+        statusLabel = `İndiriliyor (%${download.percent || 0})`;
       }
-
-      panel.innerHTML =
-        '<div class="detail-head"><svg class="ic"><use href="#i-spark"/></svg>Model Detayları' +
-          '<button class="icon-btn x" id="closeDetail" aria-label="Paneli kapat"><svg class="ic" style="width:15px;height:15px"><use href="#i-close"/></svg></button></div>' +
-        '<div class="detail-model"><div class="m-ico"><svg class="ic"><use href="#i-spark"/></svg></div>' +
-          '<div><div class="model-name" id="detailName"></div><div class="model-sub">Yerel GGUF metin modeli</div></div></div>' +
-        '<div class="d-row">Kategori<span>Yapay Zeka Metin Modeli</span></div>' +
-        '<div class="d-row">Boyut<span id="detailSize"></span></div>' +
-        '<div class="d-row">Bellek / Donanım<span id="detailVram"></span></div>' +
-        '<div class="d-row">Hız / Kalite<span id="detailPerf"></span></div>' +
-        '<div class="d-row">Dosya<span id="detailFile" style="word-break:break-all"></span></div>' +
-        '<div class="d-row">Klasör<span id="detailFolder"></span></div>' +
-        '<div class="divider"></div>' +
-        '<div class="d-row">Model Durumu<span id="detailStatus"></span></div>' +
-        '<div class="d-actions" id="detailActionRow"></div>';
-
-      panel.querySelector("#detailName").textContent = item.label;
-      panel.querySelector("#detailSize").textContent = item.installed
-        ? (item.size_label || "—") + " (diskte)"
-        : (item.approx_label || "—") + " (indirme)";
-      panel.querySelector("#detailVram").textContent = item.vram_label || "GPU / CPU (GGUF)";
-      panel.querySelector("#detailPerf").textContent = (item.speed_label && item.quality_label)
-        ? (item.speed_label + " · " + item.quality_label)
-        : "Dengeli";
-      panel.querySelector("#detailFile").textContent = item.filename || "—";
-      panel.querySelector("#detailFolder").textContent = item.folder || (item.installed ? "models\\text" : "İndirilince oluşturulur");
-
-      const statusSpan = panel.querySelector("#detailStatus");
-      const led = document.createElement("span");
-      led.className = "led";
-      led.style.background = (item.active || item.loaded) ? "var(--ready)" : item.installed ? "var(--ready)" : (isDownloading ? "var(--processing)" : "#5C6A85");
-      led.style.boxShadow = (item.active || item.loaded || item.installed) ? "0 0 7px rgba(46,212,122,.7)" : "none";
-      statusSpan.append(led, document.createTextNode(statusText));
-
-      const actionRow = panel.querySelector("#detailActionRow");
-      if (state === "downloading" || state === "pausing") {
-        const pauseBtn = document.createElement("button");
-        pauseBtn.className = "btn";
-        pauseBtn.textContent = "Duraklat";
-        pauseBtn.addEventListener("click", () => textModelAction("text_model_pause", item.name));
-        const cancelBtn = document.createElement("button");
-        cancelBtn.className = "btn";
-        cancelBtn.textContent = "İptal";
-        cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
-        actionRow.append(pauseBtn, cancelBtn);
-      } else if (state === "paused") {
-        const resumeBtn = document.createElement("button");
-        resumeBtn.className = "btn btn-primary";
-        resumeBtn.textContent = "Devam et";
-        resumeBtn.addEventListener("click", () => textModelAction("text_model_resume", item.name));
-        const cancelBtn = document.createElement("button");
-        cancelBtn.className = "btn";
-        cancelBtn.textContent = "İptal";
-        cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", item.name));
-        actionRow.append(resumeBtn, cancelBtn);
-      } else if (item.installed) {
-        const actBtn = document.createElement("button");
-        actBtn.className = "btn btn-primary";
-        if (item.active || item.loaded) {
-          actBtn.textContent = item.loaded ? "Yüklü" : "Aktif Model";
-          actBtn.disabled = true;
-        } else {
-          actBtn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>Aktifleştir';
-          actBtn.addEventListener("click", () => textModelAction("text_model_activate", item.name));
-        }
-        const delBtn = document.createElement("button");
-        delBtn.className = "btn btn-danger";
-        delBtn.innerHTML = '<svg class="ic"><use href="#i-trash"/></svg>Sil';
-        delBtn.disabled = item.active || item.loaded;
-        delBtn.addEventListener("click", () => {
-          if (!window.confirm(item.label + " diskten silinsin mi?")) return;
-          textModelAction("text_model_delete", item.name);
-        });
-        actionRow.append(actBtn, delBtn);
-      } else {
-        const dlBtn = document.createElement("button");
-        dlBtn.className = "btn btn-primary";
-        dlBtn.innerHTML = '<svg class="ic"><use href="#i-download"/></svg>' + (item.partial ? "Devam et" : "İndir");
-        dlBtn.addEventListener("click", () => textModelAction("text_model_download", item.name));
-        actionRow.appendChild(dlBtn);
-      }
-
-      panel.querySelector("#closeDetail").addEventListener("click", () => {
-        panel.style.display = "none";
-      });
-      panel.style.display = "";
-
-      descPanel.innerHTML =
-        '<h3><svg class="ic"><use href="#i-spark"/></svg>Model Açıklaması</h3>' +
-        '<p id="descText"></p><ul class="desc-list" id="descList"></ul>';
-      descPanel.querySelector("#descText").textContent = item.desc || item.description || "Yerel GGUF metin modeli.";
-      const dList = descPanel.querySelector("#descList");
       const defaultFeatures = [
         "Türkçe, İngilizce ve Almanca metin temizleme ve çeviri",
         "Çevrimdışı yerel GGUF motoru (llama.cpp)",
-        "İndirme duraklatma ve kaldığı yerden devam etme desteği"
+        "İndirme duraklatma ve kaldığı yerden devam etme desteği",
       ];
-      const tags = (item.tags && item.tags.length) ? item.tags : defaultFeatures;
-      tags.forEach((tag) => {
-        const li = document.createElement("li");
-        li.innerHTML = '<svg class="ic"><use href="#i-check"/></svg><span></span>';
-        li.querySelector("span").textContent = tag;
-        dList.appendChild(li);
+      renderDetailPanel(panel, descPanel, {
+        item,
+        headIcon: "i-spark",
+        modelIcon: "i-spark",
+        descIcon: "i-spark",
+        subtitle: "Yerel GGUF metin modeli",
+        rows: [
+          { label: "Kategori", value: "Yapay Zeka Metin Modeli" },
+          { label: "Boyut", id: "detailSize" },
+          { label: "Bellek / Donanım", id: "detailVram" },
+          { label: "Hız / Kalite", id: "detailPerf" },
+          { label: "Dosya", id: "detailFile", style: "word-break:break-all" },
+          { label: "Klasör", id: "detailFolder" },
+        ],
+        actionsHtml: '<div class="d-actions" id="detailActionRow"></div>',
+        statusText: statusLabel,
+        ledColor: item && (item.active || item.loaded || item.installed) ? "var(--ready)" : (isDownloading ? "var(--processing)" : "#5C6A85"),
+        ledShadow: item && (item.active || item.loaded || item.installed) ? "0 0 7px rgba(46,212,122,.7)" : "none",
+        descText: (item && (item.desc || item.description)) || "Yerel GGUF metin modeli.",
+        tags: (item && item.tags && item.tags.length) ? item.tags : defaultFeatures,
+        fillExtraRows: (p, it) => {
+          p.querySelector("#detailVram").textContent = it.vram_label || "GPU / CPU (GGUF)";
+          p.querySelector("#detailPerf").textContent = (it.speed_label && it.quality_label)
+            ? (it.speed_label + " · " + it.quality_label)
+            : "Dengeli";
+          p.querySelector("#detailFile").textContent = it.filename || "—";
+          p.querySelector("#detailFolder").textContent = it.folder || (it.installed ? "models\\text" : "İndirilince oluşturulur");
+        },
+        bindActions: (p, it) => {
+          const actionRow = p.querySelector("#detailActionRow");
+          if (state === "downloading" || state === "pausing") {
+            const pauseBtn = document.createElement("button");
+            pauseBtn.className = "btn";
+            pauseBtn.textContent = "Duraklat";
+            pauseBtn.addEventListener("click", () => textModelAction("text_model_pause", it.name));
+            const cancelBtn = document.createElement("button");
+            cancelBtn.className = "btn";
+            cancelBtn.textContent = "İptal";
+            cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", it.name));
+            actionRow.append(pauseBtn, cancelBtn);
+          } else if (state === "paused") {
+            const resumeBtn = document.createElement("button");
+            resumeBtn.className = "btn btn-primary";
+            resumeBtn.textContent = "Devam et";
+            resumeBtn.addEventListener("click", () => textModelAction("text_model_resume", it.name));
+            const cancelBtn = document.createElement("button");
+            cancelBtn.className = "btn";
+            cancelBtn.textContent = "İptal";
+            cancelBtn.addEventListener("click", () => textModelAction("text_model_cancel", it.name));
+            actionRow.append(resumeBtn, cancelBtn);
+          } else if (it.installed) {
+            const actBtn = document.createElement("button");
+            actBtn.className = "btn btn-primary";
+            if (it.active || it.loaded) {
+              actBtn.textContent = it.loaded ? "Yüklü" : "Aktif Model";
+              actBtn.disabled = true;
+            } else {
+              actBtn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>Aktifleştir';
+              actBtn.addEventListener("click", () => textModelAction("text_model_activate", it.name));
+            }
+            const delBtn = document.createElement("button");
+            delBtn.className = "btn btn-danger";
+            delBtn.innerHTML = '<svg class="ic"><use href="#i-trash"/></svg>Sil';
+            delBtn.disabled = it.active || it.loaded;
+            delBtn.addEventListener("click", () => {
+              if (!window.confirm(it.label + " diskten silinsin mi?")) return;
+              textModelAction("text_model_delete", it.name);
+            });
+            actionRow.append(actBtn, delBtn);
+          } else {
+            const dlBtn = document.createElement("button");
+            dlBtn.className = "btn btn-primary";
+            dlBtn.innerHTML = '<svg class="ic"><use href="#i-download"/></svg>' + (it.partial ? "Devam et" : "İndir");
+            dlBtn.addEventListener("click", () => textModelAction("text_model_download", it.name));
+            actionRow.appendChild(dlBtn);
+          }
+        },
       });
       return;
     }
 
     const items = modelsState.items || [];
-    const item = items.find((entry) => entry.name === selectedModel) || items[0];
-    if (!item) {
-      panel.innerHTML = '<div class="empty">Model bulunamadı.</div>';
-      descPanel.innerHTML = "";
-      return;
-    }
-
-    const status = modelStatus(item);
-    panel.innerHTML =
-      '<div class="detail-head"><svg class="ic"><use href="#i-models"/></svg>Model Detayları' +
-        '<button class="icon-btn x" id="closeDetail" aria-label="Paneli kapat"><svg class="ic" style="width:15px;height:15px"><use href="#i-close"/></svg></button></div>' +
-      '<div class="detail-model"><div class="m-ico"><svg class="ic"><use href="#i-mic"/></svg></div>' +
-        '<div><div class="model-name" id="detailName"></div><div class="model-sub">Konuşma tanıma modeli</div></div></div>' +
-      '<div class="d-row">Kategori<span>Konuşma Tanıma</span></div>' +
-      '<div class="d-row">Boyut<span id="detailSize"></span></div>' +
-      '<div class="d-row">Dil Desteği<span>Türkçe ve çoklu dil</span></div>' +
-      '<div class="d-row">Cihaz Desteği<span>GPU / CPU</span></div>' +
-      '<div class="divider"></div>' +
-      '<div class="d-row">Model Durumu<span id="detailStatus"></span></div>' +
-      '<div class="d-actions"><button class="btn btn-primary" id="detailAction"></button></div>' +
-      '<div class="d-actions"><button class="btn btn-danger" id="detailDelete"><svg class="ic"><use href="#i-trash"/></svg>Sil</button></div>';
-
-    panel.querySelector("#detailName").textContent = item.label;
-    panel.querySelector("#detailSize").textContent =
-      (item.installed ? item.size_label + " (diskte)" : item.approx_label + " (indirme)");
-    const statusSpan = panel.querySelector("#detailStatus");
-    const led = document.createElement("span");
-    led.className = "led";
-    led.style.background = item.active ? "var(--ready)" : item.installed ? "var(--ready)" : "#5C6A85";
-    led.style.boxShadow = item.active || item.installed ? "0 0 7px rgba(46,212,122,.7)" : "none";
-    statusSpan.append(led, document.createTextNode(status.text));
-
-    const action = panel.querySelector("#detailAction");
-    if (item.active) {
-      action.textContent = "Aktif Model";
-      action.disabled = true;
-    } else if (item.downloading) {
-      action.textContent = "İndiriliyor…";
-      action.disabled = true;
-    } else if (item.installed) {
-      action.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>Aktifleştir';
-      action.addEventListener("click", () => activateModel(item.name));
-    } else {
-      action.innerHTML = '<svg class="ic"><use href="#i-download"/></svg>İndir';
-      action.addEventListener("click", () => downloadModel(item.name));
-    }
-
-    const remove = panel.querySelector("#detailDelete");
-    remove.disabled = item.active || item.downloading || (!item.installed && !item.partial);
-    remove.addEventListener("click", () => deleteModel(item.name, item.label));
-
-    panel.querySelector("#closeDetail").addEventListener("click", () => {
-      panel.style.display = "none";
-    });
-    panel.style.display = "";
-
-    descPanel.innerHTML =
-      '<h3><svg class="ic"><use href="#i-bulb"/></svg>Model Açıklaması</h3>' +
-      '<p id="descText"></p><ul class="desc-list" id="descList"></ul>';
-    descPanel.querySelector("#descText").textContent = item.desc;
-    const list = descPanel.querySelector("#descList");
-    (item.tags || []).forEach((tag) => {
-      const li = document.createElement("li");
-      li.innerHTML = '<svg class="ic"><use href="#i-check"/></svg><span></span>';
-      li.querySelector("span").textContent = tag;
-      list.appendChild(li);
+    const item = selectedModel ? items.find((entry) => entry.name === selectedModel) : null;
+    const status = item ? modelStatus(item) : { text: "" };
+    renderDetailPanel(panel, descPanel, {
+      item,
+      headIcon: "i-models",
+      modelIcon: "i-mic",
+      descIcon: "i-bulb",
+      subtitle: "Konuşma tanıma modeli",
+      rows: [
+        { label: "Kategori", value: "Konuşma Tanıma" },
+        { label: "Boyut", id: "detailSize" },
+        { label: "Dil Desteği", value: "Türkçe ve çoklu dil" },
+        { label: "Cihaz Desteği", value: "GPU / CPU" },
+      ],
+      actionsHtml:
+        '<div class="d-actions"><button class="btn btn-primary" id="detailAction"></button></div>' +
+        '<div class="d-actions"><button class="btn btn-danger" id="detailDelete"><svg class="ic"><use href="#i-trash"/></svg>Sil</button></div>',
+      statusText: status.text,
+      ledColor: item && (item.active || item.installed) ? "var(--ready)" : "#5C6A85",
+      ledShadow: item && (item.active || item.installed) ? "0 0 7px rgba(46,212,122,.7)" : "none",
+      descText: item ? item.desc : "",
+      tags: (item && item.tags) || [],
+      fillExtraRows: () => {},
+      bindActions: (p, it) => {
+        const action = p.querySelector("#detailAction");
+        if (it.active) {
+          action.textContent = "Aktif Model";
+          action.disabled = true;
+        } else if (it.downloading) {
+          action.textContent = "İndiriliyor…";
+          action.disabled = true;
+        } else if (it.installed) {
+          action.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>Aktifleştir';
+          action.addEventListener("click", () => activateModel(it.name));
+        } else {
+          action.innerHTML = '<svg class="ic"><use href="#i-download"/></svg>İndir';
+          action.addEventListener("click", () => downloadModel(it.name));
+        }
+        const remove = p.querySelector("#detailDelete");
+        remove.disabled = it.active || it.downloading || (!it.installed && !it.partial);
+        remove.addEventListener("click", () => deleteModel(it.name, it.label));
+      },
     });
   }
 
@@ -1611,7 +1611,6 @@
     if (download.state === "done" && lastNotifiedDownload !== download.name + ":done") {
       lastNotifiedDownload = download.name + ":done";
       toast(download.label + " indirildi.", "info");
-      loadModels();
     } else if (download.state === "error" && lastNotifiedDownload !== download.name + ":error") {
       lastNotifiedDownload = download.name + ":error";
       toast(download.error || "Model indirilemedi.", "error");
@@ -1620,8 +1619,9 @@
 
   function startModelsPolling() {
     stopModelsPolling();
+    if (document.hidden) return;
     modelsTimer = window.setInterval(() => {
-      if (currentPage === "page-modeller") loadModels();
+      if (!document.hidden && currentPage === "page-modeller") loadModels();
     }, 700);
   }
 
@@ -1995,9 +1995,13 @@
       $("#orKeyStatus").textContent = "Önce anahtarı yaz.";
       return;
     }
-    const result = await api.openrouter_key_save(value);
-    $("#orKeyStatus").textContent = (result && result.message) || "";
-    if (result && result.ok) {
+    const result = await callApi("openrouter_key_save", value);
+    if (!result) {
+      $("#orKeyStatus").textContent = "Anahtar kaydedilemedi.";
+      return;
+    }
+    $("#orKeyStatus").textContent = result.message || "";
+    if (result.ok) {
       input.value = "";
       input.placeholder = result.masked || "sk-or-…";
       applyAi(result.ai);
@@ -2019,9 +2023,13 @@
   $("#orKeyDelete").addEventListener("click", async () => {
     if (!hasApi("openrouter_key_delete")) return;
     if (!window.confirm("OpenRouter anahtarı silinsin mi?")) return;
-    const result = await api.openrouter_key_delete();
-    $("#orKeyStatus").textContent = (result && result.message) || "";
-    if (result && result.ok) {
+    const result = await callApi("openrouter_key_delete");
+    if (!result) {
+      $("#orKeyStatus").textContent = "Anahtar silinemedi.";
+      return;
+    }
+    $("#orKeyStatus").textContent = result.message || "";
+    if (result.ok) {
       const input = $("#orKeyInput");
       input.value = "";
       input.placeholder = "sk-or-…";
@@ -2133,6 +2141,7 @@
     if (select) select.disabled = busy;
     if (sw) sw.disabled = busy;
     [
+      "#hotkeyModeSelect", "#micDeviceSelect", "#micRefreshBtn", "#showIndicatorSwitch",
       "#textProvider", "#inputLang", "#outputLangSettings", "#autoPasteSwitch",
       "#autoTranslateSettings", "#systemPrompt", "#systemPromptReset", "#orKeyInput",
       "#orKeySave", "#orKeyTest", "#orModelSelect", "#orModelRefresh",
@@ -2142,6 +2151,46 @@
       if (element) element.disabled = busy;
     });
     if (!busy) setKeyState(aiState);
+  }
+
+  async function loadAudioDevices(preferred) {
+    const select = $("#micDeviceSelect");
+    if (!select) return;
+    const currentVal = preferred || select.value || (settingsState && settingsState.input_device) || "default";
+    let devices = [{ id: "default", label: "Sistem Varsayılanı" }];
+    let active = currentVal;
+    if (hasApi("audio_devices")) {
+      try {
+        const res = await api.audio_devices();
+        if (res && Array.isArray(res.devices) && res.devices.length) {
+          devices = res.devices;
+        }
+        if (res && res.active && !preferred) {
+          active = res.active;
+        }
+      } catch (error) {
+        console.warn("Mikrofon listesi okunamadı:", error);
+      }
+    }
+    select.innerHTML = "";
+    devices.forEach((dev) => {
+      const option = document.createElement("option");
+      option.value = dev.id;
+      option.textContent = dev.label || dev.id;
+      select.appendChild(option);
+    });
+    const hasMatch = Array.from(select.options).some((opt) => opt.value === active);
+    if (!hasMatch && active && active !== "default") {
+      const missingOpt = document.createElement("option");
+      missingOpt.value = active;
+      missingOpt.textContent = active + " (bağlı değil)";
+      select.appendChild(missingOpt);
+    }
+    select.value = active || "default";
+    const sbMicName = $("#sbMicName");
+    if (sbMicName) {
+      sbMicName.textContent = select.value === "default" ? "Sistem Varsayılanı" : select.value;
+    }
   }
 
   async function loadSettings() {
@@ -2165,8 +2214,15 @@
         select.appendChild(customOpt);
       }
       select.value = data.hotkey;
+      const modeSelect = $("#hotkeyModeSelect");
+      const modeVal = data.hotkey_mode || "hold";
+      if (modeSelect) modeSelect.value = modeVal;
+      window.__hotkeyMode = modeVal;
+      setSwitchEl($("#showIndicatorSwitch"), data.show_indicator !== false);
       setSwitch(data.save_history);
       updateHotkeyPreview();
+      applyState(lastState || data.state || "ready");
+      await loadAudioDevices(data.input_device || "default");
       if (data.ai) {
         applyAi(Object.assign({}, data.ai, { state: data.state }));
         syncAiControls(data.ai);
@@ -2201,8 +2257,17 @@
       const currentHotkey = ($("#hotkeySelect") && $("#hotkeySelect").value)
         ? $("#hotkeySelect").value
         : ((settingsState && settingsState.hotkey) || "right_ctrl");
+      const currentMode = ($("#hotkeyModeSelect") && $("#hotkeyModeSelect").value)
+        ? $("#hotkeyModeSelect").value
+        : ((settingsState && settingsState.hotkey_mode) || "hold");
+      const currentDevice = ($("#micDeviceSelect") && $("#micDeviceSelect").value)
+        ? $("#micDeviceSelect").value
+        : ((settingsState && settingsState.input_device) || "default");
       const payload = {
         hotkey: currentHotkey,
+        hotkey_mode: currentMode,
+        input_device: currentDevice,
+        show_indicator: switchOnEl($("#showIndicatorSwitch")),
         save_history: switchOn(),
         design_style: designStyle,
         sidebar_collapsed: document.body.classList.contains("sidebar-collapsed"),
@@ -2211,11 +2276,19 @@
         const result = await api.settings_save(payload);
         if (result && result.ok) {
           settingsState = result.settings || settingsState;
+          window.__hotkeyMode = currentMode;
+          const sbMicName = $("#sbMicName");
+          if (sbMicName) {
+            sbMicName.textContent = currentDevice === "default" ? "Sistem Varsayılanı" : currentDevice;
+          }
+          settingsDirty = false;
+          const dirty = $("#settingsDirty");
+          if (dirty) dirty.hidden = true;
+        } else {
+          toast((result && result.message) || "Ayarlar kaydedilemedi.", "warn");
         }
-        settingsDirty = false;
-        const dirty = $("#settingsDirty");
-        if (dirty) dirty.hidden = true;
       } catch (e) {
+        toast("Ayarlar kaydedilemedi.", "error");
         console.warn("Otomatik kaydetme hatası:", e);
       }
     }, 400);
@@ -2226,6 +2299,47 @@
     markDirty();
     triggerInstantSettingsSave();
   });
+
+  if ($("#hotkeyModeSelect")) {
+    $("#hotkeyModeSelect").addEventListener("change", () => {
+      window.__hotkeyMode = $("#hotkeyModeSelect").value || "hold";
+      applyState(lastState || "ready");
+      markDirty();
+      triggerInstantSettingsSave();
+    });
+  }
+
+  if ($("#micDeviceSelect")) {
+    $("#micDeviceSelect").addEventListener("change", () => {
+      const sbMicName = $("#sbMicName");
+      if (sbMicName) {
+        const val = $("#micDeviceSelect").value;
+        sbMicName.textContent = val === "default" ? "Sistem Varsayılanı" : val;
+      }
+      markDirty();
+      triggerInstantSettingsSave();
+    });
+  }
+
+  if ($("#micRefreshBtn")) {
+    $("#micRefreshBtn").addEventListener("click", async () => {
+      await loadAudioDevices();
+      toast("Mikrofon listesi yenilendi.", "info");
+    });
+  }
+
+  if ($("#showIndicatorSwitch")) {
+    $("#showIndicatorSwitch").addEventListener("click", () => {
+      const next = !switchOnEl($("#showIndicatorSwitch"));
+      setSwitchEl($("#showIndicatorSwitch"), next);
+      markDirty();
+      triggerInstantSettingsSave();
+    });
+  }
+
+  if ($("#sbMicBtn")) {
+    $("#sbMicBtn").addEventListener("click", () => showPage("page-ayarlar"));
+  }
 
   $("#historySwitch").addEventListener("click", () => {
     setSwitch(!switchOn());
@@ -2238,6 +2352,9 @@
     if (!hasApi("settings_save")) return;
     const payload = {
       hotkey: $("#hotkeySelect").value,
+      hotkey_mode: ($("#hotkeyModeSelect") && $("#hotkeyModeSelect").value) || "hold",
+      input_device: ($("#micDeviceSelect") && $("#micDeviceSelect").value) || "default",
+      show_indicator: switchOnEl($("#showIndicatorSwitch")),
       save_history: switchOn(),
     };
     try {
@@ -2246,6 +2363,8 @@
         settingsDirty = false;
         $("#settingsDirty").hidden = true;
         settingsState = result.settings || settingsState;
+        window.__hotkeyMode = payload.hotkey_mode;
+        applyState(lastState || "ready");
         toast(result.message || "Ayarlar kaydedildi.");
         if (currentPage === "page-gecmis") loadHistory();
       } else {
@@ -2258,8 +2377,13 @@
 
   $("#resetSettingsBtn").addEventListener("click", () => {
     $("#hotkeySelect").value = "right_ctrl";
+    if ($("#hotkeyModeSelect")) $("#hotkeyModeSelect").value = "hold";
+    window.__hotkeyMode = "hold";
+    if ($("#micDeviceSelect")) $("#micDeviceSelect").value = "default";
+    setSwitchEl($("#showIndicatorSwitch"), true);
     setSwitch(true);
     updateHotkeyPreview();
+    applyState(lastState || "ready");
     markDirty();
     triggerInstantSettingsSave();
     toast("Varsayılanlar seçildi ve otomatik kaydediliyor.", "info");
@@ -2351,8 +2475,6 @@
     });
   });
 
-  $("#topLang")?.addEventListener("change", () => {});
-
   /* ---------- uygulama: otomatik baslatma ve kaldirma ---------- */
 
   let uninstallState = null;
@@ -2382,19 +2504,12 @@
   }
 
   $("#autostartSwitch").addEventListener("click", async () => {
-    if (!hasApi("ai_settings_save")) return;
     const next = !switchOnEl($("#autostartSwitch"));
-    try {
-      const result = await api.ai_settings_save({ autostart: next });
-      if (result && result.ok) {
-        setSwitchEl($("#autostartSwitch"), next);
-        if (uninstallState) uninstallState.autostart = next;
-        toast(next ? "Windows açılışında başlatılacak." : "Windows açılışında başlatılmayacak.", "info");
-      } else {
-        toast((result && result.message) || "Kaydedilemedi.", "warn");
-      }
-    } catch (error) {
-      toast("Kaydedilemedi.", "error");
+    const ai = await saveAi({ autostart: next });
+    if (ai) {
+      setSwitchEl($("#autostartSwitch"), next);
+      if (uninstallState) uninstallState.autostart = next;
+      toast(next ? "Windows açılışında başlatılacak." : "Windows açılışında başlatılmayacak.", "info");
     }
   });
 
@@ -2450,6 +2565,8 @@
     if (!hasApi("update_check")) return;
     const btn = $("#updateCheckBtn");
     const status = $("#updateStatus");
+    const notesEl = $("#updateNotes");
+    const defaultNotes = "Yeni sürüm yoksa pasif kalır. Kurulum sessiz çalışır, uygulama kapanıp yeniden açılır.";
     btn.disabled = true;
     status.textContent = "Denetleniyor…";
     try {
@@ -2457,16 +2574,20 @@
       if (result && result.ok && result.update_available) {
         updateInfo = result;
         status.textContent = result.message || ("Yeni sürüm: " + result.version);
+        if (notesEl) notesEl.textContent = result.notes || "Yeni sürüm indirilmeye hazır.";
         $("#updateApplyBtn").disabled = false;
       } else if (result && result.ok) {
         status.textContent = result.message || "Güncelsin.";
+        if (notesEl) notesEl.textContent = result.notes || defaultNotes;
         $("#updateApplyBtn").disabled = true;
       } else {
         status.textContent = (result && result.message) || "Denetlenemedi.";
+        if (notesEl) notesEl.textContent = defaultNotes;
         $("#updateApplyBtn").disabled = true;
       }
     } catch (error) {
       status.textContent = "Sunucuya ulaşılamadı.";
+      if (notesEl) notesEl.textContent = defaultNotes;
       $("#updateApplyBtn").disabled = true;
     }
     btn.disabled = false;
@@ -2482,33 +2603,26 @@
       const result = await api.update_apply();
       if (result && result.ok) {
         status.textContent = result.message || "Kurulum başlatıldı.";
+        btn.textContent = "Kurulum başlatıldı…";
         toast(result.message || "Kurulum başlatıldı; uygulama kapanacak.", "info");
-      } else {
-        status.textContent = (result && result.message) || "Kurulum başlatılamadı.";
-        toast((result && result.message) || "Kurulum başlatılamadı.", "error");
-        btn.disabled = false;
+        return;
       }
+      status.textContent = (result && result.message) || "Kurulum başlatılamadı.";
+      toast((result && result.message) || "Kurulum başlatılamadı.", "error");
     } catch (error) {
       status.textContent = "Kurulum başlatılamadı.";
       toast("Kurulum başlatılamadı.", "error");
-      btn.disabled = false;
     }
+    btn.disabled = false;
     btn.textContent = "Uygulamayı Güncelle";
   });
 
   $("#updateAutoSwitch").addEventListener("click", async () => {
-    if (!hasApi("ai_settings_save")) return;
     const next = !switchOnEl($("#updateAutoSwitch"));
-    try {
-      const result = await api.ai_settings_save({ update_check_on_start: next });
-      if (result && result.ok) {
-        setSwitchEl($("#updateAutoSwitch"), next);
-        toast(next ? "Açılışta sürüm denetlenecek." : "Açılışta sürüm denetlenmeyecek.", "info");
-      } else {
-        toast((result && result.message) || "Kaydedilemedi.", "warn");
-      }
-    } catch (error) {
-      toast("Kaydedilemedi.", "error");
+    const ai = await saveAi({ update_check_on_start: next });
+    if (ai) {
+      setSwitchEl($("#updateAutoSwitch"), next);
+      toast(next ? "Açılışta sürüm denetlenecek." : "Açılışta sürüm denetlenmeyecek.", "info");
     }
   });
 
@@ -2526,17 +2640,27 @@
   const groupCustomFilename = $("#groupCustomFilename");
   const customModelRepoLabel = $("#customModelRepoLabel");
 
+  function closeCustomModelModal() {
+    if (customModelModal) customModelModal.hidden = true;
+  }
+
   if (addCustomModelBtn && customModelModal) {
     addCustomModelBtn.addEventListener("click", () => {
       customModelKind.value = modelTab === "text" ? "text" : "audio";
+      if (customModelRepo) customModelRepo.value = "";
+      if (customModelFilename) customModelFilename.value = "";
+      if (customModelLabel) customModelLabel.value = "";
+      if (customModelStatus) customModelStatus.textContent = "";
+      if (customModelSubmit) customModelSubmit.disabled = false;
       updateCustomModelForm();
       customModelModal.hidden = false;
-      if (customModelStatus) customModelStatus.textContent = "";
     });
 
-    const closeModal = () => { customModelModal.hidden = true; };
-    if (customModelClose) customModelClose.addEventListener("click", closeModal);
-    if (customModelCancel) customModelCancel.addEventListener("click", closeModal);
+    if (customModelClose) customModelClose.addEventListener("click", closeCustomModelModal);
+    if (customModelCancel) customModelCancel.addEventListener("click", closeCustomModelModal);
+    customModelModal.addEventListener("click", (e) => {
+      if (e.target === customModelModal) closeCustomModelModal();
+    });
 
     function updateCustomModelForm() {
       const isText = customModelKind.value === "text";
@@ -2581,7 +2705,7 @@
           }
           if (res && res.ok) {
             toast(res.message || "Özel model başarıyla eklendi.", "info");
-            closeModal();
+            closeCustomModelModal();
             loadModels();
           } else {
             if (customModelStatus) customModelStatus.textContent = (res && res.message) || "Model eklenemedi.";
@@ -2603,9 +2727,15 @@
     if (!key) return "";
     const parts = key.toLowerCase().split("+");
     return parts.map(p => {
-      if (p === "ctrl" || p === "control" || p === "right_ctrl" || p === "left_ctrl") return "Ctrl";
-      if (p === "shift" || p === "right_shift" || p === "left_shift") return "Shift";
-      if (p === "alt" || p === "right_alt" || p === "left_alt") return "Alt";
+      if (p === "right_ctrl") return "Sağ Ctrl";
+      if (p === "left_ctrl") return "Sol Ctrl";
+      if (p === "ctrl" || p === "control") return "Ctrl";
+      if (p === "right_shift") return "Sağ Shift";
+      if (p === "left_shift") return "Sol Shift";
+      if (p === "shift") return "Shift";
+      if (p === "right_alt") return "Sağ Alt";
+      if (p === "left_alt") return "Sol Alt";
+      if (p === "alt") return "Alt";
       if (p === "space") return "Space";
       return p.toUpperCase();
     }).join(" + ");
@@ -2669,7 +2799,12 @@
         const hotkeyNow = $("#hotkeyNow");
         if (hotkeyNow) hotkeyNow.textContent = labelText;
         window.__hotkeyLabel = labelText;
-        if (shortcutHint) shortcutHint.textContent = labelText + " (basılı tut)";
+        if (shortcutHint) {
+          const mode = window.__hotkeyMode || "hold";
+          shortcutHint.textContent = mode === "toggle"
+            ? labelText + " · Başlatmak için bas, bitirmek için tekrar bas"
+            : labelText + " · Basılı tut ve konuş";
+        }
 
         const select = $("#hotkeySelect");
         if (select) {
@@ -2862,26 +2997,32 @@
       const modelVal = ($('input[name="wizardModel"]:checked') || {}).value || "small";
       const hotkeyVal = ($('input[name="wizardHotkey"]:checked') || {}).value || "right_ctrl";
 
-      setDesignStyle(designVal, true);
-
+      setDesignStyle(designVal, false);
+      const payload = {
+        design_style: designVal,
+        active_model: modelVal,
+        hotkey: hotkeyVal,
+        setup_done: true,
+      };
+      const method = hasApi("wizard_complete") ? "wizard_complete" : (hasApi("settings_save") ? "settings_save" : null);
+      if (method) {
+        wizardFinishBtn.disabled = true;
+        try {
+          const res = await api[method](payload);
+          if (!res || !res.ok) {
+            toast((res && res.message) || "Kurulum tamamlanamadı.", "warn");
+            wizardFinishBtn.disabled = false;
+            return;
+          }
+        } catch (e) {
+          toast("Kurulum tamamlanamadı.", "error");
+          wizardFinishBtn.disabled = false;
+          return;
+        }
+        wizardFinishBtn.disabled = false;
+      }
       if (welcomeWizard) welcomeWizard.hidden = true;
       toast("Kurulum tamamlandı! Dikte hazır.", "info");
-
-      if (hasApi("wizard_complete")) {
-        await api.wizard_complete({
-          design_style: designVal,
-          active_model: modelVal,
-          hotkey: hotkeyVal,
-          setup_done: true,
-        }).catch(() => {});
-      } else if (hasApi("settings_save")) {
-        await api.settings_save({
-          design_style: designVal,
-          active_model: modelVal,
-          hotkey: hotkeyVal,
-          setup_done: true,
-        }).catch(() => {});
-      }
     });
   }
 
@@ -3129,9 +3270,20 @@
       if (e.target === diagModal) closeDiagModal();
     });
   }
+  document.addEventListener("click", (e) => {
+    if (!e.target || !e.target.closest || !e.target.closest(".model-menu-wrap")) {
+      closeAllModelDropdowns();
+    }
+  });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && diagModal && !diagModal.hidden) {
-      closeDiagModal();
+    if (e.key === "Escape") {
+      closeAllModelDropdowns();
+      if (customModelModal && !customModelModal.hidden) {
+        closeCustomModelModal();
+      }
+      if (diagModal && !diagModal.hidden) {
+        closeDiagModal();
+      }
     }
   });
 

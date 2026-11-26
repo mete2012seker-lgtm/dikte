@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,11 @@ def set_autostart(enabled: bool) -> None:
         raise UninstallError("Kayıt defterine yazılamadı.") from exc
     with run_key:
         if enabled:
-            target = f'"{sys.executable}" --tray'
+            target = (
+                f'"{sys.executable}" --tray'
+                if config.is_packaged()
+                else f'"{sys.executable}" -m dikte --tray'
+            )
             winreg.SetValueEx(run_key, config.AUTOSTART_VALUE, 0, winreg.REG_SZ, target)
         else:
             try:
@@ -110,26 +114,15 @@ def autostart_enabled() -> bool:
 
 def _launch_elevated(path: Path, args: list[str]) -> None:
     """Kaldırıcıyı Windows'ta UAC yükseltmesiyle, diğer platformlarda Popen ile başlatır."""
-    if sys.platform == "win32":
-        rc = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            str(path),
-            subprocess.list2cmdline(args),
-            str(path.parent),
-            1,
-        )
-        if rc <= 32:
-            raise UninstallError(f"Kaldırıcı yönetici yetkisiyle başlatılamadı (kod {rc}).")
-        return
-    try:
-        subprocess.Popen(
-            [str(path), *args],
-            cwd=str(path.parent),
-            close_fds=True,
-        )
-    except OSError as exc:
-        raise UninstallError(f"Kaldırıcı başlatılamadı: {exc}") from exc
+    fsutil.launch_elevated(
+        path,
+        args,
+        error_cls=UninstallError,
+        win32_error_fn=lambda rc: UninstallError(
+            f"Kaldırıcı yönetici yetkisiyle başlatılamadı (kod {rc})."
+        ),
+        popen_error_fn=lambda exc: UninstallError(f"Kaldırıcı başlatılamadı: {exc}"),
+    )
 
 
 def run_uninstaller(keep_models: bool = True) -> None:

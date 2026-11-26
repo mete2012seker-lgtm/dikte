@@ -9,6 +9,7 @@ nvidia-ml-py>=12.535
 psutil>=5.9,<8
 Pillow>=10.0
 pystray>=0.19
+onnxruntime>=1.17,<2
 
 # GPU çalışma kütüphaneleri (Windows). CPU modunda kullanılmaz.
 nvidia-cublas-cu12>=12.4,<13; sys_platform == "win32"

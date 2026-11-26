@@ -1,0 +1,333 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #0b0f1a;
+      color: #f2f5fc;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    .s3-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 900px 520px at 50% 52%, rgba(79, 109, 255, 0.15), transparent 70%);
+      pointer-events: none;
+    }
+
+    .s3-safe {
+      position: absolute;
+      inset: 108px 192px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .s3-header {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
+      align-items: center;
+    }
+
+    .s3-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #f2f5fc;
+      line-height: 1.12;
+    }
+
+    .s3-sub {
+      font-size: 24px;
+      font-weight: 500;
+      color: #94a3b8;
+      line-height: 1.35;
+      max-width: 980px;
+    }
+
+    .s3-stage {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+
+    .s3-card {
+      width: 960px;
+      padding: 36px 40px;
+      border-radius: 24px;
+      background: #121829;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .s3-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-radius: 16px;
+      background: #0c1220;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .s3-row-label {
+      font-size: 22px;
+      font-weight: 600;
+      color: #f2f5fc;
+    }
+
+    .s3-row-hint {
+      font-size: 16px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .s3-shortcut-box {
+      position: relative;
+      width: 300px;
+      height: 52px;
+    }
+
+    .s3-key-pill {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 20px;
+      font-weight: 700;
+      background: #18223a;
+      border: 1px solid rgba(132, 168, 255, 0.4);
+      color: #e2e8f0;
+    }
+
+    .s3-key-pill.new {
+      background: rgba(79, 109, 255, 0.22);
+      border-color: #4f6dff;
+      color: #ffffff;
+      box-shadow: 0 0 24px rgba(79, 109, 255, 0.35);
+      opacity: 0;
+    }
+
+    .s3-toggle-group {
+      display: flex;
+      align-items: center;
+      padding: 6px;
+      border-radius: 14px;
+      background: #141c30;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 6px;
+    }
+
+    .s3-toggle-btn {
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .s3-toggle-btn.hold {
+      background: #3651d9;
+      color: #ffffff;
+    }
+
+    .s3-toggle-btn.toggle {
+      background: transparent;
+      color: #94a3b8;
+    }
+
+    .s3-mic-select {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: #18223a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .s3-tray-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 34px;
+      border-radius: 999px;
+      background: #121829;
+      border: 1.5px solid rgba(79, 109, 255, 0.65);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65), 0 0 36px rgba(79, 109, 255, 0.35);
+      opacity: 0;
+    }
+
+    .s3-tray-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #4f6dff;
+      box-shadow: 0 0 14px #4f6dff;
+    }
+
+    .s3-tray-text {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: #f2f5fc;
+      min-width: 175px;
+      text-align: left;
+    }
+
+    .s3-tray-sub {
+      font-size: 16px;
+      font-weight: 600;
+      color: #94a3b8;
+      padding-left: 14px;
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+    }
+  </style>
+
+  <div id="root" data-composition-id="s3" data-width="1920" data-height="1080">
+    <div class="s3-glow" data-layout-ignore></div>
+
+    <div class="s3-safe">
+      <div class="s3-header" id="s3-header">
+        <h2 class="s3-title">Push-to-Talk or Toggle Mode.</h2>
+        <p class="s3-sub">Pick your mic, bind any shortcut, track via the tray "Listening / Writing" pill.</p>
+      </div>
+
+      <div class="s3-stage">
+        <div class="s3-card" id="s3-card">
+          <div class="s3-row">
+            <div>
+              <div class="s3-row-label">Global Shortcut</div>
+              <div class="s3-row-hint">Custom 1, 2, or 3-key combination</div>
+            </div>
+            <div class="s3-shortcut-box">
+              <div class="s3-key-pill" id="s3-key-old">Right Ctrl</div>
+              <div class="s3-key-pill new" id="s3-key-new">Ctrl + Shift + D</div>
+            </div>
+          </div>
+
+          <div class="s3-row">
+            <div>
+              <div class="s3-row-label">Recording Mode</div>
+              <div class="s3-row-hint">Hold key down or tap once to toggle</div>
+            </div>
+            <div class="s3-toggle-group">
+              <div class="s3-toggle-btn hold" id="s3-btn-hold">Hold</div>
+              <div class="s3-toggle-btn toggle" id="s3-btn-toggle">Toggle</div>
+            </div>
+          </div>
+
+          <div class="s3-row">
+            <div>
+              <div class="s3-row-label">Microphone Source</div>
+              <div class="s3-row-hint">Select your input device inside Dikte</div>
+            </div>
+            <div class="s3-mic-select">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#84A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+              </svg>
+              <span>Default Mic (Realtek Audio)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="s3-tray-pill" id="s3-tray-pill">
+          <span class="s3-tray-dot" id="s3-tray-dot"></span>
+          <span class="s3-tray-text" id="s3-tray-text">Listening...</span>
+          <span class="s3-tray-sub">System Tray Indicator</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const root = document.getElementById("root");
+      const trayText = root.querySelector("#s3-tray-text");
+      const phase = { step: 0 };
+
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#s3-header", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 0);
+      tl.fromTo("#s3-card", { opacity: 0, y: 26, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" }, 0.1);
+
+      tl.fromTo("#s3-key-old", { opacity: 1, scale: 1 }, { opacity: 0, scale: 0.92, duration: 0.25, ease: "power2.in" }, 1.5);
+      tl.fromTo("#s3-key-new", { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power3.out" }, 1.65);
+
+      tl.fromTo(
+        "#s3-btn-hold",
+        { backgroundColor: "#3651d9", color: "#ffffff" },
+        { backgroundColor: "transparent", color: "#94a3b8", duration: 0.25, ease: "power2.out" },
+        3.0
+      );
+      tl.fromTo(
+        "#s3-btn-toggle",
+        { backgroundColor: "transparent", color: "#94a3b8" },
+        { backgroundColor: "#3651d9", color: "#ffffff", duration: 0.25, ease: "power2.out" },
+        3.0
+      );
+
+      tl.fromTo(
+        ".s3-stage",
+        { scale: 1 },
+        { scale: 0.94, duration: 0.45, ease: "power3.out" },
+        4.5
+      );
+      tl.fromTo(
+        "#s3-tray-pill",
+        { opacity: 0, y: 28, scale: 0.9 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" },
+        4.6
+      );
+
+      tl.fromTo(
+        phase,
+        { step: 0 },
+        {
+          step: 1,
+          duration: 0.1,
+          onUpdate: function () {
+            trayText.textContent = phase.step >= 0.5 ? "Writing..." : "Listening...";
+          },
+        },
+        6.4
+      );
+      tl.fromTo(
+        "#s3-tray-dot",
+        { backgroundColor: "#4f6dff", boxShadow: "0 0 14px #4f6dff" },
+        { backgroundColor: "#22c55e", boxShadow: "0 0 16px #22c55e", duration: 0.25, ease: "power2.out" },
+        6.4
+      );
+      tl.fromTo(
+        "#s3-tray-pill",
+        { borderColor: "rgba(79, 109, 255, 0.65)" },
+        { borderColor: "rgba(34, 197, 94, 0.72)", duration: 0.25, ease: "power2.out" },
+        6.4
+      );
+
+      window.__timelines["s3"] = tl;
+    })();
+  </script>
+</template>

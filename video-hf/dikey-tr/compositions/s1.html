@@ -1,0 +1,510 @@
+<template>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      src: url('assets/fonts/inter-latin-400-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      src: url('assets/fonts/inter-latin-ext-400-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      src: url('assets/fonts/inter-latin-500-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      src: url('assets/fonts/inter-latin-ext-500-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 600;
+      src: url('assets/fonts/inter-latin-600-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 600;
+      src: url('assets/fonts/inter-latin-ext-600-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/inter-latin-700-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/inter-latin-ext-700-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 700;
+      src: url('assets/fonts/plus-jakarta-sans-latin-ext-700-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 800;
+      src: url('assets/fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      font-style: normal;
+      font-weight: 800;
+      src: url('assets/fonts/plus-jakarta-sans-latin-ext-800-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: normal;
+      font-weight: 600;
+      src: url('assets/fonts/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: normal;
+      font-weight: 600;
+      src: url('assets/fonts/jetbrains-mono-latin-ext-600-normal.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D1, U+02D3-02FF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0B0F1A;
+      font-family: 'Inter', sans-serif;
+      color: #F2F5FC;
+    }
+
+    .bg-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 46% 42%, rgba(79, 109, 255, 0.22) 0%, rgba(11, 15, 26, 0) 60%),
+        radial-gradient(circle at 50% 75%, rgba(99, 102, 241, 0.10) 0%, rgba(11, 15, 26, 0) 55%);
+      pointer-events: none;
+    }
+
+    .bg-dots {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+
+    .safe-zone {
+      position: absolute;
+      left: 90px;
+      top: 260px;
+      width: 790px;
+      height: 1120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 8px 16px 8px;
+    }
+
+    .header-block {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      border-radius: 999px;
+      background: rgba(79, 109, 255, 0.14);
+      border: 1px solid rgba(79, 109, 255, 0.42);
+      color: #93B4FF;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .eyebrow-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4F6DFF;
+      box-shadow: 0 0 12px #4F6DFF;
+    }
+
+    .headline {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 74px;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: #F2F5FC;
+      max-width: 820px;
+    }
+
+    .subtitle {
+      font-size: 34px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: #94A3B8;
+      max-width: 760px;
+    }
+
+    .mic-stage {
+      position: relative;
+      width: 820px;
+      height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mic-svg {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 820px;
+      height: 380px;
+      overflow: visible;
+    }
+
+    .halo-wrap {
+      position: absolute;
+      left: 270px;
+      top: 24px;
+      width: 280px;
+      height: 280px;
+      pointer-events: none;
+    }
+
+    .halo-outer {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 264px;
+      height: 264px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(79, 109, 255, 0.28);
+      box-shadow: 0 0 40px rgba(79, 109, 255, 0.16);
+    }
+
+    .halo-inner {
+      position: absolute;
+      left: 36px;
+      top: 36px;
+      width: 208px;
+      height: 208px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(99, 102, 241, 0.36);
+      box-shadow: 0 0 30px rgba(79, 109, 255, 0.18);
+    }
+
+    .orb-wrap {
+      position: absolute;
+      left: 332px;
+      top: 86px;
+      width: 156px;
+      height: 156px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .orb-idle {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(147, 197, 253, 0.55);
+      background: radial-gradient(circle at 50% 42%, #60A5FA 0%, #4F6DFF 58%, #2B45C7 100%);
+      box-shadow: 0 0 44px rgba(79, 109, 255, 0.55), inset 0 0 26px rgba(255, 255, 255, 0.22);
+    }
+
+    .orb-rec {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      opacity: 0;
+      border: 2px solid rgba(252, 165, 165, 0.65);
+      background: radial-gradient(circle at 50% 45%, #F87171 0%, #EF4444 65%, #B91C1C 100%);
+      box-shadow: 0 0 44px rgba(239, 68, 68, 0.60), inset 0 0 24px rgba(239, 68, 68, 0.45);
+    }
+
+    .orb-icon-box {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mic-icon {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stop-square {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #FCA5A5, #EF4444);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.6);
+      opacity: 0;
+    }
+
+    .keycap-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .keycap {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 44px;
+      border-radius: 20px;
+      background: #121829;
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 12px 0 #070A12, 0 20px 40px rgba(0, 0, 0, 0.5);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 600;
+      color: #F2F5FC;
+    }
+
+    .keycap-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #64748B;
+    }
+
+    .status-line {
+      font-size: 28px;
+      font-weight: 600;
+      color: #93B4FF;
+      opacity: 0;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s1" data-width="1080" data-height="1920">
+    <div class="bg-glow" data-layout-ignore></div>
+    <div class="bg-dots" data-layout-ignore></div>
+
+    <div class="safe-zone">
+      <div class="header-block">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span>WINDOWS SESLİ DİKTE</span>
+        </div>
+        <h1 class="headline">Hâlâ klavyeyle mi yazıyorsun?</h1>
+        <p class="subtitle">Sağ Ctrl'ye bas, konuş, yapışsın.</p>
+      </div>
+
+      <div class="mic-stage">
+        <svg id="s1-wave-svg" class="mic-svg" viewBox="0 0 820 380" width="820" height="380">
+          <defs>
+            <linearGradient id="s1WaveGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.85" />
+              <stop offset="50%" stop-color="#4F6DFF" stop-opacity="1" />
+              <stop offset="100%" stop-color="#3D5BF5" stop-opacity="0.85" />
+            </linearGradient>
+          </defs>
+          <g id="s1-bars"></g>
+        </svg>
+
+        <div id="s1-halo" class="halo-wrap" data-layout-ignore>
+          <div class="halo-outer"></div>
+          <div class="halo-inner"></div>
+        </div>
+
+        <div id="s1-orb" class="orb-wrap">
+          <div id="s1-orb-idle" class="orb-idle"></div>
+          <div id="s1-orb-rec" class="orb-rec"></div>
+          <div class="orb-icon-box">
+            <div id="s1-mic-icon" class="mic-icon">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#F2F5FC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+              </svg>
+            </div>
+            <div id="s1-stop-sq" class="stop-square"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="keycap-area">
+        <div id="s1-keycap" class="keycap">
+          <span id="s1-key-dot" class="keycap-dot"></span>
+          <span>Sağ Ctrl</span>
+        </div>
+        <div id="s1-status" class="status-line">Dinleniyor — Türkçe (Yerel)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LEFT_PROFILE = [
+      0.07, 0.08, 0.08, 0.11, 0.15, 0.12, 0.2, 0.25, 0.18, 0.3, 0.38, 0.44, 0.32,
+      0.56, 0.68, 0.5, 0.74, 0.88, 0.62, 0.94, 0.82, 0.72, 0.58, 0.48
+    ];
+    const RIGHT_PROFILE = [
+      0.52, 0.64, 0.78, 0.88, 0.95, 0.68, 0.82, 0.72, 0.54, 0.62, 0.44, 0.36, 0.48,
+      0.34, 0.26, 0.22, 0.28, 0.18, 0.14, 0.12, 0.09, 0.08, 0.08, 0.06
+    ];
+    const IDLE_HEIGHTS = LEFT_PROFILE.concat(RIGHT_PROFILE);
+    const BARS_PER_SIDE = 24;
+    const TOTAL_BARS = 48;
+    const centerX = 410;
+    const centerY = 164;
+    const idleStep = 9.8;
+    const idleInnerGap = 132;
+    const activeStep = 9.6;
+    const activeStartX = centerX - ((TOTAL_BARS - 1) * activeStep) / 2;
+
+    const barsGroup = document.getElementById("s1-bars");
+    const NS = "http://www.w3.org/2000/svg";
+    const barEls = [];
+
+    for (let i = 0; i < TOTAL_BARS; i++) {
+      const isLeft = i < BARS_PER_SIDE;
+      const idleX = isLeft
+        ? centerX - idleInnerGap - (BARS_PER_SIDE - 1 - i) * idleStep
+        : centerX + idleInnerGap + (i - BARS_PER_SIDE) * idleStep;
+      const idleH = Math.max(6, IDLE_HEIGHTS[i] * 78);
+      const rect = document.createElementNS(NS, "rect");
+      rect.setAttribute("x", (idleX - 2).toFixed(2));
+      rect.setAttribute("y", (centerY - idleH / 2).toFixed(2));
+      rect.setAttribute("width", "4");
+      rect.setAttribute("height", idleH.toFixed(2));
+      rect.setAttribute("rx", "2");
+      rect.setAttribute("fill", "url(#s1WaveGrad)");
+      rect.setAttribute("opacity", "0.88");
+      barsGroup.appendChild(rect);
+      barEls.push({ el: rect, idleX, idleH, activeX: activeStartX + i * activeStep });
+    }
+
+    const tl = gsap.timeline({ paused: true });
+
+    // Keycap press at 0.4s
+    tl.fromTo(
+      "#s1-keycap",
+      { scale: 1, y: 0, borderColor: "rgba(255, 255, 255, 0.16)", boxShadow: "0 12px 0 #070A12, 0 20px 40px rgba(0,0,0,0.5)" },
+      { scale: 0.94, y: 8, borderColor: "#4F6DFF", boxShadow: "0 4px 0 #070A12, 0 0 36px rgba(79,109,255,0.45)", duration: 0.18, ease: "power2.out" },
+      0.4
+    );
+    tl.fromTo(
+      "#s1-key-dot",
+      { backgroundColor: "#64748B", boxShadow: "none" },
+      { backgroundColor: "#EF4444", boxShadow: "0 0 14px #EF4444", duration: 0.18 },
+      0.4
+    );
+    tl.fromTo(
+      "#s1-status",
+      { opacity: 0, y: 8 },
+      { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" },
+      0.55
+    );
+
+    // Halo fade & orb morph at 0.4s
+    tl.fromTo(
+      "#s1-halo",
+      { opacity: 1, scale: 1 },
+      { opacity: 0, scale: 0.35, y: 112, duration: 0.35, ease: "power3.inOut" },
+      0.4
+    );
+    tl.fromTo(
+      "#s1-orb",
+      { y: 0, scale: 1 },
+      { y: 112, scale: 0.44, duration: 0.38, ease: "power3.inOut" },
+      0.4
+    );
+    tl.fromTo("#s1-orb-idle", { opacity: 1 }, { opacity: 0, duration: 0.3 }, 0.4);
+    tl.fromTo("#s1-orb-rec", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.4);
+    tl.fromTo("#s1-mic-icon", { opacity: 1, scale: 1 }, { opacity: 0, scale: 0.35, duration: 0.25 }, 0.4);
+    tl.fromTo("#s1-stop-sq", { opacity: 0, scale: 0.35 }, { opacity: 1, scale: 1, duration: 0.3 }, 0.48);
+
+    // Morph 48 bars into active center wave and animate speech pulses deterministically
+    const steps = [0.75, 1.2, 1.65, 2.1, 2.55, 2.95];
+    barEls.forEach((b, i) => {
+      const normCenter = Math.abs(i - (TOTAL_BARS - 1) / 2) / ((TOTAL_BARS - 1) / 2);
+      const env = Math.pow(1 - normCenter * 0.76, 1.32);
+
+      // Initial morph from idleX -> activeX
+      const h0 = Math.max(10, 18 + ((Math.sin(i * 0.45) + 1.2) / 2.2) * 118 * env);
+      tl.fromTo(
+        b.el,
+        { attr: { x: b.idleX - 2, y: centerY - b.idleH / 2, height: b.idleH, width: 4 } },
+        { attr: { x: b.activeX - 2.2, y: centerY - h0 / 2, height: h0, width: 4.4 }, duration: 0.35, ease: "power3.out" },
+        0.4
+      );
+
+      // Deterministic speaking wave keyframes
+      steps.forEach((t, sIdx) => {
+        const wave = (Math.sin(t * 5.2 - i * 0.36) + Math.cos(t * 3.1 + i * 0.22) + 2.0) / 4.0;
+        const h = Math.max(10, 14 + wave * 126 * env);
+        tl.to(
+          b.el,
+          { attr: { y: centerY - h / 2, height: h }, duration: 0.42, ease: "sine.inOut" },
+          t
+        );
+      });
+    });
+
+    window.__timelines["s1"] = tl;
+    tl.seek(0);
+  </script>
+</template>

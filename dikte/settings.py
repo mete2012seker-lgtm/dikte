@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
-import time
-import uuid
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 from .hotkey import (
     DEFAULT_HOTKEY,
-    HOTKEY_CHOICES,
     format_hotkey_label,
     is_valid_hotkey,
     normalize_hotkey,
@@ -36,16 +32,23 @@ OUTPUT_LANGUAGE_CHOICES = dict(config.OUTPUT_LANGUAGES)
 INPUT_LANGUAGE_CHOICES = {"auto": "Otomatik", "tr": "Türkçe"}
 THEME_CHOICES = {"system": "Sistem", "light": "Açık", "dark": "Koyu"}
 DESIGN_STYLE_CHOICES = {"dikte_ai": "Sade Dikte.AI", "classic": "Klasik (Magic UI)"}
+HOTKEY_MODE_CHOICES = {"hold": "Basılı Tut", "toggle": "Bas-Bırak"}
 
 AUTO_MODEL = "auto"
 DEFAULT_TEXT_MODEL = "qwen3-4b"
 DEFAULT_THEME = "system"
 DEFAULT_DESIGN_STYLE = "dikte_ai"
+DEFAULT_HOTKEY_MODE = "hold"
+DEFAULT_INPUT_DEVICE = "default"
+DEFAULT_SHOW_INDICATOR = True
 
 DEFAULTS = {
     "version": 2,
     "save_history": True,
     "hotkey": DEFAULT_HOTKEY,
+    "hotkey_mode": DEFAULT_HOTKEY_MODE,
+    "input_device": DEFAULT_INPUT_DEVICE,
+    "show_indicator": DEFAULT_SHOW_INDICATOR,
     "active_model": AUTO_MODEL,
     "output_language": "tr",
     "auto_translate": False,
@@ -71,6 +74,10 @@ def hotkey_label(key_id: str) -> str:
     return format_hotkey_label(key_id)
 
 
+def hotkey_mode_label(mode: str) -> str:
+    return HOTKEY_MODE_CHOICES.get(mode, HOTKEY_MODE_CHOICES[DEFAULT_HOTKEY_MODE])
+
+
 def output_language_label(code: str) -> str:
     return OUTPUT_LANGUAGE_CHOICES.get(code, OUTPUT_LANGUAGE_CHOICES["tr"])
 
@@ -89,16 +96,6 @@ def _flag(value, default: bool) -> bool:
 
 def _text(value, default: str) -> str:
     return value if isinstance(value, str) and value.strip() else default
-
-
-def _backup_path(path: Path) -> Path:
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    candidate = path.with_name(f"{path.stem}.bozuk-{stamp}{path.suffix}")
-    counter = 1
-    while candidate.exists():
-        candidate = path.with_name(f"{path.stem}.bozuk-{stamp}-{counter}{path.suffix}")
-        counter += 1
-    return candidate
 
 
 class SettingsStore:
@@ -130,7 +127,7 @@ class SettingsStore:
 
     def _backup(self) -> None:
         try:
-            self.path.rename(_backup_path(self.path))
+            self.path.rename(fsutil.backup_corrupt_path(self.path))
         except Exception as exc:
             logger.warning("Bozuk ayar dosyası yedeklenemedi: %s", exc)
 
@@ -145,6 +142,13 @@ class SettingsStore:
             result["hotkey"] = normalize_hotkey(raw_hotkey)
         else:
             result["hotkey"] = DEFAULT_HOTKEY
+        result["hotkey_mode"] = _choice(
+            data.get("hotkey_mode"), HOTKEY_MODE_CHOICES, DEFAULT_HOTKEY_MODE
+        )
+        result["input_device"] = _text(data.get("input_device"), DEFAULT_INPUT_DEVICE)
+        result["show_indicator"] = _flag(
+            data.get("show_indicator"), DEFAULTS["show_indicator"]
+        )
         result["active_model"] = _text(data.get("active_model"), AUTO_MODEL)
 
         result["output_language"] = _choice(
@@ -211,20 +215,7 @@ class SettingsStore:
             return dict(data)
 
     def _write(self, data: dict) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_name(
-            f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp"
-        )
         try:
-            payload = json.dumps(data, ensure_ascii=False, indent=2)
-            with open(temp, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temp, self.path)
+            fsutil.atomic_write_json(self.path, data)
         except Exception as exc:
-            try:
-                temp.unlink(missing_ok=True)
-            except Exception:
-                pass
             raise SettingsError("Ayarlar kaydedilemedi.") from exc

@@ -13,6 +13,97 @@ from . import config, diagnostics
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_INPUT_DEVICE = "default"
+_SKIP_MAPPER_NAMES = frozenset(
+    {
+        "microsoft ses eşleştiricisi - input",
+        "microsoft sound mapper - input",
+        "birincil ses yakalama sürücüsü",
+        "primary sound capture driver",
+    }
+)
+
+
+def _clean_device_name(name: object) -> str:
+    return " ".join(str(name or "").replace("\r", " ").replace("\n", " ").split())
+
+
+def _hostapi_rank(hostapi_name: str) -> int:
+    low = (hostapi_name or "").lower()
+    if "wasapi" in low:
+        return 0
+    if "directsound" in low:
+        return 1
+    if "mme" in low:
+        return 2
+    if "wdm-ks" in low:
+        return 4
+    return 3
+
+
+def list_input_devices() -> list[dict]:
+    """Kullanılabilir giriş (mikrofon) cihazlarını döndürür; hata olursa yalnız varsayılan döner."""
+    default_entry = {"id": DEFAULT_INPUT_DEVICE, "label": "Sistem Varsayılanı"}
+    try:
+        import sounddevice as sd
+    except Exception:
+        return [default_entry]
+    if sd is None:
+        return [default_entry]
+
+    try:
+        devices = sd.query_devices()
+    except Exception as exc:
+        logger.warning("Mikrofon listesi alınamadı: %s", exc)
+        return [default_entry]
+
+    hostapis: list[dict] = []
+    query_hostapis = getattr(sd, "query_hostapis", None)
+    if callable(query_hostapis):
+        try:
+            hostapis = list(query_hostapis() or [])
+        except Exception:
+            hostapis = []
+
+    candidates: list[tuple[int, int, str]] = []
+    for idx, dev in enumerate(devices or []):
+        try:
+            channels = int(dev.get("max_input_channels", 0) or 0)
+        except Exception:
+            channels = 0
+        if channels <= 0:
+            continue
+        name = _clean_device_name(dev.get("name", ""))
+        if not name:
+            continue
+        host_idx = dev.get("hostapi")
+        host_name = ""
+        if isinstance(host_idx, int) and 0 <= host_idx < len(hostapis):
+            host_name = str(hostapis[host_idx].get("name", ""))
+        candidates.append((_hostapi_rank(host_name), idx, name))
+
+    non_wdm = [c for c in candidates if c[0] < 4]
+    pool = non_wdm if non_wdm else candidates
+
+    best_by_name: dict[str, tuple[int, int]] = {}
+    for rank, idx, name in pool:
+        if len(pool) > 1 and name.lower() in _SKIP_MAPPER_NAMES:
+            continue
+        prev = best_by_name.get(name)
+        if prev is None or rank < prev[0]:
+            best_by_name[name] = (rank, idx)
+
+    if not best_by_name:
+        for rank, idx, name in pool:
+            if name not in best_by_name:
+                best_by_name[name] = (rank, idx)
+
+    ordered = sorted(best_by_name.items(), key=lambda kv: (kv[1][0], kv[1][1]))
+    items = [default_entry]
+    for name, _ in ordered:
+        items.append({"id": name, "label": name})
+    return items
+
 
 class AudioError(RuntimeError):
     pass
@@ -26,12 +117,19 @@ class Recording:
 
 
 class AudioRecorder:
-    def __init__(self, sample_rate: int = config.SAMPLE_RATE, temp_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        sample_rate: int = config.SAMPLE_RATE,
+        temp_dir: Path | None = None,
+        device: str | int | None = None,
+    ) -> None:
         self.sample_rate = sample_rate
         self.temp_dir = Path(temp_dir or config.TEMP_DIR)
+        self._device = self._normalize_device(device)
         self._stream = None
         self._chunks: list[bytes] = []
         self._chunks_lock = threading.Lock()
+        self._state_lock = threading.Lock()
         self._recording = False
         self._started_at = 0.0
         self._max_frames = int(self.sample_rate * getattr(config, "MAX_RECORD_SECONDS", 600))
@@ -40,11 +138,90 @@ class AudioRecorder:
         self._stream_error: str | None = None
         self._last_callback_at: float = 0.0
 
+    @staticmethod
+    def _normalize_device(device: str | int | None) -> str:
+        if device is None:
+            return DEFAULT_INPUT_DEVICE
+        text = str(device).strip()
+        return text if text else DEFAULT_INPUT_DEVICE
+
+    @property
+    def device(self) -> str:
+        with self._state_lock:
+            return self._device
+
+    def set_device(self, device: str | int | None) -> None:
+        with self._state_lock:
+            self._device = self._normalize_device(device)
+
+    @staticmethod
+    def _resolve_input_device(sd, device_spec: str) -> int | None:
+        if not device_spec or device_spec == DEFAULT_INPUT_DEVICE:
+            return None
+        query_devices = getattr(sd, "query_devices", None)
+        if not callable(query_devices):
+            return None
+        try:
+            devices = list(query_devices() or [])
+        except Exception as exc:
+            logger.warning("Mikrofon cihazı doğrulanamadı (%s): %s", device_spec, exc)
+            return None
+
+        hostapis: list[dict] = []
+        query_hostapis = getattr(sd, "query_hostapis", None)
+        if callable(query_hostapis):
+            try:
+                hostapis = list(query_hostapis() or [])
+            except Exception:
+                hostapis = []
+
+        matches: list[tuple[int, int]] = []
+        target_clean = _clean_device_name(device_spec)
+        for idx, dev in enumerate(devices):
+            try:
+                channels = int(dev.get("max_input_channels", 0) or 0)
+            except Exception:
+                channels = 0
+            if channels <= 0:
+                continue
+            if _clean_device_name(dev.get("name", "")) == target_clean:
+                host_idx = dev.get("hostapi")
+                host_name = (
+                    str(hostapis[host_idx].get("name", ""))
+                    if isinstance(host_idx, int) and 0 <= host_idx < len(hostapis)
+                    else ""
+                )
+                matches.append((_hostapi_rank(host_name), idx))
+
+        if matches:
+            matches.sort()
+            return matches[0][1]
+
+        if device_spec.isdigit():
+            idx = int(device_spec)
+            if 0 <= idx < len(devices):
+                try:
+                    if int(devices[idx].get("max_input_channels", 0) or 0) > 0:
+                        return idx
+                except Exception:
+                    pass
+
+        logger.warning(
+            "Seçili mikrofon bulunamadı (%s); sistem varsayılanına dönülüyor.",
+            device_spec,
+        )
+        return None
+
     @property
     def is_recording(self) -> bool:
-        return self._recording
+        with self._state_lock:
+            return self._recording
 
     def start(self) -> None:
+        with self._state_lock:
+            self._start_locked()
+
+    def _start_locked(self) -> None:
         if self._recording:
             return
         try:
@@ -96,19 +273,38 @@ class AudioRecorder:
                 self._chunks.append(chunk)
                 self._recorded_frames += len(chunk) // 2
 
+        selected_device = self._resolve_input_device(sd, self._device)
+        stream_kwargs = {
+            "samplerate": self.sample_rate,
+            "channels": config.CHANNELS,
+            "dtype": "int16",
+            "blocksize": 800,
+            "callback": callback,
+        }
+        if selected_device is not None:
+            stream_kwargs["device"] = selected_device
         try:
-            self._stream = sd.RawInputStream(
-                samplerate=self.sample_rate,
-                channels=config.CHANNELS,
-                dtype="int16",
-                blocksize=800,
-                callback=callback,
-            )
+            self._stream = sd.RawInputStream(**stream_kwargs)
             self._stream.start()
         except Exception as exc:
             self._safe_close()
-            logger.exception("Mikrofon açılamadı")
-            raise AudioError(diagnostics.MSG_MIC_MISSING) from exc
+            if selected_device is not None:
+                logger.warning(
+                    "Seçili mikrofon (%s) açılamadı (%s); sistem varsayılanı deneniyor.",
+                    self._device,
+                    exc,
+                )
+                try:
+                    stream_kwargs.pop("device", None)
+                    self._stream = sd.RawInputStream(**stream_kwargs)
+                    self._stream.start()
+                except Exception as fallback_exc:
+                    self._safe_close()
+                    logger.exception("Mikrofon açılamadı")
+                    raise AudioError(diagnostics.MSG_MIC_MISSING) from fallback_exc
+            else:
+                logger.exception("Mikrofon açılamadı")
+                raise AudioError(diagnostics.MSG_MIC_MISSING) from exc
 
         self._recording = True
         self._started_at = time.perf_counter()
@@ -116,6 +312,10 @@ class AudioRecorder:
         logger.info("Kayıt başladı")
 
     def stop(self) -> Recording | None:
+        with self._state_lock:
+            return self._stop_locked()
+
+    def _stop_locked(self) -> Recording | None:
         if not self._recording:
             return None
         self._recording = False
@@ -149,12 +349,13 @@ class AudioRecorder:
 
     def cancel(self) -> None:
         """Kaydı yazmadan iptal eder."""
-        self._recording = False
-        self._safe_close()
-        with self._chunks_lock:
-            self._chunks = []
-            self._recorded_frames = 0
-            self._stream_error = None
+        with self._state_lock:
+            self._recording = False
+            self._safe_close()
+            with self._chunks_lock:
+                self._chunks = []
+                self._recorded_frames = 0
+                self._stream_error = None
 
     def _write_wav(self, path: Path, data: bytes) -> None:
         with wave.open(str(path), "wb") as handle:

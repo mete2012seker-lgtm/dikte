@@ -1,0 +1,247 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #0b0f1a;
+      color: #f2f5fc;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    .s4-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 920px 560px at 50% 55%, rgba(79, 109, 255, 0.14), transparent 72%);
+      pointer-events: none;
+    }
+
+    .s4-safe {
+      position: absolute;
+      inset: 108px 192px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 32px;
+    }
+
+    .s4-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .s4-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 54px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #f2f5fc;
+      line-height: 1.12;
+    }
+
+    .s4-sub {
+      font-size: 24px;
+      font-weight: 500;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+
+    .s4-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    .s4-win {
+      border-radius: 18px;
+      background: #121829;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .s4-win-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #172036;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .s4-win-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .s4-app-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .s4-app-name {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #f2f5fc;
+    }
+
+    .s4-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.16);
+      border: 1px solid rgba(34, 197, 94, 0.42);
+      color: #4ade80;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: 0;
+    }
+
+    .s4-win-body {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .s4-text-box {
+      width: 100%;
+      padding: 18px 20px;
+      border-radius: 12px;
+      background: #0b101d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 21px;
+      line-height: 1.45;
+      color: #e2e8f0;
+      min-height: 108px;
+      display: flex;
+      align-items: center;
+    }
+
+    .s4-pasted {
+      opacity: 0;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s4" data-width="1920" data-height="1080">
+    <div class="s4-glow" data-layout-ignore></div>
+
+    <div class="s4-safe">
+      <div class="s4-header" id="s4-header">
+        <h2 class="s4-title">Auto-Paste Into Any Window.</h2>
+        <p class="s4-sub">WhatsApp Web, Word, Notes, or ChatGPT — lands right at your cursor.</p>
+      </div>
+
+      <div class="s4-grid">
+        <div class="s4-win" id="s4-w1">
+          <div class="s4-win-bar">
+            <div class="s4-win-left">
+              <span class="s4-app-dot" style="background:#25D366;"></span>
+              <span class="s4-app-name">WhatsApp Web</span>
+            </div>
+            <div class="s4-check" id="s4-c1">✓ Pasted</div>
+          </div>
+          <div class="s4-win-body">
+            <div class="s4-text-box">
+              <span class="s4-pasted" id="s4-t1">Sending over the meeting notes in just a moment!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="s4-win" id="s4-w2">
+          <div class="s4-win-bar">
+            <div class="s4-win-left">
+              <span class="s4-app-dot" style="background:#3B82F6;"></span>
+              <span class="s4-app-name">Microsoft Word</span>
+            </div>
+            <div class="s4-check" id="s4-c2">✓ Pasted</div>
+          </div>
+          <div class="s4-win-body">
+            <div class="s4-text-box">
+              <span class="s4-pasted" id="s4-t2">The Q3 product development report is now ready for review.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="s4-win" id="s4-w3">
+          <div class="s4-win-bar">
+            <div class="s4-win-left">
+              <span class="s4-app-dot" style="background:#F59E0B;"></span>
+              <span class="s4-app-name">Notes</span>
+            </div>
+            <div class="s4-check" id="s4-c3">✓ Pasted</div>
+          </div>
+          <div class="s4-win-body">
+            <div class="s4-text-box">
+              <span class="s4-pasted" id="s4-t3">Groceries: freshly roasted coffee, green tea, almonds.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="s4-win" id="s4-w4">
+          <div class="s4-win-bar">
+            <div class="s4-win-left">
+              <span class="s4-app-dot" style="background:#10B981;"></span>
+              <span class="s4-app-name">ChatGPT</span>
+            </div>
+            <div class="s4-check" id="s4-c4">✓ Pasted</div>
+          </div>
+          <div class="s4-win-body">
+            <div class="s4-text-box">
+              <span class="s4-pasted" id="s4-t4">Refactor this Python function to be cleaner and faster.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#s4-header", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 0);
+      tl.fromTo(
+        ["#s4-w1", "#s4-w2", "#s4-w3", "#s4-w4"],
+        { opacity: 0, y: 24, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.1, ease: "power3.out" },
+        0.15
+      );
+
+      const times = [1.2, 3.4, 5.6, 7.8];
+      times.forEach(function (t, idx) {
+        const n = idx + 1;
+        tl.fromTo(
+          "#s4-w" + n,
+          { borderColor: "rgba(255, 255, 255, 0.1)" },
+          { borderColor: "rgba(79, 109, 255, 0.65)", duration: 0.25, ease: "power2.out" },
+          t - 0.1
+        );
+        tl.fromTo(
+          "#s4-t" + n,
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.28, ease: "power3.out" },
+          t
+        );
+        tl.fromTo(
+          "#s4-c" + n,
+          { opacity: 0, scale: 0.85 },
+          { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(1.7)" },
+          t + 0.12
+        );
+      });
+
+      window.__timelines["s4"] = tl;
+    })();
+  </script>
+</template>

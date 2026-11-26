@@ -32,6 +32,13 @@ Hold down your chosen shortcut (default: **Right Ctrl**) and speak; when you rel
 - **Auto-update and rollback:** Verifies new releases with SHA-256 checksums and lets you roll back to previous versions in one click.
 - **Built-in diagnostics tool:** Copy a privacy-masked diagnostic report in one click to troubleshoot or report issues safely.
 
+## Everyday Use Cases
+
+- **WhatsApp Web:** Send quick voice replies without reaching for the keyboard.
+- **Microsoft Word / Google Docs:** Dictate long reports, petitions, and drafts naturally by speaking.
+- **Homework & Notes:** Prepare lecture notes, summaries, and assignments effortlessly.
+- **Prompting ChatGPT & Claude by Voice:** Convey detailed AI prompts faster and more naturally by speaking aloud.
+
 <details>
 <summary>More screenshots (Light theme & Models page)</summary>
 
@@ -107,12 +114,12 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 ## Promo Video
 
-A 45-second showcase highlighting voice dictation speed over typing, local Whisper push-to-talk flow, AI cleanup/translation, and Magic UI theme transitions:
+A 50-second showcase highlighting voice dictation speed over typing, local Whisper push-to-talk flow, AI cleanup/translation, and Magic UI theme transitions:
 
-[![Dikte Promo Video — Click to watch](docs/assets/dikte-tanitim-poster.png)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)
+[![Dikte Promo Video — Click to watch](docs/assets/dikte-tanitim-poster-en.png)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)
 
-- **[Watch the Promo Video on the Website (45s, with audio)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)**
-- **[Open / Download MP4 Directly](https://mete2012seker-lgtm.github.io/dikte/assets/dikte-tanitim.mp4)**
+- **[Watch the Promo Video on the Website (50s, with audio)](https://mete2012seker-lgtm.github.io/dikte/#tanitim-videosu)**
+- **[Open / Download MP4 Directly](https://mete2012seker-lgtm.github.io/dikte/assets/dikte-tanitim-en.mp4)**
 
 ---
 

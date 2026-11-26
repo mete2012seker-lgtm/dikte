@@ -1,0 +1,734 @@
+﻿{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "filesScanned": 8
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 1,
+    "findings": [
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 13.687,
+        "selector": "#s3-key-old",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 1177.14,
+          "top": 412.85,
+          "right": 1270.86,
+          "bottom": 438.24,
+          "width": 93.72,
+          "height": 25.39
+        },
+        "containerSelector": "#s3-key-new",
+        "text": "Sağ Ctrl",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply. Decoration nobody needs to read can take data-layout-ignore.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s3.html",
+        "bbox": {
+          "x": 1177.14,
+          "y": 412.85,
+          "width": 93.72,
+          "height": 25.39
+        },
+        "firstSeen": 13.687,
+        "lastSeen": 13.687,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          13.687
+        ]
+      }
+    ],
+    "duration": 50,
+    "samples": [
+      2.778,
+      8.333,
+      13.889,
+      19.444,
+      25,
+      30.556,
+      36.111,
+      41.667,
+      47.222
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 1,
+    "truncated": false,
+    "faceCheck": {
+      "ran": true,
+      "candidates": 0,
+      "faces": 0
+    }
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      2.778,
+      13.889,
+      25,
+      36.111,
+      47.222
+    ],
+    "checked": 37,
+    "passed": 37
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 8,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 3 text elements stay under it for 0.5 s or more, the smallest \"Dikte • Windows 10 / 11\" at 16 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Dikte • Windows 10 / 11",
+        "selector": "div.s1-badge > span:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s1.html",
+        "bbox": {
+          "x": 860.06,
+          "y": 117,
+          "width": 217.86,
+          "height": 20
+        },
+        "time": 0,
+        "times": [
+          0,
+          0,
+          0
+        ],
+        "fontPx": 16,
+        "floorPx": 28,
+        "seconds": 4,
+        "elements": [
+          {
+            "selector": "div.s1-badge > span:nth-of-type(2)",
+            "text": "Dikte • Windows 10 / 11",
+            "fontPx": 16,
+            "time": 0,
+            "seconds": 4
+          },
+          {
+            "selector": "#s1-status-text",
+            "text": "Bas-Konuş",
+            "fontPx": 22,
+            "time": 0,
+            "seconds": 4
+          },
+          {
+            "selector": "#s1-keycap",
+            "text": "Sağ Ctrl",
+            "fontPx": 23.04,
+            "time": 0,
+            "seconds": 4
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 7 text elements stay under it for 0.5 s or more, the smallest \"Ses verisi yalnızca kendi bilgisayarı...\" at 18 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Ses verisi yalnızca kendi bilgisayarında işlenir.",
+        "selector": "#s2-b1 > div:nth-of-type(2) > div:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s2.html",
+        "bbox": {
+          "x": 1238.43,
+          "y": 484.28,
+          "width": 390.25,
+          "height": 21
+        },
+        "time": 5.375,
+        "times": [
+          4.125,
+          5.375,
+          5.375,
+          6.375,
+          6.375,
+          7.375,
+          7.375
+        ],
+        "fontPx": 18,
+        "floorPx": 28,
+        "seconds": 6.625,
+        "elements": [
+          {
+            "selector": "#s2-b1 > div:nth-of-type(2) > div:nth-of-type(2)",
+            "text": "Ses verisi yalnızca kendi bilgisayarında işlenir.",
+            "fontPx": 18,
+            "time": 5.375,
+            "seconds": 6.625
+          },
+          {
+            "selector": "#s2-b2 > div:nth-of-type(2) > div:nth-of-type(2)",
+            "text": "Geçici ses dosyaları kalıcı olarak saklanmaz.",
+            "fontPx": 18,
+            "time": 6.375,
+            "seconds": 5.625
+          },
+          {
+            "selector": "#s2-b3 > div:nth-of-type(2) > div:nth-of-type(2)",
+            "text": "Abonelik ücreti yok, şeffaf ve ücretsiz.",
+            "fontPx": 18,
+            "time": 7.375,
+            "seconds": 4.625
+          },
+          {
+            "selector": "p.s2-sub",
+            "text": "faster-whisper (GPU veya CPU) ile sesin bilgisayarından çıkmaz.",
+            "fontPx": 25,
+            "time": 4.125,
+            "seconds": 7.875
+          },
+          {
+            "selector": "#s2-b1 > div:nth-of-type(2) > div:nth-of-type(1)",
+            "text": "Bulut yok",
+            "fontPx": 26,
+            "time": 5.375,
+            "seconds": 6.625
+          },
+          {
+            "selector": "#s2-b2 > div:nth-of-type(2) > div:nth-of-type(1)",
+            "text": "Kayıt sonrası silinir",
+            "fontPx": 26,
+            "time": 6.375,
+            "seconds": 5.625
+          },
+          {
+            "selector": "#s2-b3 > div:nth-of-type(2) > div:nth-of-type(1)",
+            "text": "Açık kaynak (MIT)",
+            "fontPx": 26,
+            "time": 7.375,
+            "seconds": 4.625
+          }
+        ]
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 4.25 s (7.63–11.88 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 7.625,
+        "seconds": 4.25,
+        "floorSeconds": 3,
+        "until": 11.875
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 14 text elements stay under it for 0.5 s or more, the smallest \"Sistem Tepsisi Göstergesi\" at 15 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Sistem Tepsisi Göstergesi",
+        "selector": "span.s3-tray-sub",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s3.html",
+        "bbox": {
+          "x": 972.22,
+          "y": 795.03,
+          "width": 183.5,
+          "height": 18.4
+        },
+        "time": 16.75,
+        "times": [
+          12.125,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          12.25,
+          13.75,
+          16.75,
+          16.75
+        ],
+        "fontPx": 14.72,
+        "floorPx": 28,
+        "seconds": 4.25,
+        "elements": [
+          {
+            "selector": "span.s3-tray-sub",
+            "text": "Sistem Tepsisi Göstergesi",
+            "fontPx": 14.72,
+            "time": 16.75,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2)",
+            "text": "1, 2 veya 3 tuşlu serbest kombinasyon",
+            "fontPx": 15.04,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2)",
+            "text": "İster basılı tut, ister tek basışla aç/kapat",
+            "fontPx": 15.04,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(2)",
+            "text": "Uygulama içinden anında ses girişi seçimi",
+            "fontPx": 15.04,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-btn-hold",
+            "text": "Basılı Tut",
+            "fontPx": 16.92,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-btn-toggle",
+            "text": "Bas-Bırak",
+            "fontPx": 16.92,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "div.s3-mic-select > span:nth-of-type(1)",
+            "text": "Varsayılan Mikrofon (Realtek)",
+            "fontPx": 16.92,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-key-new",
+            "text": "Ctrl + Shift + D",
+            "fontPx": 18.8,
+            "time": 13.75,
+            "seconds": 7.25
+          },
+          {
+            "selector": "#s3-key-old",
+            "text": "Sağ Ctrl",
+            "fontPx": 19.8,
+            "time": 12.25,
+            "seconds": 1.5
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "Global Kısayol",
+            "fontPx": 20.68,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "Kayıt Modu",
+            "fontPx": 20.68,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-card > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(1)",
+            "text": "Mikrofon Kaynağı",
+            "fontPx": 20.68,
+            "time": 12.25,
+            "seconds": 8.75
+          },
+          {
+            "selector": "#s3-tray-text",
+            "text": "Dinliyor...",
+            "fontPx": 23.92,
+            "time": 16.75,
+            "seconds": 4.25
+          },
+          {
+            "selector": "p.s3-sub",
+            "text": "Kısayolunu ve mikrofonunu seç; tepside gizliyken bile takip et.",
+            "fontPx": 24,
+            "time": 12.125,
+            "seconds": 8.875
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 13 text elements stay under it for 0.5 s or more, the smallest \"✓ Yapıştırıldı\" at 13 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "✓ Yapıştırıldı",
+        "selector": "#s4-c1",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s4.html",
+        "bbox": {
+          "x": 830.02,
+          "y": 264.28,
+          "width": 81.86,
+          "height": 16.16
+        },
+        "time": 22.375,
+        "times": [
+          21.125,
+          21.25,
+          21.375,
+          21.5,
+          21.625,
+          22.375,
+          22.375,
+          24.5,
+          24.625,
+          26.75,
+          26.875,
+          28.875,
+          29
+        ],
+        "fontPx": 13.31,
+        "floorPx": 28,
+        "seconds": 8.625,
+        "elements": [
+          {
+            "selector": "#s4-c1",
+            "text": "✓ Yapıştırıldı",
+            "fontPx": 13.31,
+            "time": 22.375,
+            "seconds": 8.625
+          },
+          {
+            "selector": "#s4-c2",
+            "text": "✓ Yapıştırıldı",
+            "fontPx": 13.87,
+            "time": 24.625,
+            "seconds": 6.375
+          },
+          {
+            "selector": "#s4-c4",
+            "text": "✓ Yapıştırıldı",
+            "fontPx": 13.87,
+            "time": 29,
+            "seconds": 2
+          },
+          {
+            "selector": "#s4-c3",
+            "text": "✓ Yapıştırıldı",
+            "fontPx": 14,
+            "time": 26.875,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#s4-w1 > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "WhatsApp Web",
+            "fontPx": 19.69,
+            "time": 21.25,
+            "seconds": 9.75
+          },
+          {
+            "selector": "#s4-w2 > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "Microsoft Word",
+            "fontPx": 19.8,
+            "time": 21.375,
+            "seconds": 9.625
+          },
+          {
+            "selector": "#s4-w3 > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "Notlar",
+            "fontPx": 19.88,
+            "time": 21.5,
+            "seconds": 9.5
+          },
+          {
+            "selector": "#s4-w4 > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "ChatGPT",
+            "fontPx": 19.88,
+            "time": 21.625,
+            "seconds": 9.375
+          },
+          {
+            "selector": "#s4-t1",
+            "text": "Toplantı notlarını birazdan paylaşıyorum, görüşürüz!",
+            "fontPx": 21,
+            "time": 22.375,
+            "seconds": 8.625
+          },
+          {
+            "selector": "#s4-t2",
+            "text": "Üçüncü çeyrek ürün geliştirme raporu başarıyla tamamlandı.",
+            "fontPx": 21,
+            "time": 24.5,
+            "seconds": 6.5
+          },
+          {
+            "selector": "#s4-t3",
+            "text": "Alışveriş: taze öğütülmüş kahve, yeşil çay, fındık.",
+            "fontPx": 21,
+            "time": 26.75,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s4-t4",
+            "text": "Bu Python fonksiyonunu daha sade ve hızlı hâle getir.",
+            "fontPx": 21,
+            "time": 28.875,
+            "seconds": 2.125
+          },
+          {
+            "selector": "p.s4-sub",
+            "text": "WhatsApp Web, Word, Notlar veya ChatGPT — imlecin olduğu yere düşer.",
+            "fontPx": 24,
+            "time": 21.125,
+            "seconds": 9.875
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 10 text elements stay under it for 0.5 s or more, the smallest \"2 • AI Temizleme\" at 14 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "2 • AI Temizleme",
+        "selector": "#s5-c2 > div:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s5.html",
+        "bbox": {
+          "x": 714.6,
+          "y": 862.57,
+          "width": 145.97,
+          "height": 17.77
+        },
+        "time": 34.625,
+        "times": [
+          31.125,
+          31.75,
+          31.75,
+          34.625,
+          34.625,
+          37.125,
+          37.125,
+          37.125,
+          37.125,
+          37.125
+        ],
+        "fontPx": 13.82,
+        "floorPx": 28,
+        "seconds": 5.375,
+        "elements": [
+          {
+            "selector": "#s5-c2 > div:nth-of-type(1)",
+            "text": "2 • AI Temizleme",
+            "fontPx": 13.82,
+            "time": 34.625,
+            "seconds": 5.375
+          },
+          {
+            "selector": "#s5-c3 > div:nth-of-type(1)",
+            "text": "3 • Anında Çeviri",
+            "fontPx": 13.82,
+            "time": 37.125,
+            "seconds": 2.875
+          },
+          {
+            "selector": "div.s5-lang-row > div:nth-of-type(1) > span:nth-of-type(1)",
+            "text": "EN",
+            "fontPx": 13.82,
+            "time": 37.125,
+            "seconds": 2.875
+          },
+          {
+            "selector": "div.s5-lang-row > div:nth-of-type(2) > span:nth-of-type(1)",
+            "text": "DE",
+            "fontPx": 13.82,
+            "time": 37.125,
+            "seconds": 2.875
+          },
+          {
+            "selector": "#s5-c1 > div:nth-of-type(1)",
+            "text": "1 • Ham Konuşma",
+            "fontPx": 14,
+            "time": 31.75,
+            "seconds": 8.25
+          },
+          {
+            "selector": "div.s5-lang-row > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "Let's hold tomorrow's meeting at 3:00 PM.",
+            "fontPx": 17.77,
+            "time": 37.125,
+            "seconds": 2.875
+          },
+          {
+            "selector": "div.s5-lang-row > div:nth-of-type(2) > span:nth-of-type(2)",
+            "text": "Lassen Sie uns das Treffen um 15:00 Uhr abhalten.",
+            "fontPx": 17.77,
+            "time": 37.125,
+            "seconds": 2.875
+          },
+          {
+            "selector": "#s5-c2 > div:nth-of-type(2)",
+            "text": "\"Yarın toplantıyı saat 15.00'te yapalım.\"",
+            "fontPx": 19.75,
+            "time": 34.625,
+            "seconds": 5.375
+          },
+          {
+            "selector": "div.s5-step-text.raw",
+            "text": "\"Ee, yani yarın toplantıyı saat üçte yapalım şey...\"",
+            "fontPx": 20,
+            "time": 31.75,
+            "seconds": 8.25
+          },
+          {
+            "selector": "p.s5-sub",
+            "text": "TR / EN / DE • Yerel GGUF (llama.cpp) veya OpenRouter.",
+            "fontPx": 23,
+            "time": 31.125,
+            "seconds": 8.875
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and \"Tek tıkla Koyu ve Açık tema.\" renders at 24 px for 4.88 s: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Tek tıkla Koyu ve Açık tema.",
+        "selector": "p.s6-sub",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s6.html",
+        "bbox": {
+          "x": 799.86,
+          "y": 182.63,
+          "width": 320.28,
+          "height": 29
+        },
+        "time": 40.125,
+        "times": [
+          40.125
+        ],
+        "fontPx": 24,
+        "floorPx": 28,
+        "seconds": 4.875,
+        "elements": [
+          {
+            "selector": "p.s6-sub",
+            "text": "Tek tıkla Koyu ve Açık tema.",
+            "fontPx": 24,
+            "time": 40.125,
+            "seconds": 4.875
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 3 text elements stay under it for 0.5 s or more, the smallest \"Windows 10 / 11 • MIT Lisansı • Abone...\" at 20 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Windows 10 / 11 • MIT Lisansı • Abonelik Yok",
+        "selector": "#s7-meta",
+        "dataAttributes": {},
+        "sourceFile": "compositions/s7.html",
+        "bbox": {
+          "x": 738.55,
+          "y": 752.19,
+          "width": 442.9,
+          "height": 24
+        },
+        "time": 45.625,
+        "times": [
+          45.375,
+          45.5,
+          45.625
+        ],
+        "fontPx": 20,
+        "floorPx": 28,
+        "seconds": 4.375,
+        "elements": [
+          {
+            "selector": "#s7-meta",
+            "text": "Windows 10 / 11 • MIT Lisansı • Abonelik Yok",
+            "fontPx": 20,
+            "time": 45.625,
+            "seconds": 4.375
+          },
+          {
+            "selector": "#s7-url",
+            "text": "mete2012seker-lgtm.github.io/dikte",
+            "fontPx": 24,
+            "time": 45.5,
+            "seconds": 4.5
+          },
+          {
+            "selector": "#s7-cta",
+            "text": "GitHub'dan Ücretsiz İndir",
+            "fontPx": 25.61,
+            "time": 45.375,
+            "seconds": 4.625
+          }
+        ]
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 400
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  },
+  "saved": {
+    "id": "7995f1a1-9b26-4712-960b-15a6087827e7",
+    "revision": "4f8deec0-9258-4cd6-b88a-81fdfee2e3d9",
+    "report": "C:\\Users\\aksek\\Desktop\\dikte projesi\\video-hf\\yatay-tr\\.hyperframes\\artifacts\\checks\\7995f1a1-9b26-4712-960b-15a6087827e7.json",
+    "attribution": "recorded-revision"
+  },
+  "_meta": {
+    "version": "0.9.81",
+    "updateAvailable": false
+  }
+}

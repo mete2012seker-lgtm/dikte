@@ -12,7 +12,6 @@
 
 #define AppName "Dikte"
 #define AppExe "Dikte.exe"
-#define MyAppExeName "Dikte.exe"
 
 [Setup]
 ; AppId sabit olmalı; her sürümde aynı kalır, güncelleme ve kaldırma bu kimlikle eşleşir.
@@ -56,7 +55,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 ; Otomatik başlatma: Kurulumda seçilirse veya Ayarlar'dan açılırsa --tray ile sessiz başlar.
 ; Kaldırmada her durumda temizlenir.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-  ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#MyAppExeName}"" --tray"; \
+  ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#AppExe}"" --tray"; \
   Flags: uninsdeletevalue; Tasks: autostart
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
   ValueType: none; ValueName: "{#AppName}"; Flags: uninsdeletevalue
@@ -70,11 +69,11 @@ Filename: "{app}\{#AppExe}"; Description: "{#AppName} uygulamasını başlat"; \
 ; Modeller [Code] bölümünde ele alınır (kullanıcı "Modelleri koru" seçtiyse silinmez).
 Type: filesandordirs; Name: "{localappdata}\Dikte\data"
 Type: filesandordirs; Name: "{localappdata}\Dikte\logs"
-Type: filesandordirs; Name: "{tmp}\dikte"
+Type: filesandordirs; Name: "{%TEMP}\dikte"
 
 [Code]
 // Uygulama, kaldırıcıyı başlatmadan önce {localappdata}\Dikte\keep_models.flag yazar.
-// Bayrak varsa modeller korunur; yoksa models klasörü silinir.
+// Bayrak varsa modeller korunur; yoksa sessizde silinir, etkileşimli kaldırmada sorulur.
 
 function DiktePath(): String;
 begin
@@ -87,11 +86,20 @@ begin
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DeleteModels: Boolean;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
     if not ModelsKept() then
-      DelTree(DiktePath() + '\models', True, True, True);
+    begin
+      if UninstallSilent then
+        DeleteModels := True
+      else
+        DeleteModels := (MsgBox('İndirdiğiniz ses ve metin modelleri (GB boyutunda olabilir) kalıcı olarak silinsin mi?' + #13#10 + 'Hayır seçerseniz modeller yeniden kurulum için korunur.', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES);
+      if DeleteModels then
+        DelTree(DiktePath() + '\models', True, True, True);
+    end;
     DeleteFile(DiktePath() + '\keep_models.flag');
     // Klasör yalnız boşsa kaldırılır (modeller korunduysa kalır).
     RemoveDir(DiktePath());

@@ -185,10 +185,7 @@ def cmd_ui(force_device: str | None, debug: bool, start_in_tray: bool = False) -
     engine = TranscriptionEngine(force_device=force_device)
     controller = Controller(engine=engine)
     controller.maybe_startup_update_check()
-    try:
-        return run_app(controller, debug=debug, start_in_tray=start_in_tray)
-    except TypeError:
-        return run_app(controller, debug=debug)
+    return run_app(controller, debug=debug, start_in_tray=start_in_tray)
 
 
 def build_parser() -> argparse.ArgumentParser:

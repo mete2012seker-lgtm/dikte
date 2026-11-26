@@ -26,7 +26,6 @@
 
 <!-- İkonlar: tek dosya, internet gerekmez -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8.5 21h7"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.2 12a8.8 8.8 0 1 0 2.9-6.5"/><path d="M3 4.5V9h4.5"/><path d="M12 8v4.3l2.8 1.8"/></symbol>
   <symbol id="i-models" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.6"/><circle cx="18" cy="7" r="2.6"/><circle cx="12" cy="18" r="2.6"/><path d="M8.4 8.4 11 15.6M15.6 8.4 13 15.6M8.6 7h6.8"/></symbol>
@@ -46,7 +45,6 @@
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
   <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.6.4 1 1 1 1.7V17h4.8v-1.4c0-.7.4-1.3 1-1.7A6 6 0 0 0 12 3Z"/></symbol>
   <symbol id="i-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A8 8 0 0 1 12 6a8 8 0 0 1 8 8c0 .6-.1 1.2-.2 1.7"/><path d="M6.2 7.3A8 8 0 1 0 17 17.9"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/></symbol>
@@ -175,7 +173,7 @@
               <span class="status-dot" id="statusDot"></span>
               <span id="statusText" title="">Model yükleniyor…</span>
             </div>
-            <div class="kbd" id="shortcutHint">Sağ Ctrl (basılı tut)</div>
+            <div class="kbd" id="shortcutHint">Sağ Ctrl · Basılı tut ve konuş</div>
           </div>
         </div>
 
@@ -299,19 +297,31 @@
     <section class="page" id="page-ayarlar">
       <div class="page-head">
         <h1 class="page-title">Ayarlar</h1>
-        <p class="page-sub">Kısayolu, dili ve yapay zeka tercihlerini yönet.</p>
+        <p class="page-sub">Konuşma tuşunu, mikrofonunu ve görünümü kolayca ayarla.</p>
       </div>
 
       <div class="settings">
-        <div class="card set-card">
-          <div class="card-head"><svg class="ic"><use href="#i-mic"/></svg>Kısayol Tuşu</div>
+        <div class="card set-card" id="speechShortcutCard">
+          <div class="card-head"><svg class="ic"><use href="#i-mic"/></svg>Konuşma &amp; Kısayol</div>
           <div class="set-row">
             <div class="set-info">
               <div class="set-title">Dikte kısayolu</div>
-              <div class="set-desc">Basılı tutup konuş, bırakınca metin panoya kopyalanır. Harf tuşları yanlışlıkla kayıt başlatmaması için listede yok.</div>
+              <div class="set-desc">Konuşmayı başlatıp bitireceğin tuşu seç. Harf tuşları yanlışlıkla kayıt başlatmaması için listede yok.</div>
             </div>
             <div class="set-control">
               <select class="select hotkey-select" id="hotkeySelect" aria-label="Dikte kısayolu"></select>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Kısayol modu</div>
+              <div class="set-desc">Basılı Tut: tuşa basılıyken kaydeder. Bas-Bırak: bir kez basınca başlar, tekrar basınca biter.</div>
+            </div>
+            <div class="set-control">
+              <select class="select hotkey-select" id="hotkeyModeSelect" aria-label="Kısayol modu">
+                <option value="hold">Basılı Tut</option>
+                <option value="toggle">Bas-Bırak</option>
+              </select>
             </div>
           </div>
           <div class="set-row">
@@ -330,6 +340,36 @@
               <div class="set-desc">Değişiklik anında kaydedilir ve uygulanır.</div>
             </div>
             <div class="set-control"><span class="keycap" id="hotkeyNow">Sağ Ctrl</span></div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Mikrofon</div>
+              <div class="set-desc">Ses kaydı için kullanılacak mikrofonu seç. Kulaklık veya harici mikrofon taktıysan Yenile'ye bas.</div>
+            </div>
+            <div class="set-control mic-control">
+              <select class="select hotkey-select" id="micDeviceSelect" aria-label="Mikrofon seçimi">
+                <option value="default">Sistem Varsayılanı</option>
+              </select>
+              <button class="btn" id="micRefreshBtn" type="button" title="Mikrofon listesini yenile"><svg class="ic"><use href="#i-refresh"/></svg>Yenile</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Ekranda dinleme göstergesi</div>
+              <div class="set-desc">Konuşurken ekran altında küçük "Dinliyor / Yazıyor" kutucuğu gösterir.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch on" id="showIndicatorSwitch" role="switch" aria-checked="true" aria-label="Ekranda dinleme göstergesi"></button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <div class="set-title">Otomatik yapıştırma</div>
+              <div class="set-desc">Konuşmanız bitince metin otomatik olarak açık pencereye (WhatsApp, Word vb.) yapıştırılır.</div>
+            </div>
+            <div class="set-control">
+              <button class="switch on" id="autoPasteSwitch" role="switch" aria-checked="true" aria-label="Otomatik yapıştırma"></button>
+            </div>
           </div>
         </div>
 
@@ -355,107 +395,8 @@
           </div>
         </div>
 
-        <div class="card set-card" id="aiCard">
-          <div class="card-head"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka</div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Metin sağlayıcısı</div>
-              <div class="set-desc">Temizleme ve çeviri için kullanılacak model. Kapalıyken bu özellikler çalışmaz.</div>
-            </div>
-            <div class="set-control">
-              <select class="select select-plain" id="textProvider" aria-label="Metin sağlayıcısı">
-                <option value="none">Kapalı</option>
-                <option value="local">Yerel model</option>
-                <option value="openrouter">OpenRouter</option>
-              </select>
-            </div>
-          </div>
-          <div class="ai-note" id="aiOffNote">Metin temizleme ve çeviri kapalı. Açmak için sağlayıcı seç.</div>
-
-          <div id="openRouterSection" hidden>
-            <div class="set-row">
-              <div class="set-info">
-                <div class="set-title">OpenRouter API anahtarı</div>
-                <div class="set-desc">Windows DPAPI ile şifrelenir; yalnız bu bilgisayarda çözülür.</div>
-                <div class="key-status" id="orKeyState">Anahtar yok</div>
-              </div>
-              <div class="set-control key-control">
-                <input class="text-input" id="orKeyInput" type="password" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter API anahtarı">
-                <div class="key-buttons">
-                  <button class="btn btn-primary" id="orKeySave">Kaydet</button>
-                  <button class="btn" id="orKeyTest">Test et</button>
-                  <button class="btn btn-danger" id="orKeyDelete">Sil</button>
-                </div>
-                <div class="key-result" id="orKeyStatus"></div>
-              </div>
-            </div>
-            <div class="set-row">
-              <div class="set-info">
-                <div class="set-title">Metin modeli</div>
-                <div class="set-desc">Varsayılan liste ucuz/küçük modellerdir. "Tüm modeller" açılınca OpenRouter kataloğunun tamamı aranabilir.</div>
-              </div>
-              <div class="set-control key-control">
-                <div class="key-buttons">
-                  <input class="text-input" id="orModelSearch" type="search" placeholder="Model ara… (ör. gemini, qwen)" aria-label="OpenRouter model ara">
-                  <button class="btn" id="orModelRefresh" title="Model listesini yenile">Yenile</button>
-                </div>
-                <select class="select select-plain" id="orModelSelect" aria-label="OpenRouter metin modeli"></select>
-                <label class="check-inline" for="orShowAll">
-                  <input type="checkbox" id="orShowAll">
-                  <span>Tüm modelleri göster (fiyat sınırı yok)</span>
-                </label>
-              </div>
-            </div>
-            <div class="ai-privacy" id="orPrivacyNote">Metin, temizleme/çeviri için OpenRouter sunucularına gönderilir. Pahalı modellerde maliyet artar.</div>
-          </div>
-
-          <div id="localAiSection" hidden>
-            <div class="set-row">
-              <div class="set-info">
-                <div class="set-title">Aktif yerel model</div>
-                <div class="set-desc" id="localModelName">Metin modeli seçilmedi.</div>
-              </div>
-              <div class="set-control">
-                <button class="btn" id="goModelsBtn">Modeller sayfasına git</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Sistem promptu</div>
-              <div class="set-desc">Dil ve görev talimatı bu metnin arkasına otomatik eklenir.</div>
-            </div>
-            <div class="set-control prompt-control">
-              <textarea class="text-input prompt-input" id="systemPrompt" rows="4" aria-label="Sistem promptu"></textarea>
-              <button class="btn" id="systemPromptReset">Varsayılana dön</button>
-            </div>
-          </div>
-        </div>
-
         <div class="card set-card" id="pasteCard">
-          <div class="card-head"><svg class="ic"><use href="#i-globe"/></svg>Yapıştırma ve Dil</div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Girdi dili</div>
-              <div class="set-desc">Otomatik seçildiğinde Whisper dili kendisi algılar.</div>
-            </div>
-            <div class="set-control">
-              <select class="select select-plain" id="inputLang" aria-label="Girdi dili">
-                <option value="auto">Otomatik</option>
-                <option value="tr">Türkçe</option>
-              </select>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Otomatik yapıştırma</div>
-              <div class="set-desc">Dikte bitince metin etkin pencereye yapıştırılır. Dikte penceresine yapıştırılmaz.</div>
-            </div>
-            <div class="set-control">
-              <button class="switch on" id="autoPasteSwitch" role="switch" aria-checked="true" aria-label="Otomatik yapıştırma"></button>
-            </div>
-          </div>
+          <div class="card-head"><svg class="ic"><use href="#i-globe"/></svg>Dil &amp; Çeviri</div>
           <div class="set-row">
             <div class="set-info">
               <div class="set-title">Çıktı dili</div>
@@ -514,111 +455,210 @@
           </div>
         </div>
 
-        <div class="card set-card" id="updateCard">
-          <div class="card-head"><svg class="ic"><use href="#i-chev-down"/></svg>Güncelleme</div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Sürüm</div>
-              <div class="set-desc"><b id="updateVersion">—</b> · Son denetim: <span id="updateLastCheck">—</span></div>
-            </div>
-            <div class="set-control">
-              <button class="btn" id="updateCheckBtn" type="button">Şimdi denetle</button>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Uygulamayı Güncelle</div>
-              <div class="set-desc" id="updateNotes">Yeni sürüm yoksa pasif kalır. Kurulum sessiz çalışır, uygulama kapanıp yeniden açılır.</div>
-            </div>
-            <div class="set-control">
-              <button class="btn btn-primary" id="updateApplyBtn" type="button" disabled>Uygulamayı Güncelle</button>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Açılışta denetle</div>
-              <div class="set-desc">Uygulama her açılışta sessizce sürüm denetler; uyarı vermez.</div>
-            </div>
-            <div class="set-control">
-              <button class="switch" id="updateAutoSwitch" role="switch" aria-checked="true" aria-label="Açılışta denetle"></button>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Önceki Sürümlere Dön (Rollback)</div>
-              <div class="set-desc">Sorun yaşanırsa önceki kararlı bir sürüme tek tıkla geri dönün.</div>
-            </div>
-            <div class="set-control key-control">
-              <select class="select select-plain" id="rollbackSelect" aria-label="Geri dönülecek sürüm">
-                <option value="">Sürümler taranıyor…</option>
-              </select>
-              <button class="btn btn-danger" id="rollbackBtn" type="button" disabled>Bu Sürüme Dön</button>
-            </div>
-          </div>
-          <div class="uninstall-status" id="updateStatus" role="status"></div>
-        </div>
+        <details class="advanced-settings" id="advancedSettings" open>
+          <summary class="advanced-summary">
+            <span class="advanced-summary-title">Gelişmiş Ayarlar</span>
+            <span class="advanced-summary-sub">Yapay zeka düzenleme, konuşma dili algılama, güncelleme, başlangıç ve tanılama</span>
+            <svg class="ic advanced-chev"><use href="#i-chev-down"/></svg>
+          </summary>
+          <div class="advanced-body">
+            <div class="card set-card" id="aiCard">
+              <div class="card-head"><svg class="ic"><use href="#i-spark"/></svg>Yapay Zeka ve Konuşma Dili</div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Girdi dili</div>
+                  <div class="set-desc">Otomatik seçildiğinde Whisper konuşma dilini kendisi algılar.</div>
+                </div>
+                <div class="set-control">
+                  <select class="select select-plain" id="inputLang" aria-label="Girdi dili">
+                    <option value="auto">Otomatik</option>
+                    <option value="tr">Türkçe</option>
+                  </select>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Metin sağlayıcısı</div>
+                  <div class="set-desc">Temizleme ve çeviri için kullanılacak yapay zeka motoru. Kapalıyken bu özellikler çalışmaz.</div>
+                </div>
+                <div class="set-control">
+                  <select class="select select-plain" id="textProvider" aria-label="Metin sağlayıcısı">
+                    <option value="none">Kapalı</option>
+                    <option value="local">Yerel model</option>
+                    <option value="openrouter">OpenRouter</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ai-note" id="aiOffNote">Metin temizleme ve çeviri kapalı. Açmak için sağlayıcı seç.</div>
 
-        <div class="card set-card" id="appCard">
-          <div class="card-head"><svg class="ic"><use href="#i-cpu"/></svg>Uygulama / Kaldırma</div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Kurulum Sihirbazı</div>
-              <div class="set-desc">İlk açılış karşılama sihirbazını yeniden çalıştırarak ayarları yapılandırın.</div>
-            </div>
-            <div class="set-control">
-              <button class="btn" id="restartWizardBtn" type="button">Sihirbazı Başlat</button>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Windows ile başlat</div>
-              <div class="set-desc">Bilgisayar açılırken Dikte arka planda hazır olsun.</div>
-            </div>
-            <div class="set-control">
-              <button class="switch" id="autostartSwitch" role="switch" aria-checked="false" aria-label="Windows ile başlat"></button>
-            </div>
-          </div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Kaldırma</div>
-              <div class="set-desc" id="uninstallDesc">Silinecek veri: geçmiş, ayarlar ve günlükler. Modeller ikinci onayda korunabilir. Bu işlem geri alınamaz.</div>
-            </div>
-            <div class="set-control uninstall-control">
-              <button class="btn btn-danger uninstall-btn" id="uninstallBtn" type="button">Uygulamayı Kaldır</button>
-            </div>
-          </div>
-          <div class="uninstall-confirm" id="uninstallConfirm" hidden>
-            <div class="uninstall-question" id="uninstallQuestion">Dikte ve tüm verileri kaldırılsın mı?</div>
-            <label class="uninstall-keep" id="uninstallKeepRow" hidden>
-              <input type="checkbox" id="uninstallKeepModels" checked> Modelleri koru (yeniden kurulumda tekrar indirmeyi önler)
-            </label>
-            <div class="uninstall-actions">
-              <button class="btn" id="uninstallNo" type="button">Vazgeç</button>
-              <button class="btn btn-danger" id="uninstallYes" type="button">Evet, kaldır</button>
-            </div>
-            <div class="uninstall-status" id="uninstallStatus" role="status"></div>
-          </div>
-        </div>
+              <div id="openRouterSection" hidden>
+                <div class="set-row">
+                  <div class="set-info">
+                    <div class="set-title">OpenRouter API anahtarı</div>
+                    <div class="set-desc">Windows DPAPI ile şifrelenir; yalnız bu bilgisayarda çözülür.</div>
+                    <div class="key-status" id="orKeyState">Anahtar yok</div>
+                  </div>
+                  <div class="set-control key-control">
+                    <input class="text-input" id="orKeyInput" type="password" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter API anahtarı">
+                    <div class="key-buttons">
+                      <button class="btn btn-primary" id="orKeySave">Kaydet</button>
+                      <button class="btn" id="orKeyTest">Test et</button>
+                      <button class="btn btn-danger" id="orKeyDelete">Sil</button>
+                    </div>
+                    <div class="key-result" id="orKeyStatus"></div>
+                  </div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info">
+                    <div class="set-title">Metin modeli</div>
+                    <div class="set-desc">Varsayılan liste ucuz/küçük modellerdir. "Tüm modeller" açılınca OpenRouter kataloğunun tamamı aranabilir.</div>
+                  </div>
+                  <div class="set-control key-control">
+                    <div class="key-buttons">
+                      <input class="text-input" id="orModelSearch" type="search" placeholder="Model ara… (ör. gemini, qwen)" aria-label="OpenRouter model ara">
+                      <button class="btn" id="orModelRefresh" title="Model listesini yenile">Yenile</button>
+                    </div>
+                    <select class="select select-plain" id="orModelSelect" aria-label="OpenRouter metin modeli"></select>
+                    <label class="check-inline" for="orShowAll">
+                      <input type="checkbox" id="orShowAll">
+                      <span>Tüm modelleri göster (fiyat sınırı yok)</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="ai-privacy" id="orPrivacyNote">Metin, temizleme/çeviri için OpenRouter sunucularına gönderilir. Pahalı modellerde maliyet artar.</div>
+              </div>
 
-        <div class="card set-card" id="diagCard">
-          <div class="card-head"><svg class="ic"><use href="#i-alert"/></svg>Sorun Giderme ve Tanılama</div>
-          <div class="set-row">
-            <div class="set-info">
-              <div class="set-title">Sistem Tanılama ve Hata Raporu</div>
-              <div class="set-desc">Uygulama günlüklerini ve donanım durumunu tarayıp sade Türkçe çözüm önerileri alın veya kişisel veriler temizlenmiş rapor oluşturun.</div>
+              <div id="localAiSection" hidden>
+                <div class="set-row">
+                  <div class="set-info">
+                    <div class="set-title">Aktif yerel model</div>
+                    <div class="set-desc" id="localModelName">Metin modeli seçilmedi.</div>
+                  </div>
+                  <div class="set-control">
+                    <button class="btn" id="goModelsBtn">Modeller sayfasına git</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Sistem promptu</div>
+                  <div class="set-desc">Dil ve görev talimatı bu metnin arkasına otomatik eklenir.</div>
+                </div>
+                <div class="set-control prompt-control">
+                  <textarea class="text-input prompt-input" id="systemPrompt" rows="4" aria-label="Sistem promptu"></textarea>
+                  <button class="btn" id="systemPromptReset">Varsayılana dön</button>
+                </div>
+              </div>
             </div>
-            <div class="set-control diag-card-actions">
-              <button class="btn btn-primary" id="diagScanBtn" type="button">Sorunları Tara ve Göster</button>
-              <button class="btn" id="diagQuickCopyBtn" type="button">Hata Raporunu Kopyala</button>
-              <button class="btn" id="diagExportBtn" type="button">.txt Olarak Kaydet</button>
+
+            <div class="card set-card" id="updateCard">
+              <div class="card-head"><svg class="ic"><use href="#i-chev-down"/></svg>Güncelleme</div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Sürüm</div>
+                  <div class="set-desc"><b id="updateVersion">—</b> · Son denetim: <span id="updateLastCheck">—</span></div>
+                </div>
+                <div class="set-control">
+                  <button class="btn" id="updateCheckBtn" type="button">Şimdi denetle</button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Uygulamayı Güncelle</div>
+                  <div class="set-desc" id="updateNotes">Yeni sürüm yoksa pasif kalır. Kurulum sessiz çalışır, uygulama kapanıp yeniden açılır.</div>
+                </div>
+                <div class="set-control">
+                  <button class="btn btn-primary" id="updateApplyBtn" type="button" disabled>Uygulamayı Güncelle</button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Açılışta denetle</div>
+                  <div class="set-desc">Uygulama her açılışta sessizce sürüm denetler; uyarı vermez.</div>
+                </div>
+                <div class="set-control">
+                  <button class="switch" id="updateAutoSwitch" role="switch" aria-checked="true" aria-label="Açılışta denetle"></button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Önceki Sürümlere Dön (Rollback)</div>
+                  <div class="set-desc">Sorun yaşanırsa önceki kararlı bir sürüme tek tıkla geri dönün.</div>
+                </div>
+                <div class="set-control key-control">
+                  <select class="select select-plain" id="rollbackSelect" aria-label="Geri dönülecek sürüm">
+                    <option value="">Sürümler taranıyor…</option>
+                  </select>
+                  <button class="btn btn-danger" id="rollbackBtn" type="button" disabled>Bu Sürüme Dön</button>
+                </div>
+              </div>
+              <div class="uninstall-status" id="updateStatus" role="status"></div>
+            </div>
+
+            <div class="card set-card" id="appCard">
+              <div class="card-head"><svg class="ic"><use href="#i-cpu"/></svg>Uygulama / Kaldırma</div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Kurulum Sihirbazı</div>
+                  <div class="set-desc">İlk açılış karşılama sihirbazını yeniden çalıştırarak ayarları yapılandırın.</div>
+                </div>
+                <div class="set-control">
+                  <button class="btn" id="restartWizardBtn" type="button">Sihirbazı Başlat</button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Windows ile başlat</div>
+                  <div class="set-desc">Bilgisayar açılırken Dikte arka planda hazır olsun.</div>
+                </div>
+                <div class="set-control">
+                  <button class="switch" id="autostartSwitch" role="switch" aria-checked="false" aria-label="Windows ile başlat"></button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Kaldırma</div>
+                  <div class="set-desc" id="uninstallDesc">Silinecek veri: geçmiş, ayarlar ve günlükler. Modeller ikinci onayda korunabilir. Bu işlem geri alınamaz.</div>
+                </div>
+                <div class="set-control uninstall-control">
+                  <button class="btn btn-danger uninstall-btn" id="uninstallBtn" type="button">Uygulamayı Kaldır</button>
+                </div>
+              </div>
+              <div class="uninstall-confirm" id="uninstallConfirm" hidden>
+                <div class="uninstall-question" id="uninstallQuestion">Dikte ve tüm verileri kaldırılsın mı?</div>
+                <label class="uninstall-keep" id="uninstallKeepRow" hidden>
+                  <input type="checkbox" id="uninstallKeepModels" checked> Modelleri koru (yeniden kurulumda tekrar indirmeyi önler)
+                </label>
+                <div class="uninstall-actions">
+                  <button class="btn" id="uninstallNo" type="button">Vazgeç</button>
+                  <button class="btn btn-danger" id="uninstallYes" type="button">Evet, kaldır</button>
+                </div>
+                <div class="uninstall-status" id="uninstallStatus" role="status"></div>
+              </div>
+            </div>
+
+            <div class="card set-card" id="diagCard">
+              <div class="card-head"><svg class="ic"><use href="#i-alert"/></svg>Sorun Giderme ve Tanılama</div>
+              <div class="set-row">
+                <div class="set-info">
+                  <div class="set-title">Sistem Tanılama ve Hata Raporu</div>
+                  <div class="set-desc">Uygulama günlüklerini ve donanım durumunu tarayıp sade Türkçe çözüm önerileri alın veya kişisel veriler temizlenmiş rapor oluşturun.</div>
+                </div>
+                <div class="set-control diag-card-actions">
+                  <button class="btn btn-primary" id="diagScanBtn" type="button">Sorunları Tara ve Göster</button>
+                  <button class="btn" id="diagQuickCopyBtn" type="button">Hata Raporunu Kopyala</button>
+                  <button class="btn" id="diagExportBtn" type="button">.txt Olarak Kaydet</button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
 
         <div class="save-row">
           <span class="auto-save-label"><svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-check"/></svg> Tüm değişiklikler otomatik kaydedilir</span>
           <span class="dirty" id="settingsDirty" hidden>Kaydedilmedi</span>
-          <button class="btn" id="resetSettingsBtn">Varsayılana dön</button>
+          <button class="btn" id="resetSettingsBtn">Kısayol ve geçmişi sıfırla</button>
           <button class="btn btn-primary" id="saveSettingsBtn"><svg class="ic"><use href="#i-check"/></svg>Kaydet</button>
         </div>
       </div>
@@ -628,7 +668,7 @@
 </div>
 
 <div class="statusbar">
-  <button class="sb-item" data-coming="Mikrofon seçimi sonraki sürümde gelecek."><svg class="ic"><use href="#i-mic"/></svg>Mikrofon: <b>Varsayılan Aygıt</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
+  <button class="sb-item" id="sbMicBtn" title="Mikrofonu Ayarlar'dan seç"><svg class="ic"><use href="#i-mic"/></svg>Mikrofon: <b id="sbMicName">Sistem Varsayılanı</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
   <span class="sb-sep"></span>
   <button class="sb-item" data-coming="Dil şimdilik yalnız Türkçe."><svg class="ic"><use href="#i-globe"/></svg>Dil: <b>Türkçe</b><svg class="ic chev"><use href="#i-chev-down"/></svg></button>
   <span class="sb-sep"></span>
@@ -722,7 +762,7 @@
     <div class="wizard-step is-active" id="wizardStep1">
       <div class="wizard-head">
         <h2>Dikte'ye Hoş Geldiniz</h2>
-        <p>Yapay zeka destekli yerel sesli dikte asistanınız hazır. Tercih ettiğiniz arayüz tasarımını seçin.</p>
+        <p><strong>Konuş → Yapıştır:</strong> Tuşa basın, konuşun, metin yazdığınız yere otomatik düşsün. İsterseniz görünümü seçin.</p>
       </div>
       <div class="wizard-body">
         <div class="wizard-choice-grid">
@@ -730,67 +770,67 @@
             <input type="radio" name="wizardDesign" value="dikte_ai" checked>
             <div class="choice-content">
               <strong>Sade Dikte.AI</strong>
-              <span>Ferah, minimalist, mikrofon morfizmi içeren modern görünüm (Önerilen).</span>
+              <span>Ferah, minimalist, mikrofon animasyonlu modern görünüm (Önerilen).</span>
             </div>
           </label>
           <label class="wizard-choice">
             <input type="radio" name="wizardDesign" value="classic">
             <div class="choice-content">
               <strong>Klasik Magic UI v1.4</strong>
-              <span>Kompakt, parlama efektli klasik arayüz.</span>
+              <span>Yan panelli, parlama efektli klasik görünüm.</span>
             </div>
           </label>
         </div>
       </div>
     </div>
 
-    <!-- Adım 2: Donanım & CUDA Hızlandırma -->
+    <!-- Adım 2: Bilgisayar Hızı -->
     <div class="wizard-step" id="wizardStep2" hidden>
       <div class="wizard-head">
-        <h2>Donanım Hızlandırma</h2>
-        <p>Bilgisayarınızdaki donanım taranıyor…</p>
+        <h2>Bilgisayar Hızı</h2>
+        <p>Konuşmayı hızlı çözmek için bilgisayarınızın donanımı kontrol ediliyor…</p>
       </div>
       <div class="wizard-body">
         <div class="hardware-box" id="wizardHwBox">
           <div class="hw-icon"><svg class="ic"><use href="#i-chip"/></svg></div>
           <div class="hw-info">
             <div class="hw-title" id="wizardHwTitle">Donanım Denetleniyor…</div>
-            <div class="hw-desc" id="wizardHwDesc">NVIDIA GPU ve CUDA kütüphaneleri kontrol ediliyor.</div>
+            <div class="hw-desc" id="wizardHwDesc">NVIDIA ekran kartı ve hızlandırma (CUDA) desteği kontrol ediliyor.</div>
           </div>
         </div>
         <div class="wizard-cuda-actions" id="wizardCudaActions">
-          <p id="wizardCudaMsg">NVIDIA ekran kartı ile dikte 5-10 kat daha hızlı çalışır.</p>
+          <p id="wizardCudaMsg">Ekran kartı varsa sesler daha hızlı yazıya çevrilir; yoksa işlemciyle sorunsuz devam eder.</p>
         </div>
       </div>
     </div>
 
-    <!-- Adım 3: Ses Modeli Seçimi -->
+    <!-- Adım 3: Ses Paketi Seçimi -->
     <div class="wizard-step" id="wizardStep3" hidden>
       <div class="wizard-head">
-        <h2>Başlangıç Ses Modeli</h2>
-        <p>Konuşmanızı metne çevirecek yerel yapay zeka modelini belirleyin.</p>
+        <h2>Konuşma Anlama Kalitesi</h2>
+        <p>İnternetsiz sesle yazma için başlangıç ses paketini seçin.</p>
       </div>
       <div class="wizard-body">
         <div class="wizard-choice-grid">
           <label class="wizard-choice is-selected">
             <input type="radio" name="wizardModel" value="small" checked>
             <div class="choice-content">
-              <strong>Whisper Small (~480 MB)</strong>
-              <span>Dengeli hız ve yüksek Türkçe doğruluk (Önerilen).</span>
+              <strong>Dengeli Paket · Whisper Small (~480 MB)</strong>
+              <span>Hızlı açılır ve Türkçeyi yüksek doğrulukla anlar (Önerilen).</span>
             </div>
           </label>
           <label class="wizard-choice">
             <input type="radio" name="wizardModel" value="tiny">
             <div class="choice-content">
-              <strong>Whisper Tiny (~75 MB)</strong>
-              <span>Ultra hafif ve anında iner. Düşük sistemler için ideal.</span>
+              <strong>Hafif Paket · Whisper Tiny (~75 MB)</strong>
+              <span>Çok hızlı iner, eski ve düşük bellekli bilgisayarlar için idealdir.</span>
             </div>
           </label>
           <label class="wizard-choice">
             <input type="radio" name="wizardModel" value="large-v3">
             <div class="choice-content">
-              <strong>Whisper Large v3 (~2.9 GB)</strong>
-              <span>Stüdyo kalitesinde en yüksek doğruluk (Güçlü GPU önerilir).</span>
+              <strong>En Yüksek Doğruluk · Whisper Large v3 (~2.9 GB)</strong>
+              <span>Stüdyo kalitesinde doğruluk sunar (güçlü ekran kartı önerilir).</span>
             </div>
           </label>
         </div>
@@ -800,8 +840,8 @@
     <!-- Adım 4: Kısayol Tuşu -->
     <div class="wizard-step" id="wizardStep4" hidden>
       <div class="wizard-head">
-        <h2>Dikte Kısayolu</h2>
-        <p>Dikteyi başlatıp bitirmek için kullanacağınız tuş kombinasyonu.</p>
+        <h2>Konuşma Tuşu</h2>
+        <p>Konuş → Yapıştır akışını başlatacağınız kısayol tuşu.</p>
       </div>
       <div class="wizard-body">
         <div class="wizard-choice-grid">
@@ -809,14 +849,14 @@
             <input type="radio" name="wizardHotkey" value="right_ctrl" checked>
             <div class="choice-content">
               <strong>Sağ Ctrl (Basılı Tut)</strong>
-              <span>En pratik kullanım: Basılı tutup konuşun, bırakınca metin yazılsın.</span>
+              <span>En pratik kullanım: basılı tutup konuşun, bırakınca metin yazılsın.</span>
             </div>
           </label>
           <label class="wizard-choice">
             <input type="radio" name="wizardHotkey" value="alt+space">
             <div class="choice-content">
               <strong>Alt + Boşluk (Alt+Space)</strong>
-              <span>Hızlı erişim kombinasyonu.</span>
+              <span>Çift el veya dizüstü klavyeler için hızlı erişim.</span>
             </div>
           </label>
         </div>
@@ -827,11 +867,11 @@
     <div class="wizard-step" id="wizardStep5" hidden>
       <div class="wizard-head">
         <h2>Her Şey Hazır!</h2>
-        <p>Dikte arka planda ve sistem tepsisinde çalışmaya hazır.</p>
+        <p>Konuş → Yapıştır akışı arka planda ve sistem tepsisinde hazır.</p>
       </div>
       <div class="wizard-body wizard-done">
         <div class="done-icon"><svg class="ic"><use href="#i-check"/></svg></div>
-        <p>Kısayolunuza basılı tutarak herhangi bir programda sesli yazmaya başlayabilirsiniz.</p>
+        <p>Kısayolunuzla konuşup WhatsApp, Word, tarayıcı veya herhangi bir pencerede sesle yazabilirsiniz. İsterseniz Ayarlar'dan Bas-Bırak modunu da seçebilirsiniz.</p>
       </div>
     </div>
 

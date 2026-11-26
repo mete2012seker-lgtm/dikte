@@ -10,7 +10,6 @@ from pathlib import Path
 APP_NAME = "Dikte"
 APP_TITLE = "Dikte — VoxNote AI"
 APP_VERSION = "1.6.1"
-UNINSTALL_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{FAACF175-562C-4213-8E04-3A90AEA600AA}_is1"
 AUTOSTART_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_VALUE = "Dikte"
 # v1.6: yayın yeri GitHub Releases (karar 2026-11-07).
@@ -74,7 +73,6 @@ SELFTEST_TEXT = ROOT_DIR / "tests" / "data" / "test.txt"
 
 LANGUAGE = "tr"
 LANGUAGE_LABEL = "Türkçe"
-HOTKEY_LABEL = "Sağ Ctrl"
 
 GPU_MODEL = "large-v3"
 GPU_COMPUTE = "float16"

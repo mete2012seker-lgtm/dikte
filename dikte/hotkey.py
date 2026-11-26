@@ -23,6 +23,7 @@ HOTKEY_CHOICES = {
 }
 
 DEFAULT_HOTKEY = "right_ctrl"
+HOTKEY_MODES = ("hold", "toggle")
 
 # Desteklenen tuş tanımları
 MODIFIER_ORDER = {
@@ -179,7 +180,7 @@ def key_to_tokens(key) -> set[str]:
             tokens.add(name_lower)
 
     # 2. Windows vk (Virtual Key code) — Ctrl basılıyken char kontrol koduna dönüşür!
-    vk = getattr(key, "vk", None)
+    vk = getattr(key, "vk", None) or getattr(getattr(key, "value", None), "vk", None)
     if vk is not None:
         if 65 <= vk <= 90:  # A-Z
             tokens.add(chr(vk).lower())
@@ -253,7 +254,7 @@ def _canonical_key_id(key) -> tuple:
     """pynput Key/KeyCode nesnesi için modifier+char değişiminden etkilenmeyen kimlik üretir."""
     if key is None:
         return ("none", None)
-    vk = getattr(key, "vk", None)
+    vk = getattr(key, "vk", None) or getattr(getattr(key, "value", None), "vk", None)
     name = getattr(key, "name", None)
     if name is not None:
         name = str(name).lower()
@@ -273,13 +274,16 @@ class HotkeyListener:
         on_press: Callable[[], None],
         on_release: Callable[[], None],
         key: str = DEFAULT_HOTKEY,
+        mode: str = "hold",
     ) -> None:
         self._on_press = on_press
         self._on_release = on_release
         self._key = normalize_hotkey(key) if is_valid_hotkey(key) else DEFAULT_HOTKEY
+        self._mode = mode if mode in HOTKEY_MODES else "hold"
         self._target_tokens = set(parse_hotkey(self._key))
         self._listener = None
         self._pressed = False
+        self._toggle_active = False
         self._keys_lock = threading.Lock()
         self._lifecycle_lock = threading.RLock()
         self._pressed_keys: dict[tuple, set[str]] = {}
@@ -291,6 +295,24 @@ class HotkeyListener:
     @property
     def key(self) -> str:
         return self._key
+
+    @property
+    def mode(self) -> str:
+        with self._keys_lock:
+            return self._mode
+
+    def set_mode(self, mode: str) -> None:
+        """Kısayol modunu değiştirir ('hold' veya 'toggle')."""
+        if mode not in HOTKEY_MODES:
+            raise HotkeyError("Geçersiz kısayol modu.")
+        with self._keys_lock:
+            self._mode = mode
+            self._toggle_active = False
+
+    def sync_toggle_state(self, active: bool) -> None:
+        """Toggle durumunu denetleyicinin gerçek kayıt durumuyla eşler."""
+        with self._keys_lock:
+            self._toggle_active = bool(active)
 
     def _enqueue_event(self, event: str) -> None:
         with self._event_cond:
@@ -318,13 +340,19 @@ class HotkeyListener:
                 except Exception:
                     logger.exception("Kısayol bırakılma işleyicisi hata verdi")
 
-    def configure(self, key: str) -> None:
-        """Dinleyiciyi başlatmadan tuşu ayarlar (açılışta kullanılır)."""
+    def configure(self, key: str, mode: str | None = None) -> None:
+        """Dinleyiciyi başlatmadan tuşu (ve istenirse modu) ayarlar (açılışta kullanılır)."""
         if not is_valid_hotkey(key):
             raise HotkeyError("Bu tuş kısayol olarak kullanılamaz.")
+        if mode is not None and mode not in HOTKEY_MODES:
+            raise HotkeyError("Geçersiz kısayol modu.")
         with self._lifecycle_lock:
             self._key = normalize_hotkey(key)
             self._target_tokens = set(parse_hotkey(self._key))
+            if mode is not None:
+                with self._keys_lock:
+                    self._mode = mode
+                    self._toggle_active = False
 
     def set_key(self, key: str) -> None:
         """Tuşu değiştirir; dinleyici çalışıyorsa yeniden başlatır."""
@@ -342,7 +370,8 @@ class HotkeyListener:
                 self._key = normalized
                 self._target_tokens = set(parse_hotkey(self._key))
             try:
-                self.start()
+                if was_running:
+                    self.start()
             except HotkeyError:
                 with self._keys_lock:
                     self._key = previous
@@ -369,6 +398,7 @@ class HotkeyListener:
             with self._keys_lock:
                 self._pressed_keys.clear()
                 self._pressed = False
+                self._toggle_active = False
 
             with self._event_cond:
                 self._event_queue.clear()
@@ -400,16 +430,20 @@ class HotkeyListener:
                 if should_reset:
                     self.reset_state()
 
-                should_trigger = False
+                event_to_send = None
                 with self._keys_lock:
                     self._pressed_keys[key_id] = tokens
                     active = {tok for toks in self._pressed_keys.values() for tok in toks}
                     if self._target_tokens.issubset(active) and not self._pressed:
                         self._pressed = True
-                        should_trigger = True
+                        if self._mode == "toggle":
+                            self._toggle_active = not self._toggle_active
+                            event_to_send = "press" if self._toggle_active else "release"
+                        else:
+                            event_to_send = "press"
 
-                if should_trigger:
-                    self._enqueue_event("press")
+                if event_to_send:
+                    self._enqueue_event(event_to_send)
 
             def on_release(key) -> None:
                 tokens = key_to_tokens(key)
@@ -429,7 +463,8 @@ class HotkeyListener:
                     active = {tok for toks in self._pressed_keys.values() for tok in toks}
                     if self._pressed and not self._target_tokens.issubset(active):
                         self._pressed = False
-                        should_release = True
+                        if self._mode != "toggle":
+                            should_release = True
 
                 if should_release:
                     self._enqueue_event("release")
@@ -463,7 +498,8 @@ class HotkeyListener:
             self._pressed_keys.clear()
             if self._pressed:
                 self._pressed = False
-                should_release = True
+                if self._mode != "toggle":
+                    should_release = True
 
         if should_release:
             if self._worker_running:
@@ -483,5 +519,7 @@ class HotkeyListener:
                     listener.stop()
                 except Exception:
                     pass
+            with self._keys_lock:
+                self._toggle_active = False
             self.reset_state()
             self._stop_worker()

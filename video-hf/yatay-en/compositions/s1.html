@@ -1,0 +1,441 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #0b0f1a;
+      color: #f2f5fc;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    .s1-bg-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 900px 520px at 50% 48%, rgba(79, 109, 255, 0.22), transparent 70%),
+        radial-gradient(circle at 50% 100%, rgba(99, 102, 241, 0.14), transparent 60%);
+      pointer-events: none;
+    }
+
+    .s1-dots {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(157, 178, 255, 0.14) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .s1-safe {
+      position: absolute;
+      inset: 108px 192px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+    }
+
+    .s1-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .s1-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: rgba(79, 109, 255, 0.14);
+      border: 1px solid rgba(79, 109, 255, 0.36);
+      color: #c7d6ff;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .s1-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4f6dff;
+      box-shadow: 0 0 12px #4f6dff;
+    }
+
+    .s1-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 72px;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: #f2f5fc;
+    }
+
+    .s1-sub {
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: #94a3b8;
+      max-width: 960px;
+    }
+
+    .s1-morph-stage {
+      position: relative;
+      width: 820px;
+      height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s1-halo-wrap {
+      position: absolute;
+      top: 164px;
+      left: 410px;
+      width: 280px;
+      height: 280px;
+      margin-left: -140px;
+      margin-top: -140px;
+      pointer-events: none;
+    }
+
+    .s1-halo-outer {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 264px;
+      height: 264px;
+      border-radius: 50%;
+      border: 1px solid rgba(100, 140, 255, 0.16);
+      box-shadow: 0 0 40px rgba(76, 107, 255, 0.16);
+    }
+
+    .s1-halo-inner {
+      position: absolute;
+      top: 36px;
+      left: 36px;
+      width: 208px;
+      height: 208px;
+      border-radius: 50%;
+      border: 1px solid rgba(110, 150, 255, 0.26);
+      box-shadow: 0 0 30px rgba(76, 107, 255, 0.16);
+    }
+
+    .s1-orb-wrap {
+      position: absolute;
+      top: 164px;
+      left: 410px;
+      width: 156px;
+      height: 156px;
+      margin-left: -78px;
+      margin-top: -78px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .s1-orb-idle {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid rgba(132, 168, 255, 0.88);
+      background: radial-gradient(circle at 50% 42%, #243b85 0%, #13204a 58%, #0a1026 100%);
+      box-shadow: 0 0 44px rgba(76, 107, 255, 0.42), inset 0 0 26px rgba(76, 107, 255, 0.16);
+    }
+
+    .s1-orb-rec {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      opacity: 0;
+      border: 2px solid rgba(239, 68, 68, 0.78);
+      background: radial-gradient(circle at 50% 45%, #2a121b 0%, #170a12 65%, #0c070c 100%);
+      box-shadow: 0 0 44px rgba(239, 68, 68, 0.48), inset 0 0 24px rgba(239, 68, 68, 0.42);
+    }
+
+    .s1-icon-box {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s1-mic-svg {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s1-stop-sq {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ff4d5a, #dc2626);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.48);
+      opacity: 0;
+    }
+
+    .s1-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .s1-keycap-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 24px;
+      border-radius: 18px;
+      background: #121829;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .s1-keycap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 28px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #1b2847 0%, #10182e 100%);
+      border: 1px solid rgba(132, 168, 255, 0.45);
+      box-shadow: 0 6px 0 #070b16, 0 0 20px rgba(79, 109, 255, 0.25);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: #f2f5fc;
+    }
+
+    .s1-key-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #cbd5e1;
+      min-width: 180px;
+      justify-content: flex-start;
+    }
+
+    .s1-status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4f6dff;
+      box-shadow: 0 0 12px #4f6dff;
+    }
+  </style>
+
+  <div id="root" data-composition-id="s1" data-width="1920" data-height="1080">
+    <div class="s1-bg-glow" data-layout-ignore></div>
+    <div class="s1-dots" data-layout-ignore></div>
+
+    <div class="s1-safe">
+      <div class="s1-header">
+        <div class="s1-badge">
+          <span class="s1-badge-dot"></span>
+          <span>Dikte • Windows 10 / 11</span>
+        </div>
+        <h1 class="s1-title">Stop typing everything by hand.</h1>
+        <p class="s1-sub">Speak naturally. Instant text anywhere on Windows.</p>
+      </div>
+
+      <div class="s1-morph-stage" id="s1-morph-stage">
+        <svg id="s1-wave-svg" width="820" height="380" viewBox="0 0 820 380" style="position:absolute;inset:0;overflow:visible;">
+          <defs>
+            <linearGradient id="s1WaveGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4C6BFF" stop-opacity="0.82" />
+              <stop offset="50%" stop-color="#7498FF" stop-opacity="1" />
+              <stop offset="100%" stop-color="#3B59D4" stop-opacity="0.82" />
+            </linearGradient>
+          </defs>
+          <g id="s1-bars-group"></g>
+        </svg>
+
+        <div class="s1-halo-wrap" id="s1-halo-wrap">
+          <div class="s1-halo-outer"></div>
+          <div class="s1-halo-inner"></div>
+        </div>
+
+        <div class="s1-orb-wrap" id="s1-orb-wrap">
+          <div class="s1-orb-idle" id="s1-orb-idle"></div>
+          <div class="s1-orb-rec" id="s1-orb-rec"></div>
+          <div class="s1-icon-box">
+            <div class="s1-mic-svg" id="s1-mic-svg">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#C8D6F4" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+              </svg>
+            </div>
+            <div class="s1-stop-sq" id="s1-stop-sq"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="s1-footer">
+        <div class="s1-keycap-wrap" id="s1-keycap-wrap">
+          <div class="s1-keycap" id="s1-keycap">Right Ctrl</div>
+          <div class="s1-key-status">
+            <span class="s1-status-dot" id="s1-status-dot"></span>
+            <span id="s1-status-text">Push-to-Talk</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const root = document.getElementById("root");
+      const barsGroup = root.querySelector("#s1-bars-group");
+      const waveSvg = root.querySelector("#s1-wave-svg");
+      const haloWrap = root.querySelector("#s1-halo-wrap");
+      const orbWrap = root.querySelector("#s1-orb-wrap");
+      const orbIdle = root.querySelector("#s1-orb-idle");
+      const orbRec = root.querySelector("#s1-orb-rec");
+      const micSvg = root.querySelector("#s1-mic-svg");
+      const stopSq = root.querySelector("#s1-stop-sq");
+      const keycap = root.querySelector("#s1-keycap");
+      const keycapWrap = root.querySelector("#s1-keycap-wrap");
+      const statusDot = root.querySelector("#s1-status-dot");
+      const statusText = root.querySelector("#s1-status-text");
+
+      const BARS_PER_SIDE = 24;
+      const TOTAL_BARS = 48;
+      const LEFT_PROFILE = [0.07, 0.08, 0.08, 0.11, 0.15, 0.12, 0.2, 0.25, 0.18, 0.3, 0.38, 0.44, 0.32, 0.56, 0.68, 0.5, 0.74, 0.88, 0.62, 0.94, 0.82, 0.72, 0.58, 0.48];
+      const RIGHT_PROFILE = [0.52, 0.64, 0.78, 0.88, 0.95, 0.68, 0.82, 0.72, 0.54, 0.62, 0.44, 0.36, 0.48, 0.34, 0.26, 0.22, 0.28, 0.18, 0.14, 0.12, 0.09, 0.08, 0.08, 0.06];
+      const IDLE_HEIGHTS = LEFT_PROFILE.concat(RIGHT_PROFILE);
+
+      const centerX = 410;
+      const centerY = 164;
+      const idleStep = 9.8;
+      const idleInnerGap = 132;
+      const activeStep = 9.6;
+      const activeStartX = centerX - ((TOTAL_BARS - 1) * activeStep) / 2;
+
+      const mix = (a, b, t) => a + (b - a) * t;
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+      const rects = [];
+      const svgNS = "http://www.w3.org/2000/svg";
+      for (let i = 0; i < TOTAL_BARS; i++) {
+        const rect = document.createElementNS(svgNS, "rect");
+        rect.setAttribute("fill", "url(#s1WaveGrad)");
+        barsGroup.appendChild(rect);
+        rects.push(rect);
+      }
+
+      const state = { timeSec: 0, morph: 0, energy: 0.4 };
+
+      function renderWave() {
+        const m = clamp01(state.morph);
+        const timeSec = state.timeSec;
+        const energy = state.energy;
+        const barWidth = mix(3.8, 4.4, m);
+        const orbOffsetY = m * 124;
+        const orbScale = mix(1, 0.41, m);
+        const haloScale = mix(1, 0.32, m);
+        const haloOpacity = 1 - m;
+        const idleBreath = 1 + Math.sin(timeSec * 1.36) * 0.015 * (1 - m);
+
+        waveSvg.style.filter = "drop-shadow(0 0 " + mix(6, 14, m).toFixed(1) + "px rgba(76, 107, 255, 0.42))";
+
+        for (let i = 0; i < TOTAL_BARS; i++) {
+          const isLeft = i < BARS_PER_SIDE;
+          const idleX = isLeft
+            ? centerX - idleInnerGap - (BARS_PER_SIDE - 1 - i) * idleStep
+            : centerX + idleInnerGap + (i - BARS_PER_SIDE) * idleStep;
+          const activeX = activeStartX + i * activeStep;
+          const x = mix(idleX, activeX, m);
+
+          const sideDist = isLeft
+            ? (BARS_PER_SIDE - 1 - i) / (BARS_PER_SIDE - 1)
+            : (i - BARS_PER_SIDE) / (BARS_PER_SIDE - 1);
+
+          const ambientWave1 = Math.sin(timeSec * 2.4 - sideDist * 5.2);
+          const ambientWave2 = Math.cos(timeSec * 1.5 + sideDist * 3.1) * 0.5;
+          const ambientFactor = 0.84 + 0.32 * ((ambientWave1 + ambientWave2 + 1.5) / 3.0);
+          const ambientFloor = (1 - sideDist * 0.75) * (4 + 4 * Math.sin(timeSec * 2.8 - sideDist * 4.5));
+          const idleH = Math.max(4, IDLE_HEIGHTS[i] * 74 * ambientFactor + ambientFloor);
+
+          const normCenter = Math.abs(i - (TOTAL_BARS - 1) / 2) / ((TOTAL_BARS - 1) / 2);
+          const centerEnvelope = Math.pow(1 - normCenter * 0.76, 1.32);
+
+          const wave1 = Math.sin(timeSec * 5.4 - i * 0.34);
+          const wave2 = Math.sin(timeSec * 8.8 + i * 0.52) * 0.6;
+          const wave3 = Math.cos(timeSec * 3.2 - i * 0.18) * 0.5;
+          const syllablePulse = 0.56 + 0.44 * Math.sin(timeSec * 2.7 + Math.sin(timeSec * 1.3));
+          const combined = (wave1 + wave2 + wave3 + 2.1) / 4.2;
+          const activeH = 12 + combined * 124 * energy * centerEnvelope * syllablePulse;
+
+          const barH = Math.max(4, mix(idleH, activeH, m));
+          const alpha = mix(0.88, 1.0, m);
+
+          const r = rects[i];
+          r.setAttribute("x", (x - barWidth / 2).toFixed(2));
+          r.setAttribute("y", (centerY - barH / 2).toFixed(2));
+          r.setAttribute("width", barWidth.toFixed(2));
+          r.setAttribute("height", barH.toFixed(2));
+          r.setAttribute("rx", (barWidth / 2).toFixed(2));
+          r.setAttribute("opacity", alpha.toFixed(2));
+        }
+
+        haloWrap.style.transform = "translateY(" + orbOffsetY.toFixed(2) + "px) scale(" + (haloScale * idleBreath).toFixed(4) + ")";
+        haloWrap.style.opacity = haloOpacity.toFixed(3);
+
+        orbWrap.style.transform = "translateY(" + orbOffsetY.toFixed(2) + "px) scale(" + (orbScale * idleBreath).toFixed(4) + ")";
+        orbIdle.style.opacity = (1 - m).toFixed(3);
+        orbRec.style.opacity = m.toFixed(3);
+
+        micSvg.style.opacity = Math.max(0, 1 - m * 1.45).toFixed(3);
+        micSvg.style.transform = "scale(" + mix(1, 0.35, m).toFixed(3) + ") rotate(" + mix(0, -18, m).toFixed(2) + "deg)";
+
+        stopSq.style.opacity = clamp01((m - 0.15) * 1.35).toFixed(3);
+        stopSq.style.transform = "scale(" + mix(0.25, 1, m).toFixed(3) + ") rotate(" + mix(18, 0, m).toFixed(2) + "deg)";
+
+        statusText.textContent = m > 0.35 ? "Listening..." : "Push-to-Talk";
+      }
+
+      renderWave();
+
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(state, { timeSec: 0 }, { timeSec: 4, duration: 4, ease: "none", onUpdate: renderWave }, 0);
+      tl.fromTo(state, { morph: 0, energy: 0.4 }, { morph: 1, energy: 1.05, duration: 0.45, ease: "power3.out", onUpdate: renderWave }, 0.6);
+
+      tl.fromTo(
+        keycap,
+        { y: 0, scale: 1, boxShadow: "0 6px 0 #070b16, 0 0 20px rgba(79, 109, 255, 0.25)" },
+        { y: 4, scale: 0.96, boxShadow: "0 2px 0 #070b16, 0 0 32px rgba(239, 68, 68, 0.55)", duration: 0.18, ease: "power2.out" },
+        0.55
+      );
+      tl.fromTo(
+        keycapWrap,
+        { borderColor: "rgba(255, 255, 255, 0.12)" },
+        { borderColor: "rgba(239, 68, 68, 0.55)", duration: 0.22, ease: "power2.out" },
+        0.58
+      );
+      tl.fromTo(
+        statusDot,
+        { backgroundColor: "#4f6dff", boxShadow: "0 0 12px #4f6dff" },
+        { backgroundColor: "#ef4444", boxShadow: "0 0 16px #ef4444", duration: 0.2, ease: "power2.out" },
+        0.6
+      );
+
+      window.__timelines["s1"] = tl;
+    })();
+  </script>
+</template>

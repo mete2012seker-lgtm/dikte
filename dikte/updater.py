@@ -26,7 +26,7 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
-from . import config
+from . import config, fsutil
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +128,11 @@ def fetch_releases_payload(
 
 def list_releases(
     releases_url: str | None = None,
-    current_version: str = config.APP_VERSION,
+    current_version: str | None = None,
     timeout: float = CHECK_TIMEOUT,
 ) -> list[dict]:
     """GitHub sürümlerini listeler, sürüm karşılaştırması ve indirme bağlantılarını çıkarır."""
+    cur_ver = current_version or config.APP_VERSION
     payload = fetch_releases_payload(releases_url, timeout=timeout)
     raw_list = payload.get("releases", [])
     if not isinstance(raw_list, list):
@@ -177,7 +178,7 @@ def list_releases(
             if hex_match:
                 sha256 = hex_match.group(1).lower()
 
-        cmp = compare_versions(current_version, version)
+        cmp = compare_versions(cur_ver, version)
         is_current = (cmp == 0)
         is_downgrade = (cmp == -1)
 
@@ -250,7 +251,9 @@ def _validate_download_host(url: str) -> str:
     url_host = urllib.parse.urlparse(url).hostname
     if not url_host:
         raise UpdaterError("bad_url")
-    if expected_host and url_host != expected_host:
+    if not expected_host:
+        raise UpdaterError("host_rejected")
+    if url_host != expected_host:
         if expected_host in ("github.com", "api.github.com") and url_host in (
             "github.com",
             "api.github.com",
@@ -288,7 +291,14 @@ def download_installer(
     try:
         with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT) as response, open(part_path, "wb") as out:
             headers = getattr(response, "headers", None)
-            total = int(headers.get("Content-Length") or 0) if headers else 0
+            total = 0
+            if headers:
+                raw_cl = headers.get("Content-Length")
+                if raw_cl:
+                    try:
+                        total = max(0, int(raw_cl))
+                    except (TypeError, ValueError):
+                        total = 0
             done = 0
             while True:
                 if cancel_event is not None and cancel_event.is_set():
@@ -343,26 +353,15 @@ def verify_sha256(path: Path, expected: str) -> bool:
 
 def _launch_elevated(path: Path, args: list[str]) -> None:
     """Kurucuyu Windows'ta UAC yükseltmesiyle, diğer platformlarda Popen ile başlatır."""
-    if sys.platform == "win32":
-        rc = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            str(path),
-            subprocess.list2cmdline(args),
-            str(path.parent),
-            1,
-        )
-        if rc <= 32:
-            raise UpdaterError("launch_failed", "Kurucu yönetici yetkisiyle başlatılamadı.")
-        return
-    try:
-        subprocess.Popen(
-            [str(path), *args],
-            cwd=str(path.parent),
-            close_fds=True,
-        )
-    except OSError as exc:
-        raise UpdaterError("launch_failed", str(exc)) from exc
+    fsutil.launch_elevated(
+        path,
+        args,
+        error_cls=UpdaterError,
+        win32_error_fn=lambda _rc: UpdaterError(
+            "launch_failed", "Kurucu yönetici yetkisiyle başlatılamadı."
+        ),
+        popen_error_fn=lambda exc: UpdaterError("launch_failed", str(exc)),
+    )
 
 
 def apply(installer_path: Path, on_launched: Callable[[], None] | None = None) -> None:

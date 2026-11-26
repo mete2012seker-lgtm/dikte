@@ -164,6 +164,8 @@ Hedef: design/ klasöründeki tasarıma uygun 4 sayfalı uygulama (Dikte, Dikte 
   - **v1.6.1 Tam Kod Denetimi:** Salt-okunur denetim tamamlandı (`reports/2026-11-24-kod-denetimi-raporu.md`); kod değişikliği yapılmadı, 4 fazlı düzeltme/kısaltma planı bir sonraki oturumda kullanıcı onayıyla başlatılacak.
 - **2026-11-25 kararları (yayın/tanıtım yönü, kullanıcı onaylı):**
   - **Hedef ve Kapsam:** Gelir amacı yok; ~1.000 kullanıcı/indirme yeterli, süre sınırı ve abartılı büyüme kampanyaları yok. Odak, genele hitap eden basit dokunuşlar ve sıfır bütçeli sade tanıtım fikirleri (`reports/2026-11-25-yayin-ve-buyume-raporu.md`). Bu oturumda yalnızca araştırma ve kayıt yapıldı.
+- **2026-11-26 kararları (Faz 1–4, 5 dokunuş, vitrin ve HyperFrames, kullanıcı onaylı):**
+  - **Swarm ve HyperFrames:** Kod Denetimi Faz 1–4, genele hitap eden 5 dokunuş (Bas-Bırak, mikrofon seçimi, odak çalmayan mini gösterge, Gelişmiş Ayarlar), vitrin/OG kartı yenilemesi ve HyperFrames ile 4 video (Yatay 16:9 50s TR/EN + Shorts 9:16 30s TR/EN + web EN/TR kopyaları) tamamlandı (**465 passed, 1 skipped**). `v1.7.0` kurucu derlemesi kullanıcının yerel testinden sonraya bırakıldı.
 
 
 ## Öneriler (onaylanmadı)

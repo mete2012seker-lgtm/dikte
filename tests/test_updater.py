@@ -153,9 +153,15 @@ from types import SimpleNamespace
 from dikte.controller import Controller
 
 
-def _flow_controller():
-    # update_apply yalnız UPDATE_MESSAGES ve updater'ı kullanır; tam Controller kurmadan çağrılır.
-    return SimpleNamespace(UPDATE_MESSAGES=Controller.UPDATE_MESSAGES, settings=None)
+def _flow_controller(scheduled: list | None = None):
+    import threading
+
+    return SimpleNamespace(
+        UPDATE_MESSAGES=Controller.UPDATE_MESSAGES,
+        settings=None,
+        _update_cancel_event=threading.Event(),
+        _schedule_exit_after_apply=lambda: scheduled.append(True) if scheduled is not None else None,
+    )
 
 
 def _latest(monkeypatch, payload: dict):
@@ -174,9 +180,13 @@ def test_akis_basarili_sha_uyar_kurulur(monkeypatch, tmp_path):
     monkeypatch.setattr(updater, "download", lambda *_a, **_k: _yaz(tmp_path, kurucu))
     calistirilan = []
     monkeypatch.setattr(updater, "apply", lambda p: calistirilan.append(p))
-    sonuc = Controller.update_apply(_flow_controller())
+    scheduled = []
+    ctrl = _flow_controller(scheduled=scheduled)
+    ctrl._download_and_apply_installer = Controller._download_and_apply_installer.__get__(ctrl)
+    sonuc = Controller.update_apply(ctrl)
     assert sonuc["ok"] is True
     assert len(calistirilan) == 1
+    assert scheduled == [True]
 
 
 def test_akis_bozuk_ozet_kurmaz_ve_siler(monkeypatch, tmp_path):
@@ -188,18 +198,43 @@ def test_akis_bozuk_ozet_kurmaz_ve_siler(monkeypatch, tmp_path):
     monkeypatch.setattr(updater, "download", lambda *_a, **_k: _yaz(tmp_path, b"kurucu"))
     calistirilan = []
     monkeypatch.setattr(updater, "apply", lambda p: calistirilan.append(p))
-    sonuc = Controller.update_apply(_flow_controller())
+    ctrl = _flow_controller()
+    ctrl._download_and_apply_installer = Controller._download_and_apply_installer.__get__(ctrl)
+    sonuc = Controller.update_apply(ctrl)
     assert sonuc["ok"] is False
     assert sonuc["code"] == "sha_mismatch"
     assert calistirilan == []
     assert not (tmp_path / "kurucu.bin").exists()
 
 
+def test_akis_iptal_edildiginde_turkce_mesaj(monkeypatch):
+    _latest(monkeypatch, {
+        "version": "9.0.0",
+        "url": "https://ornek/Dikte-Setup.exe",
+        "sha256": "a" * 64,
+    })
+
+    def cancelled_dl(url, cancel_event=None, sha256=None):
+        raise updater.UpdaterError("cancelled")
+
+    monkeypatch.setattr(updater, "download", cancelled_dl)
+    scheduled = []
+    ctrl = _flow_controller(scheduled=scheduled)
+    ctrl._download_and_apply_installer = Controller._download_and_apply_installer.__get__(ctrl)
+    sonuc = Controller.update_apply(ctrl)
+    assert sonuc["ok"] is False
+    assert sonuc["code"] == "cancelled"
+    assert "iptal" in sonuc["message"].lower()
+    assert scheduled == []
+
+
 def test_akis_sha_bildirimi_yoksa_indirmez(monkeypatch):
     _latest(monkeypatch, {"version": "9.0.0", "url": "https://ornek/Dikte-Setup.exe"})
     indirilen = []
     monkeypatch.setattr(updater, "download", lambda *a, **k: indirilen.append(a))
-    sonuc = Controller.update_apply(_flow_controller())
+    ctrl = _flow_controller()
+    ctrl._download_and_apply_installer = Controller._download_and_apply_installer.__get__(ctrl)
+    sonuc = Controller.update_apply(ctrl)
     assert sonuc["ok"] is False
     assert sonuc["code"] == "bad_sha"
     assert "SHA-256" in sonuc["message"]
@@ -213,7 +248,9 @@ def test_akis_eksik_indirme_turkce_mesaj(monkeypatch):
         raise updater.UpdaterError("incomplete")
 
     monkeypatch.setattr(updater, "download", eksik)
-    sonuc = Controller.update_apply(_flow_controller())
+    ctrl = _flow_controller()
+    ctrl._download_and_apply_installer = Controller._download_and_apply_installer.__get__(ctrl)
+    sonuc = Controller.update_apply(ctrl)
     assert sonuc["code"] == "incomplete"
     assert "tamamlanmadı" in sonuc["message"]
 

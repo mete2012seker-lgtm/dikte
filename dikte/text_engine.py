@@ -27,6 +27,7 @@ CODE_MESSAGES = {
     "no_key": "OpenRouter anahtarı yok. Ayarlar'dan ekle.",
     "401": "OpenRouter anahtarı geçersiz. Ayarlar'dan kontrol et.",
     "402": "OpenRouter bakiyesi yetersiz.",
+    "403": "OpenRouter erişimi reddedildi (403). API anahtarını veya model iznini kontrol et.",
     "429": "Çok fazla istek. Biraz bekleyip tekrar dene.",
     "net": "Sunucuya ulaşılamadı; metin değişmedi.",
     "local_missing": "Metin modeli yüklü değil. Modeller sayfasından indir.",
@@ -213,18 +214,22 @@ DE_WORDS = {
 }
 
 
-def language_hint(text: str) -> str | None:
-    """Kaba dil tahmini (tr/en/de). Emin değilse None döner."""
+def _language_scores(text: str) -> dict[str, int]:
     import re
 
     lowered = (text or "").lower()
     tokens = re.findall(r"[a-zçğıöşü]+", lowered)
     turkish_chars = sum(1 for char in lowered if char in "çğıöşü")
-    scores = {
+    return {
         "tr": sum(1 for token in tokens if token in TR_WORDS) + (1 if turkish_chars >= 2 else 0),
         "en": sum(1 for token in tokens if token in EN_WORDS),
         "de": sum(1 for token in tokens if token in DE_WORDS),
     }
+
+
+def language_hint(text: str) -> str | None:
+    """Kaba dil tahmini (tr/en/de). Emin değilse None döner."""
+    scores = _language_scores(text)
     best = max(scores, key=scores.get)
     return best if scores[best] >= 2 else None
 
@@ -253,16 +258,7 @@ def validate_output(source: str, output: str, translate: bool, target_language: 
     if any(marker in lowered for marker in STRICT_META_MARKERS):
         raise TextEngineError("bad_response")
     if translate and source_words >= 3:
-        import re
-
-        lowered_out = (output or "").lower()
-        tokens = re.findall(r"[a-zçğıöşü]+", lowered_out)
-        turkish_chars = sum(1 for char in lowered_out if char in "çğıöşü")
-        scores = {
-            "tr": sum(1 for token in tokens if token in TR_WORDS) + (1 if turkish_chars >= 2 else 0),
-            "en": sum(1 for token in tokens if token in EN_WORDS),
-            "de": sum(1 for token in tokens if token in DE_WORDS),
-        }
+        scores = _language_scores(output)
         target_score = scores.get(target_language, 0)
         # If output clearly has words in the target language (target_score >= 2),
         # do not raise not_translated just because shared words bumped another language.
@@ -320,6 +316,8 @@ def generate(
     system_prompt: str | None = None,
     transport=None,
     timeout: float | None = None,
+    local_runtime=None,
+    cancel_event=None,
 ) -> TextResult:
     """Metni temizler (ve gerekirse çevirir). Hata durumunda istisna fırlatır."""
     text = (text or "").strip()
@@ -329,29 +327,42 @@ def generate(
     if provider == "none":
         raise TextEngineError("provider_off")
     if provider == "local":
-        # GGUF desteği sonraki partide bağlanır (UYGULAMA-PLANI parti 7).
-        raise TextEngineError("local_missing")
-    if provider != "openrouter":
+        if local_runtime is None:
+            raise TextEngineError("local_missing")
+        budget = max(512, count_words(text) * 8 + 256)
+    elif provider == "openrouter":
+        if not api_key:
+            raise TextEngineError("no_key")
+        if not model:
+            raise TextEngineError("bad_response", "Metin modeli seçilmemiş.")
+        budget = _max_tokens(text)
+    else:
         raise TextEngineError("provider_off")
 
-    if not api_key:
-        raise TextEngineError("no_key")
-    if not model:
-        raise TextEngineError("bad_response", "Metin modeli seçilmemiş.")
-
     messages = build_messages(text, target_language, translate, system_prompt)
-    budget = _max_tokens(text)
     last_finish = None
     last_error: TextEngineError | None = None
     for attempt in range(2):
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": 0,
-            "max_tokens": budget,
-        }
-        data = _openrouter_call(payload, api_key, transport, timeout)
-        content, last_finish = _extract(data)
+        if cancel_event is not None and cancel_event.is_set():
+            raise TextEngineError("cancelled", "İşlem iptal edildi.")
+        if provider == "local":
+            content = local_runtime.generate(
+                messages[0]["content"], messages[1]["content"], max_tokens=budget
+            )
+            if cancel_event is not None and cancel_event.is_set():
+                raise TextEngineError("cancelled", "İşlem iptal edildi.")
+            last_finish = None
+            usage = None
+        else:
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": 0,
+                "max_tokens": budget,
+            }
+            data = _openrouter_call(payload, api_key, transport, timeout)
+            content, last_finish = _extract(data)
+            usage = data.get("usage") if isinstance(data.get("usage"), dict) else None
         candidate = strip_response(content)
         try:
             if last_finish == "length":
@@ -366,7 +377,9 @@ def generate(
                 messages = build_messages(
                     text, target_language, translate, system_prompt, strict=True
                 )
-                if exc.code == "empty_result" or last_finish == "length":
+                if provider == "local":
+                    budget = max(1024, budget * 2)
+                elif exc.code == "empty_result" or last_finish == "length":
                     budget = min(config.TEXT_REQUEST_MAX_TOKENS, budget * 2)
                 continue
             raise
@@ -379,8 +392,9 @@ def generate(
             messages = build_messages(
                 text, target_language, translate, system_prompt, strict=True
             )
+            if provider == "local":
+                budget = max(1024, budget * 2)
             continue
-        usage = data.get("usage") if isinstance(data.get("usage"), dict) else None
         return TextResult(
             text=candidate,
             translated=bool(translate) and not same,

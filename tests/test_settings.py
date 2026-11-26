@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from dikte.settings import DEFAULTS, HOTKEY_CHOICES, SettingsStore
+from dikte.hotkey import HOTKEY_CHOICES
+from dikte.settings import DEFAULTS, SettingsStore
 
 
 def test_defaults_when_file_missing(tmp_path):
