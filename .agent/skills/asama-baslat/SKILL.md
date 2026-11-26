@@ -18,6 +18,7 @@ Sırayla oku (olmayanı atla ve söyle):
 7. reports/README.md (rapor dizini, raporları ihtiyaç olursa aç)
 8. Arayüz işi varsa design/ui-spec.md
 9. **Obsidian Hafıza Kontrolü (`obsidian` MCP):** Önceki oturumlarda yapılan işlere, kararlara ve kullanıcı tercihlerine bakmak için `obsidian` MCP araçlarıyla (`list_directory`, `search_notes`, `read_note`) ilgili proje klasörünü (ör. `02-Projeler/dikte-projesi/`) ve gerekirse `04-Kararlar-ve-Dersler/` klasörünü kontrol et. Tüm kasayı okuma; sadece ilgili notları ve bağlantıları (`[[wikilink]]`) aç.
+10. **Obsidian "En Son Oturumda Kalınan Yer" Kontrolü (Zorunlu):** Her `/asama-baslat` çağrısında Obsidian kasasında ilgili proje klasöründe `en-son-oturumda-kalinan-yer.md` (ör. `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md`) dosyası olup olmadığını kontrol et. Eğer bu dosya varsa **mutlaka oku**, içinde yazan en son kalınan noktayı, alınan kararları ve sıradaki adımı kullanıcıya özetle ve çalışmaya doğrudan o dosyadaki kaldığımız yerden devam et.
 
 Dosyaları ezberleme, ihtiyaç olunca tekrar aç. Büyük dosyalarda ilgili bölüme bak.
 

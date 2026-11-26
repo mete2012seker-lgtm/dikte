@@ -1,0 +1,111 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Plus Jakarta Sans";
+      src: url("assets/fonts/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Plus Jakarta Sans";
+      src: url("assets/fonts/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2");
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    #root {
+      position: relative;
+      width: 1080px;
+      height: 1920px;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    /* Altyazılar üst boşlukta (Shorts güvenli alanı içinde: y >= 288, x: 120..888) */
+    .cap-group {
+      position: absolute;
+      left: 120px;
+      width: 760px;
+      top: 320px;
+      text-align: center;
+      overflow: visible;
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .cap-pill {
+      display: inline-block;
+      padding: 18px 30px;
+      border-radius: 22px;
+      background: rgba(11, 15, 26, 0.78);
+      border: 2px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.52);
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.22;
+      color: #F8FAFC;
+    }
+
+    .w {
+      display: inline-block;
+      margin: 0 6px;
+      color: #CBD5E1;
+    }
+  </style>
+
+  <div id="root" data-composition-id="captions" data-start="0" data-duration="5" data-width="1080" data-height="1920">
+    <!-- Grup 1: 0.25s - 2.30s -->
+    <div id="cg1" class="cap-group">
+      <div class="cap-pill">
+        <span id="c1w1" class="w">Klavyeyle</span>
+        <span id="c1w2" class="w">yazmak</span>
+        <span id="c1w3" class="w">gerçekten</span>
+        <span id="c1w4" class="w">çok</span>
+        <span id="c1w5" class="w">zor...</span>
+      </div>
+    </div>
+
+    <!-- Grup 2: 2.45s - 4.85s -->
+    <div id="cg2" class="cap-group">
+      <div class="cap-pill">
+        <span id="c2w1" class="w">Yanlış</span>
+        <span id="c2w2" class="w">harf,</span>
+        <span id="c2w3" class="w">sil,</span>
+        <span id="c2w4" class="w">baştan</span>
+        <span id="c2w5" class="w">yaz!</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    // Grup 1
+    tl.set("#cg1", { visibility: "visible", opacity: 0, y: 12 }, 0.25);
+    tl.to("#cg1", { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" }, 0.25);
+    tl.to("#c1w1", { color: "#FFFFFF", scale: 1.06, duration: 0.12 }, 0.35);
+    tl.to("#c1w2", { color: "#FFFFFF", scale: 1.06, duration: 0.12 }, 0.65);
+    tl.to("#c1w3", { color: "#FFFFFF", scale: 1.06, duration: 0.12 }, 1.00);
+    tl.to("#c1w4", { color: "#F87171", scale: 1.08, duration: 0.12 }, 1.38);
+    tl.to("#c1w5", { color: "#F87171", scale: 1.08, duration: 0.12 }, 1.70);
+    tl.to("#cg1", { opacity: 0, duration: 0.12, ease: "power2.in" }, 2.18);
+    tl.set("#cg1", { opacity: 0, visibility: "hidden" }, 2.30);
+
+    // Grup 2
+    tl.set("#cg2", { visibility: "visible", opacity: 0, y: 12 }, 2.45);
+    tl.to("#cg2", { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" }, 2.45);
+    tl.to("#c2w1", { color: "#F87171", scale: 1.06, duration: 0.12 }, 2.55);
+    tl.to("#c2w2", { color: "#FFFFFF", scale: 1.06, duration: 0.12 }, 2.90);
+    tl.to("#c2w3", { color: "#F87171", scale: 1.08, duration: 0.12 }, 3.30);
+    tl.to("#c2w4", { color: "#FFFFFF", scale: 1.06, duration: 0.12 }, 3.70);
+    tl.to("#c2w5", { color: "#FFFFFF", scale: 1.08, duration: 0.12 }, 4.10);
+    tl.to("#cg2", { opacity: 0, duration: 0.12, ease: "power2.in" }, 4.73);
+    tl.set("#cg2", { opacity: 0, visibility: "hidden" }, 4.85);
+
+    window.__timelines["captions"] = tl;
+  </script>
+</template>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #0B0F1A;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #0B0F1A;
+      }
+      .stage-video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1080px;
+        height: 1920px;
+        object-fit: cover;
+        z-index: 1;
+      }
+      #s1 {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+      }
+      #captions {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="5"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+    >
+      <!-- Sahne 1 video modeli çıktısı (kendi klavye + iç çekme sesiyle) -->
+      <video
+        id="s1-video"
+        class="clip stage-video"
+        src="assets/video/s1-klavye.mp4"
+        data-start="0"
+        data-duration="5"
+        data-has-audio="true"
+        data-volume="0.95"
+        data-track-index="1"
+      ></video>
+
+      <!-- Sahne 1 görsel katmanı (sadece üst altyazı okunabilirlik karartması) -->
+      <div
+        id="s1"
+        data-composition-id="s1"
+        data-composition-src="compositions/s1.html"
+        data-start="0"
+        data-duration="5"
+        data-track-index="2"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- Altyazı kanalı -->
+      <div
+        id="captions"
+        data-composition-id="captions"
+        data-composition-src="compositions/captions.html"
+        data-start="0"
+        data-duration="5"
+        data-track-index="3"
+        data-track-kind="captions"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- Çok hafif arka plan ritmi -->
+      <audio
+        id="bgm-s1"
+        src="assets/audio/bgm_128bpm_30s_loop.wav"
+        data-start="0"
+        data-duration="5"
+        data-volume="0.14"
+        data-track-index="4"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const mainTl = gsap.timeline({ paused: true });
+      mainTl.set("#root", { opacity: 1 }, 0);
+      mainTl.to({}, { duration: 5 }, 0);
+      window.__timelines["main"] = mainTl;
+    </script>
+  </body>
+</html>

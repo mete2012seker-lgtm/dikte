@@ -142,3 +142,9 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 3. **HyperFrames ile HTML'den Video:** Tarayıcıdaki HTML/CSS/GSAP zaman çizelgesini kare kare yakalayarak (`check`, `snapshot`, `render`) hem 16:9 yatay hem 9:16 dikey (Shorts) videoları deterministik biçimde ve yerel Türkçe fontlarla üretmek mümkün.
 4. **Ortak Yardımcı Modül (`fsutil.py`):** 6 ayrı dosyada tekrarlanan atomik JSON yazma ve bozuk dosya yedekleme mantığını tek modülde toplamak hem kod boyutunu küçültür hem de tek yerden hata düzeltmeyi kolaylaştırır.
 
+
+## 2026-11-26 (Gece) — Karakterli YouTube Shorts (HyperFrames + Video Modeli) ve Oturum Devam Protokolü
+
+1. **Hibrit Video Üretimi (Veo + HyperFrames):** Karakterin el/yüz hareketleri gibi doğal stop-motion animasyonlarını video modeliyle (`Image-to-Video`) üretip, üstündeki okunaklı Türkçe altyazı, ses miksajı ve YouTube Shorts güvenli alanını HyperFrames ile kodlamak hem sinematik hem hatasız sonuç verir.
+2. **Shorts Güvenli Alanı (`--safe-zone shorts`) ve Kontrast Kontrolü:** HyperFrames'in `check --safe-zone shorts` komutu, YouTube Shorts'taki sağ buton sütunu ve alt açıklama alanıyla çakışan yazıları ve düşük kontrastlı metinleri render öncesi yakalar.
+3. **Obsidian Kalıcı Oturum Devamı (`en-son-oturumda-kalinan-yer.md`):** Her oturum kapanışında tek bir sabit dosyaya kalınan noktayı yazıp her `/asama-baslat` çağrısında bunu okutmak, yeni sohbetlerin hiçbir bağlam kaybetmeden doğrudan sıradaki adımdan başlamasını sağlar.

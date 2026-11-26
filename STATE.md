@@ -3,7 +3,11 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-26 — Kod Denetimi Faz 1–4, Genele Hitap Eden 5 Dokunuş, Vitrin Yenilemesi ve 4 HyperFrames Videosu tamamlandı:**
+**2026-11-26 (Gece) — Karakterli YouTube Shorts (HyperFrames) Sahne 1 v2 ve Obsidian Kaldığımız Yer Protokolü tamamlandı:**
+- **Karakterli YouTube Shorts (`video-hf/shorts-karakter-tr/`):** 3D stilize kil (claymation) karakter + çalışma/rap odaları + 7 şeffaf PNG karakter pozu hazırlandı; Google Flow (Veo) `s1-klavye.mp4` (`5.03s`) klibi ve üst altyazılı **Sahne 1 v2** (`0–5 sn`) kuruldu. `check --safe-zone shorts` **0 hata, 0 uyarı** (`contrast: 25/25`), `out/s1-preview-v2.mp4` (`4.3 MB`) doğrulandı.
+- **Obsidian Devam Mekanizması:** `.agent/skills/asama-baslat/SKILL.md` ve `.agent/skills/asama-bitir/SKILL.md` güncellendi; her oturumda Obsidian `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md` dosyasının kontrol edilip güncellenmesi zorunlu kılındı.
+- **Sıradaki adım:** Karakterli Shorts **Sahne 2 (`5–10 sn`)** — Seçenek 2 (mevcut `room-desk.jpg` + `poz-2-merak.png` ile HyperFrames kurulumu).
+- **2026-11-26 — Kod Denetimi Faz 1–4, Genele Hitap Eden 5 Dokunuş, Vitrin Yenilemesi ve 4 HyperFrames Videosu tamamlandı:**
 - **Kod Denetimi Faz 1–4:** `reports/2026-11-24-kod-denetimi-raporu.md` içindeki tüm yüksek (Y1–Y6) ve orta bulgular, ~500 satırlık ortaklaştırma (`dikte/fsutil.py`, `app.js` model kartı/detay paneli birleştirmesi, `text_engine.py` yerel AI tekilleştirmesi, ölü kod temizliği) ve 7 test maskesi TDD ile giderildi.
 - **Genele Hitap Eden 5 Dokunuş:** Ayarlar'a **Bas-Bırak** kısayol modu (`hotkey_mode`), **Mikrofon seçimi** (`audio.py` `list_input_devices`), Windows'ta odak çalmayan **mini "Dinliyor / Yazıyor" göstergesi** (`dikte/indicator.py`) ve teknik ayarları **Gelişmiş Ayarlar** altında toplayan sade düzen eklendi.
 - **Vitrin & 4 HyperFrames Videosu:** `docs/index.html` + `README*.md` içine `docs/assets/og-card.png` (1200×630), 4 günlük kullanım senaryosu, SmartScreen açıklaması ve EN/TR 50s video seçici eklendi; `video-arastirma` (Neon) brifiyle (`reports/2026-11-26-video-arastirma-brifi.md`) `video-uretim` (Neon) ekibi HyperFrames üzerinden 4 MP4 (Yatay 16:9 50s TR/EN + Shorts 9:16 30s TR/EN) ve 2 web optimize kopya (`docs/assets/dikte-tanitim-tr.mp4`, `dikte-tanitim-en.mp4`) üretti.
@@ -119,12 +123,13 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Faz 2 veri kaybı ve çökme hataları tamamlandı (2026-11-11):** `uygulanacak plan.md` §4'teki 11 maddenin tamamı TDD ile uygulandı; 18 yeni regresyon testi eklendi (**263 passed, 1 skipped**); `Model: "flash"` alt ajanıyla kod ve testler satır satır denetlendi. Masaüstüne `C:\Users\aksek\Desktop\Dikte.lnk` kısayolu oluşturuldu.
 
 ## Yarım kalan
+- **Karakterli YouTube Shorts (`video-hf/shorts-karakter-tr/`):** Sahne 1 (`0–5 sn`) tamamlandı; Sahne 2–6 (`5–34 sn`) adım adım 5'er saniyelik kullanıcı onayıyla tamamlanacak. Sıradaki: Sahne 2 (`5–10 sn`, Seçenek 2 — mevcut `room-desk.jpg` + `poz-2-merak.png`).
 - **Sihirbaz 2. adım CUDA indirme butonu:** `#wizardCudaActions` / `#wizardCudaMsg` yer tutucusu duruyor; isteğe bağlı CUDA indirme uç noktası henüz bağlı değil.
 - **v1.7.0 kullanıcı yerel testi ve kurucu derlemesi:** Kullanıcının yeni özellikleri (Bas-Bırak, mikrofon seçimi, mini "Dinliyor" göstergesi) ve 4 HyperFrames videosunu yerel olarak onaylamasından sonra `APP_VERSION` `1.7.0`'a çıkarılıp `build.ps1` ile kurucu derlenecek.
 
 ## Sıradaki ilk adım
-1. Kullanıcının `.venv\Scripts\python.exe -m dikte` ile Bas-Bırak, mikrofon seçimi ve odak çalmayan mini "Dinliyor/Yazıyor" göstergesini gerçek ortamda test etmesi; `video-hf/out/` içindeki 4 videoyu gözden geçirmesi.
-2. Onay sonrası sürümü `1.7.0`'a çıkarıp `build.ps1` ile `Dikte-Setup-1.7.0.exe` derlemek ve isteğe bağlı `gh release` ile yayınlamak.
+1. Karakterli YouTube Shorts **Sahne 2 (`5–10 sn`: "Bu proje neyin nesiymiş?" + Dikte kurulumu)** bölümünü Seçenek 2 (mevcut `room-desk.jpg` + `poz-2-merak.png`) ile HyperFrames'te kurup kullanıcıya önizleme sunmak (ayrıntılar Obsidian `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md` içinde).
+2. Video bittikten sonra (veya kullanıcı istediğinde) `v1.7.0` yerel testi ve `Dikte-Setup-1.7.0.exe` derlemesine geçmek.
 
 ## Açık sorunlar
 - **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.

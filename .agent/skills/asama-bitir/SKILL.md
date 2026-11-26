@@ -39,7 +39,7 @@ Kullanıcının bugün öğrendiklerini sade Türkçe, 3-5 madde yaz. Teknik ter
 Kullanıcı konuşma tarzında bir değişiklik istediyse güncelle. İstemediyse dokunma.
 
 ## 7. Gözden geçirme, Obsidian Kaydı ve Swarm Kapanışı
-- **Obsidian Hafıza Güncellemesi:** Oturumda tamamlanan önemli adımları, kararları veya denetim sonuçlarını `obsidian` MCP ile ilgili proje klasörüne atomik not olarak kaydet ve `_genel-bakis.md` indeksine bağla.
+- **Obsidian Hafıza Güncellemesi:** Oturumda tamamlanan önemli adımları, kararları veya denetim sonuçlarını `obsidian` MCP ile ilgili proje klasörüne atomik not olarak kaydet ve `_genel-bakis.md` indeksine bağla. Ayrıca her oturum sonunda ilgili proje klasöründeki `en-son-oturumda-kalinan-yer.md` (ör. `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md`) dosyasını güncelleyerek bir sonraki `/asama-baslat` oturumunun tam olarak nereden devam edeceğini (bitenler, kararlar, dosya yolları, sıradaki ilk adım) açıkça yaz.
 - **Doğrulama ve Swarm Kapanışı:**
   - **Tek Ajan Önceliği:** Yalnızca doküman/plan/rapor güncellendiyse veya iş küçükse ana ajan doğrulamayı doğrudan kendisi tamamlar.
   - **Swarm Doğrulaması (kod değişikliğinde):** Kod değişikliği veya çoklu işçi kullanıldıysa **`Gemini 4 Hydrogen`** (`gemini-4-hydrogen-low` / `medium` / `high` / `xhigh` — işin zorluğuna göre seçilebilir düşünme seviyesi) modeline sahip `@verifier` işçisi devreye girer:
