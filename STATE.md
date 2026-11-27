@@ -3,10 +3,12 @@
 Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum sonunda güncellenir.
 
 ## Şu anki aşama
-**2026-11-26 (Gece) — Karakterli YouTube Shorts (HyperFrames) Sahne 1 v2 ve Obsidian Kaldığımız Yer Protokolü tamamlandı:**
+**2026-11-27 — Karakterli YouTube Shorts video işi iptal edildi; odak `v1.7.0` sürümüne döndü:**
+- **İptal Kararı:** Karakterli YouTube Shorts (`video-hf/shorts-karakter-tr/`) video üretimi kullanıcı kararıyla iptal edildi (mevcut Sahne 1 v2 dosyaları silinmeden projede bırakıldı; kod değişikliği yapılmadı).
+- **Sıradaki adım:** `v1.7.0` yerel kullanıcı testi (Bas-Bırak, mikrofon seçimi, mini "Dinliyor/Yazıyor" göstergesi) ve onay sonrası `APP_VERSION = "1.7.0"` ile `Dikte-Setup-1.7.0.exe` kurucu derlemesi.
+- **2026-11-26 (Gece) — Karakterli YouTube Shorts (HyperFrames) Sahne 1 v2 ve Obsidian Kaldığımız Yer Protokolü tamamlandı (video işi 2026-11-27'de iptal edildi):**
 - **Karakterli YouTube Shorts (`video-hf/shorts-karakter-tr/`):** 3D stilize kil (claymation) karakter + çalışma/rap odaları + 7 şeffaf PNG karakter pozu hazırlandı; Google Flow (Veo) `s1-klavye.mp4` (`5.03s`) klibi ve üst altyazılı **Sahne 1 v2** (`0–5 sn`) kuruldu. `check --safe-zone shorts` **0 hata, 0 uyarı** (`contrast: 25/25`), `out/s1-preview-v2.mp4` (`4.3 MB`) doğrulandı.
 - **Obsidian Devam Mekanizması:** `.agent/skills/asama-baslat/SKILL.md` ve `.agent/skills/asama-bitir/SKILL.md` güncellendi; her oturumda Obsidian `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md` dosyasının kontrol edilip güncellenmesi zorunlu kılındı.
-- **Sıradaki adım:** Karakterli Shorts **Sahne 2 (`5–10 sn`)** — Seçenek 2 (mevcut `room-desk.jpg` + `poz-2-merak.png` ile HyperFrames kurulumu).
 - **2026-11-26 — Kod Denetimi Faz 1–4, Genele Hitap Eden 5 Dokunuş, Vitrin Yenilemesi ve 4 HyperFrames Videosu tamamlandı:**
 - **Kod Denetimi Faz 1–4:** `reports/2026-11-24-kod-denetimi-raporu.md` içindeki tüm yüksek (Y1–Y6) ve orta bulgular, ~500 satırlık ortaklaştırma (`dikte/fsutil.py`, `app.js` model kartı/detay paneli birleştirmesi, `text_engine.py` yerel AI tekilleştirmesi, ölü kod temizliği) ve 7 test maskesi TDD ile giderildi.
 - **Genele Hitap Eden 5 Dokunuş:** Ayarlar'a **Bas-Bırak** kısayol modu (`hotkey_mode`), **Mikrofon seçimi** (`audio.py` `list_input_devices`), Windows'ta odak çalmayan **mini "Dinliyor / Yazıyor" göstergesi** (`dikte/indicator.py`) ve teknik ayarları **Gelişmiş Ayarlar** altında toplayan sade düzen eklendi.
@@ -123,13 +125,12 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **Faz 2 veri kaybı ve çökme hataları tamamlandı (2026-11-11):** `uygulanacak plan.md` §4'teki 11 maddenin tamamı TDD ile uygulandı; 18 yeni regresyon testi eklendi (**263 passed, 1 skipped**); `Model: "flash"` alt ajanıyla kod ve testler satır satır denetlendi. Masaüstüne `C:\Users\aksek\Desktop\Dikte.lnk` kısayolu oluşturuldu.
 
 ## Yarım kalan
-- **Karakterli YouTube Shorts (`video-hf/shorts-karakter-tr/`):** Sahne 1 (`0–5 sn`) tamamlandı; Sahne 2–6 (`5–34 sn`) adım adım 5'er saniyelik kullanıcı onayıyla tamamlanacak. Sıradaki: Sahne 2 (`5–10 sn`, Seçenek 2 — mevcut `room-desk.jpg` + `poz-2-merak.png`).
 - **Sihirbaz 2. adım CUDA indirme butonu:** `#wizardCudaActions` / `#wizardCudaMsg` yer tutucusu duruyor; isteğe bağlı CUDA indirme uç noktası henüz bağlı değil.
-- **v1.7.0 kullanıcı yerel testi ve kurucu derlemesi:** Kullanıcının yeni özellikleri (Bas-Bırak, mikrofon seçimi, mini "Dinliyor" göstergesi) ve 4 HyperFrames videosunu yerel olarak onaylamasından sonra `APP_VERSION` `1.7.0`'a çıkarılıp `build.ps1` ile kurucu derlenecek.
+- **v1.7.0 kullanıcı yerel testi ve kurucu derlemesi:** Kullanıcının yeni özellikleri (Bas-Bırak, mikrofon seçimi, mini "Dinliyor/Yazıyor" göstergesi) ve 4 HyperFrames videosunu yerel olarak onaylamasından sonra `APP_VERSION` `1.7.0`'a çıkarılıp `build.ps1` ile kurucu derlenecek.
 
 ## Sıradaki ilk adım
-1. Karakterli YouTube Shorts **Sahne 2 (`5–10 sn`: "Bu proje neyin nesiymiş?" + Dikte kurulumu)** bölümünü Seçenek 2 (mevcut `room-desk.jpg` + `poz-2-merak.png`) ile HyperFrames'te kurup kullanıcıya önizleme sunmak (ayrıntılar Obsidian `02-Projeler/dikte-projesi/en-son-oturumda-kalinan-yer.md` içinde).
-2. Video bittikten sonra (veya kullanıcı istediğinde) `v1.7.0` yerel testi ve `Dikte-Setup-1.7.0.exe` derlemesine geçmek.
+1. `v1.7.0` yerel kullanıcı testini yapmak (Bas-Bırak kısayol modu, mikrofon seçimi, odak çalmayan mini "Dinliyor/Yazıyor" göstergesi ve Gelişmiş Ayarlar).
+2. Onay sonrası `config.APP_VERSION = "1.7.0"` yapıp `build.ps1` ile `Dikte-Setup-1.7.0.exe` kurucusunu derlemek ve yayınlamak.
 
 ## Açık sorunlar
 - **Kullanıcı Kabul Testi (Yeni Kurucu):** Yeni `Dikte-Setup-1.6.1.exe` (`onnxruntime` erken yükleme + VAD yedeği) ile gerçek bilgisayarda canlı konuşma ve kaldırma testi kullanıcı tarafından doğrulanacaktır.
@@ -185,6 +186,7 @@ Bu dosya yeni sohbette kaldığımız yerden devam etmek içindir. Her oturum so
 - **2026-11-24 (Kod Denetimi ve `asama-baslat` Güncellemesi):** v1.6.1 kodu salt-okunur tam denetimden geçirildi (`reports/2026-11-24-kod-denetimi-raporu.md`); `asama-baslat` skill'ine önceki oturumlar için **Obsidian MCP kontrolü** ve alt aşamalar/işçiler için değiştirilebilir düşünme seviyeli **Gemini 4 Hydrogen** (`low`/`medium`/`high`/`xhigh`) kuralı eklendi.
 - **2026-11-25 (Sade Yayın & Tanıtım Araştırması):** Gelir amacı güdülmüyor; ~1.000 kullanıcı/indirme yeterli, süre sınırı ve abartılı büyüme kampanyası yok. Bu oturumda yalnızca araştırma yapılıp rapor (`reports/2026-11-25-yayin-ve-buyume-raporu.md`) ve Obsidian notu kaydedildi; uygulama koduna dokunulmadı.
 - **2026-11-26 (Swarm ile Faz 1–4, 5 Dokunuş, Vitrin ve 4 HyperFrames Videosu):** Kullanıcı v1.6.1 testlerini tamamladı; Swarm onayıyla Kod Denetimi Faz 1–4, genele hitap eden 5 dokunuş (Bas-Bırak, mikrofon seçimi, mini "Dinliyor/Yazıyor" göstergesi, Gelişmiş Ayarlar), vitrin/OG kartı yenilemesi ve HyperFrames ile 4 tanıtım videosu (Yatay 16:9 50s TR/EN + Shorts 9:16 30s TR/EN + web EN/TR kopyaları) tamamlandı. `v1.7.0` kurucu derlemesi kullanıcının yerel testinden sonraya bırakıldı.
+- **2026-11-27 (Karakterli Shorts İptali):** Karakterli 3D kil YouTube Shorts (`video-hf/shorts-karakter-tr/`) işi kullanıcı kararıyla iptal edildi; dosyalar silinmeden bırakıldı, kod değişikliği yapılmadı ve sıradaki adım tekrar `v1.7.0` yerel testi + kurucu derlemesi olarak belirlendi.
 
 ## Test durumu
 | Test | Sonuç |

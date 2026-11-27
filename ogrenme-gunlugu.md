@@ -148,3 +148,9 @@ Bu dosyaya her oturumda öğrendiklerimi 3-5 maddeyle ekliyorum.
 1. **Hibrit Video Üretimi (Veo + HyperFrames):** Karakterin el/yüz hareketleri gibi doğal stop-motion animasyonlarını video modeliyle (`Image-to-Video`) üretip, üstündeki okunaklı Türkçe altyazı, ses miksajı ve YouTube Shorts güvenli alanını HyperFrames ile kodlamak hem sinematik hem hatasız sonuç verir.
 2. **Shorts Güvenli Alanı (`--safe-zone shorts`) ve Kontrast Kontrolü:** HyperFrames'in `check --safe-zone shorts` komutu, YouTube Shorts'taki sağ buton sütunu ve alt açıklama alanıyla çakışan yazıları ve düşük kontrastlı metinleri render öncesi yakalar.
 3. **Obsidian Kalıcı Oturum Devamı (`en-son-oturumda-kalinan-yer.md`):** Her oturum kapanışında tek bir sabit dosyaya kalınan noktayı yazıp her `/asama-baslat` çağrısında bunu okutmak, yeni sohbetlerin hiçbir bağlam kaybetmeden doğrudan sıradaki adımdan başlamasını sağlar.
+
+## 2026-11-27 — Gemini Omni Uzatma Planı ve Video İşinin İptali
+
+1. **Video Uzatma (Video Extension):** İki ayrı klibi sert kesmeyle (`hard cut`) birleştirmek yerine, mevcut bir klibi video modeline girdi olarak verip devamını ürettirmek karakter, ışık ve ortam tutarlılığını tek çekim gibi korur.
+2. **Yerel API vs. Web Arayüzü:** Bir AI modelini doğrudan terminalden/koddan çağırmak için ilgili SDK (`google-genai`) ve `API anahtarı` gerekir; bunları kurmadan web arayüzünden üretip dosyayı projeye almak ek kurulum ve maliyet yönetimini basitleştirir.
+3. **Erken İptal ve Temiz Kapanış:** Bir yan iş (karakterli Shorts) artık öncelik değilse dosyaları hemen silmeden iptal kararını hafızaya (`STATE.md`, `Obsidian`) işlemek, yeni oturumda ana ürüne (`v1.7.0`) temiz dönmeyi sağlar.
